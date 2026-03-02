@@ -742,6 +742,15 @@ html {
   color: var(--slate-400) !important;
 }
 
+/* Fix dropdown chevron icon SVG */
+.rs__dropdown-indicator svg,
+.rs__indicator svg {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+}
+
 .rs__indicator-separator {
   display: none !important;
 }
