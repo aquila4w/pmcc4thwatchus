@@ -742,13 +742,17 @@ html {
   color: var(--slate-400) !important;
 }
 
-/* Fix dropdown chevron icon SVG */
-.rs__dropdown-indicator svg,
-.rs__indicator svg {
-  width: 20px !important;
-  height: 20px !important;
-  min-width: 20px !important;
-  min-height: 20px !important;
+/* Fix dropdown chevron icon SVG - keep small */
+.rs__dropdown-indicator,
+.rs__indicator {
+  svg {
+    width: 16px !important;
+    height: 16px !important;
+    min-width: 16px !important;
+    min-height: 16px !important;
+    max-width: 16px !important;
+    max-height: 16px !important;
+  }
 }
 
 .rs__indicator-separator {
