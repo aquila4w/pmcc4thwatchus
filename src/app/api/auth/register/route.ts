@@ -1,0 +1,93 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getPayload } from "payload";
+import config from "@payload-config";
+
+export async function POST(request: NextRequest) {
+  try {
+    const payload = await getPayload({ config });
+    const { name, email, password, phone } = await request.json();
+
+    // Validate required fields
+    if (!name || !email || !password) {
+      return NextResponse.json(
+        { error: "Name, email, and password are required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: "Invalid email format" },
+        { status: 400 }
+      );
+    }
+
+    // Validate password strength
+    if (password.length < 8) {
+      return NextResponse.json(
+        { error: "Password must be at least 8 characters" },
+        { status: 400 }
+      );
+    }
+
+    // Check if email already exists
+    const existingUsers = await payload.find({
+      collection: "users",
+      where: {
+        email: { equals: email.toLowerCase() },
+      },
+      limit: 1,
+    });
+
+    if (existingUsers.docs.length > 0) {
+      return NextResponse.json(
+        { error: "An account with this email already exists" },
+        { status: 400 }
+      );
+    }
+
+    // Create the user
+    const user = await payload.create({
+      collection: "users",
+      data: {
+        name,
+        email: email.toLowerCase(),
+        password,
+        phone: phone || undefined,
+        role: "member",
+        status: "pending", // New registrations start as pending
+        authProvider: "credentials",
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Registration successful! Your account is pending approval.",
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        status: user.status,
+      },
+    });
+  } catch (error) {
+    console.error("Registration error:", error);
+
+    // Handle Payload validation errors
+    const payloadError = error as { data?: { errors?: Array<{ message: string }> } };
+    if (payloadError.data?.errors) {
+      const messages = payloadError.data.errors.map((e) => e.message).join(", ");
+      return NextResponse.json(
+        { error: messages || "Registration failed" },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json(
+      { error: "Registration failed. Please try again." },
+      { status: 500 }
+    );
+  }
+}

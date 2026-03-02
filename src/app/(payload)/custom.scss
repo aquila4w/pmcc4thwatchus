@@ -1,0 +1,1824 @@
+/* ==============================================
+   PMCC 4TH WATCH - ADMIN DASHBOARD STYLES
+   Dark Slate Theme - Matching Frontend Dashboard
+   ============================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
+
+/* ============================================
+   CSS VARIABLES - Dark Slate Theme
+   ============================================ */
+
+:root {
+  /* Slate Colors (matching Tailwind) */
+  --slate-900: #0f172a;
+  --slate-800: #1e293b;
+  --slate-700: #334155;
+  --slate-600: #475569;
+  --slate-500: #64748b;
+  --slate-400: #94a3b8;
+  --slate-300: #cbd5e1;
+  --slate-200: #e2e8f0;
+  --slate-100: #f1f5f9;
+  --slate-50: #f8fafc;
+
+  /* PMCC Brand Colors */
+  --pmcc-gold: #c9a227;
+  --pmcc-gold-light: #d4b445;
+  --pmcc-gold-dark: #a88a1f;
+  --pmcc-navy: #1e3a5f;
+
+  /* Status Colors */
+  --green-500: #22c55e;
+  --green-400: #4ade80;
+  --blue-500: #3b82f6;
+  --blue-400: #60a5fa;
+  --purple-500: #a855f7;
+  --purple-400: #c084fc;
+  --orange-500: #f97316;
+  --orange-400: #fb923c;
+  --red-500: #ef4444;
+  --red-400: #f87171;
+}
+
+/* ============================================
+   GLOBAL DARK THEME OVERRIDE
+   ============================================ */
+
+body,
+html {
+  background: var(--slate-900) !important;
+  color: var(--slate-300) !important;
+}
+
+.template-default,
+.template-minimal,
+.template-default__wrap,
+#app {
+  background: var(--slate-900) !important;
+  min-height: 100vh;
+}
+
+/* ============================================
+   PAYLOAD SIDEBAR - Dark Navigation
+   ============================================ */
+
+.template-default .nav {
+  position: fixed !important;
+  left: 0 !important;
+  top: 0 !important;
+  width: 280px !important;
+  height: 100vh !important;
+  overflow-y: auto !important;
+  z-index: 1000 !important;
+  transform: none !important;
+  background: var(--slate-800) !important;
+  border-right: 1px solid var(--slate-700) !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.template-default__wrap {
+  margin-left: 280px !important;
+  width: calc(100% - 280px) !important;
+  background: var(--slate-900) !important;
+  min-height: 100vh;
+}
+
+.template-default__nav-toggler-wrapper {
+  display: none !important;
+}
+
+/* Nav group styling */
+.nav-group__toggle {
+  display: flex !important;
+  width: 100% !important;
+  padding: 14px 20px !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  cursor: pointer !important;
+  background: transparent !important;
+  border: none !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.8px !important;
+  color: var(--slate-500) !important;
+}
+
+.nav-group__toggle:hover {
+  background: var(--slate-700) !important;
+  color: var(--slate-300) !important;
+}
+
+.nav__link {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 12px 20px 12px 28px !important;
+  color: var(--slate-400) !important;
+  text-decoration: none !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  transition: all 0.15s ease !important;
+  border-left: 3px solid transparent !important;
+}
+
+.nav__link:hover {
+  background: var(--slate-700) !important;
+  color: white !important;
+}
+
+.nav__link[aria-current="page"] {
+  background: rgba(201, 162, 39, 0.1) !important;
+  color: var(--pmcc-gold) !important;
+  font-weight: 600 !important;
+  border-left-color: var(--pmcc-gold) !important;
+}
+
+.nav__link svg {
+  width: 18px !important;
+  height: 18px !important;
+  flex-shrink: 0 !important;
+  opacity: 0.7 !important;
+}
+
+/* Mobile responsive */
+@media (max-width: 1024px) {
+  .template-default .nav {
+    transform: translateX(-100%) !important;
+    transition: transform 0.3s ease !important;
+  }
+
+  .template-default .nav.nav--open {
+    transform: translateX(0) !important;
+  }
+
+  .template-default__wrap {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  .template-default__nav-toggler-wrapper {
+    display: flex !important;
+  }
+}
+
+/* ============================================
+   CUSTOM LOGO STYLES - Dark Theme
+   ============================================ */
+
+.pmcc-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  background: var(--slate-900) !important;
+  border-bottom: 1px solid var(--slate-700) !important;
+}
+
+.pmcc-logo__icon {
+  flex-shrink: 0;
+}
+
+.pmcc-logo__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pmcc-logo__title {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: white !important;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+}
+
+.pmcc-logo__subtitle {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--pmcc-gold) !important;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+/* ============================================
+   CUSTOM DASHBOARD STYLES - Dark Theme
+   ============================================ */
+
+.dashboard__wrap > *:not(.pmcc-dashboard) {
+  display: none !important;
+}
+
+.dashboard__wrap .pmcc-dashboard {
+  display: block !important;
+}
+
+.pmcc-dashboard {
+  padding: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.pmcc-dashboard__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+  padding: 32px;
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 16px;
+  color: white;
+}
+
+.pmcc-dashboard__welcome h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 32px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: white !important;
+}
+
+.pmcc-dashboard__welcome p {
+  font-size: 15px;
+  margin: 0;
+  color: var(--slate-400) !important;
+}
+
+.pmcc-dashboard__date {
+  font-size: 14px;
+  color: var(--pmcc-gold) !important;
+  font-weight: 500;
+  background: rgba(201, 162, 39, 0.15) !important;
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: 1px solid rgba(201, 162, 39, 0.3) !important;
+}
+
+/* Stats Grid - Dark Cards */
+.pmcc-dashboard__stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 40px;
+}
+
+@media (max-width: 1100px) {
+  .pmcc-dashboard__stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .pmcc-dashboard__stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pmcc-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  background: var(--slate-800) !important;
+  border-radius: 12px;
+  border: 1px solid var(--slate-700) !important;
+  transition: all 0.2s ease;
+}
+
+.pmcc-stat-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--slate-600) !important;
+}
+
+.pmcc-stat-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.pmcc-stat-card--events .pmcc-stat-card__icon {
+  background: rgba(201, 162, 39, 0.2) !important;
+  color: var(--pmcc-gold) !important;
+}
+
+.pmcc-stat-card--churches .pmcc-stat-card__icon {
+  background: rgba(59, 130, 246, 0.2) !important;
+  color: var(--blue-400) !important;
+}
+
+.pmcc-stat-card--users .pmcc-stat-card__icon {
+  background: rgba(34, 197, 94, 0.2) !important;
+  color: var(--green-400) !important;
+}
+
+.pmcc-stat-card--media .pmcc-stat-card__icon {
+  background: rgba(168, 85, 247, 0.2) !important;
+  color: var(--purple-400) !important;
+}
+
+.pmcc-stat-card__content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pmcc-stat-card__value {
+  font-size: 28px;
+  font-weight: 700;
+  color: white !important;
+  line-height: 1;
+}
+
+.pmcc-stat-card__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--slate-400) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Dashboard Sections */
+.pmcc-dashboard__section {
+  margin-bottom: 40px;
+}
+
+.pmcc-dashboard__section h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: white !important;
+  margin: 0 0 20px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--slate-700) !important;
+}
+
+/* Quick Actions - Dark Theme */
+.pmcc-dashboard__quick-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 800px) {
+  .pmcc-dashboard__quick-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pmcc-quick-action {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.pmcc-quick-action:hover {
+  border-color: var(--pmcc-gold) !important;
+  text-decoration: none;
+}
+
+.pmcc-quick-action__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.pmcc-quick-action__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.pmcc-quick-action__content h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: white !important;
+  margin: 0 0 4px 0;
+}
+
+.pmcc-quick-action__content p {
+  font-size: 13px;
+  color: var(--slate-400) !important;
+  margin: 0;
+}
+
+.pmcc-quick-action__arrow {
+  color: var(--slate-500) !important;
+  transition: all 0.2s ease;
+}
+
+.pmcc-quick-action:hover .pmcc-quick-action__arrow {
+  color: var(--pmcc-gold) !important;
+  transform: translateX(4px);
+}
+
+/* Collections - Dark Cards */
+.pmcc-dashboard__collections {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 1100px) {
+  .pmcc-dashboard__collections {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .pmcc-dashboard__collections {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pmcc-collection-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px;
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  min-height: 100px;
+}
+
+.pmcc-collection-card:hover {
+  border-color: var(--pmcc-gold) !important;
+  text-decoration: none;
+}
+
+.pmcc-collection-card__info h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: white !important;
+  margin: 0 0 8px 0;
+}
+
+.pmcc-collection-card__count {
+  font-size: 12px;
+  color: var(--slate-400) !important;
+  background: var(--slate-700) !important;
+  padding: 3px 10px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.pmcc-collection-card__action {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--pmcc-gold) !important;
+  margin-top: 12px;
+}
+
+/* Dashboard Footer */
+.pmcc-dashboard__footer {
+  margin-top: 48px;
+  padding: 24px;
+  text-align: center;
+  border-top: 1px solid var(--slate-700) !important;
+}
+
+.pmcc-dashboard__footer p {
+  font-size: 13px;
+  color: var(--slate-500) !important;
+  margin: 0 0 4px 0;
+}
+
+.pmcc-dashboard__footer a {
+  color: var(--pmcc-gold) !important;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+/* ============================================
+   EDITOR & COLLECTION VIEWS - Dark Theme
+   ============================================ */
+
+.collection-edit,
+.global-edit,
+.collection-list {
+  background: var(--slate-900) !important;
+  min-height: 100vh;
+}
+
+.collection-edit__main,
+.global-edit__main {
+  max-width: 900px !important;
+  margin: 0 auto !important;
+  padding: 32px 24px !important;
+}
+
+/* Document header - Dark style */
+.doc-header {
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 12px !important;
+  padding: 24px !important;
+  margin-bottom: 24px !important;
+}
+
+.doc-header__title-wrapper {
+  margin: 0 !important;
+}
+
+.doc-header__title {
+  font-family: 'Playfair Display', serif !important;
+  font-size: 32px !important;
+  font-weight: 600 !important;
+  color: white !important;
+  border: none !important;
+  background: transparent !important;
+  width: 100% !important;
+  padding: 0 !important;
+}
+
+.doc-header__title:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.doc-header__title::placeholder {
+  color: var(--slate-500) !important;
+}
+
+/* Breadcrumb/Step nav */
+.step-nav {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-bottom: 16px !important;
+  padding-bottom: 16px !important;
+  border-bottom: 1px solid var(--slate-700) !important;
+}
+
+.step-nav a {
+  color: var(--pmcc-gold) !important;
+  text-decoration: none !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
+.step-nav a:hover {
+  color: var(--pmcc-gold-light) !important;
+}
+
+.step-nav__chevron {
+  color: var(--slate-500) !important;
+}
+
+/* ============================================
+   FIELD CARDS - Dark Block Style
+   ============================================ */
+
+.render-fields {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.field-type {
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 12px !important;
+  padding: 20px 24px !important;
+  margin-bottom: 0 !important;
+  transition: all 0.2s ease !important;
+}
+
+.field-type:hover {
+  border-color: var(--slate-600) !important;
+}
+
+.field-type:focus-within {
+  border-color: var(--pmcc-gold) !important;
+  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.15) !important;
+}
+
+/* Field labels */
+.field-type > .field-label,
+.field-type > label,
+.field-type .label-wrapper label {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--slate-300) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  margin-bottom: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.field-type .required-indicator {
+  color: var(--pmcc-gold) !important;
+  font-weight: 700 !important;
+}
+
+.field-description {
+  font-size: 13px !important;
+  color: var(--slate-500) !important;
+  margin-top: 8px !important;
+  line-height: 1.5 !important;
+}
+
+/* ============================================
+   INPUT FIELDS - Dark Style
+   ============================================ */
+
+.field-type input[type="text"],
+.field-type input[type="email"],
+.field-type input[type="number"],
+.field-type input[type="password"],
+.field-type input[type="url"],
+.field-type input[type="tel"] {
+  width: 100% !important;
+  padding: 12px 16px !important;
+  border: 1px solid var(--slate-600) !important;
+  border-radius: 8px !important;
+  font-size: 15px !important;
+  font-family: 'Inter', sans-serif !important;
+  background: var(--slate-700) !important;
+  color: white !important;
+  transition: all 0.2s ease !important;
+}
+
+.field-type input:hover {
+  border-color: var(--slate-500) !important;
+}
+
+.field-type input:focus {
+  outline: none !important;
+  border-color: var(--pmcc-gold) !important;
+  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.15) !important;
+}
+
+.field-type input::placeholder {
+  color: var(--slate-500) !important;
+}
+
+/* Textarea */
+.field-type textarea {
+  width: 100% !important;
+  padding: 14px 16px !important;
+  border: 1px solid var(--slate-600) !important;
+  border-radius: 8px !important;
+  font-size: 15px !important;
+  font-family: 'Inter', sans-serif !important;
+  background: var(--slate-700) !important;
+  color: white !important;
+  min-height: 120px !important;
+  resize: vertical !important;
+  transition: all 0.2s ease !important;
+}
+
+.field-type textarea:focus {
+  outline: none !important;
+  border-color: var(--pmcc-gold) !important;
+  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.15) !important;
+}
+
+/* ============================================
+   SELECT/DROPDOWN - Dark Style
+   ============================================ */
+
+.rs__control,
+.react-select__control,
+.field-type.select .value-container {
+  background: var(--slate-700) !important;
+  border: 1px solid var(--slate-600) !important;
+  border-radius: 8px !important;
+  min-height: 46px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.rs__control:hover,
+.react-select__control:hover {
+  border-color: var(--slate-500) !important;
+}
+
+.rs__control--is-focused,
+.react-select__control--is-focused {
+  border-color: var(--pmcc-gold) !important;
+  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.15) !important;
+}
+
+.rs__single-value,
+.react-select__single-value {
+  color: white !important;
+}
+
+.rs__placeholder,
+.react-select__placeholder {
+  color: var(--slate-500) !important;
+}
+
+.rs__indicator,
+.rs__dropdown-indicator {
+  padding: 8px 12px !important;
+  color: var(--slate-400) !important;
+}
+
+.rs__indicator-separator {
+  display: none !important;
+}
+
+/* Dropdown menu */
+.rs__menu,
+.react-select__menu {
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4) !important;
+  margin-top: 4px !important;
+  overflow: hidden !important;
+  z-index: 9999 !important;
+}
+
+.rs__menu-list,
+.react-select__menu-list {
+  padding: 6px !important;
+}
+
+.rs__option,
+.react-select__option {
+  padding: 10px 14px !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  color: var(--slate-300) !important;
+  transition: all 0.15s ease !important;
+}
+
+.rs__option:hover,
+.react-select__option:hover {
+  background: var(--slate-700) !important;
+  color: white !important;
+}
+
+.rs__option--is-selected,
+.react-select__option--is-selected {
+  background: var(--pmcc-gold) !important;
+  color: var(--slate-900) !important;
+}
+
+/* ============================================
+   DATE/TIME PICKER - Dark Style
+   ============================================ */
+
+.date-time-picker__input-wrapper {
+  display: flex !important;
+  align-items: center !important;
+  background: var(--slate-700) !important;
+  border: 1px solid var(--slate-600) !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  transition: all 0.2s ease !important;
+}
+
+.date-time-picker__input-wrapper:focus-within {
+  border-color: var(--pmcc-gold) !important;
+  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.15) !important;
+}
+
+.date-time-picker input {
+  border: none !important;
+  background: transparent !important;
+  padding: 12px 16px !important;
+  font-size: 15px !important;
+  color: white !important;
+  flex: 1 !important;
+}
+
+.date-time-picker__icon {
+  background: var(--slate-600) !important;
+  padding: 12px !important;
+}
+
+.date-time-picker__icon svg {
+  width: 20px !important;
+  height: 20px !important;
+  color: var(--slate-400) !important;
+}
+
+/* ============================================
+   FILE UPLOAD - Dark Style
+   ============================================ */
+
+.upload__dropzone,
+.file-field__dropzone {
+  background: var(--slate-800) !important;
+  border: 2px dashed var(--slate-600) !important;
+  border-radius: 12px !important;
+  padding: 48px 32px !important;
+  text-align: center !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.upload__dropzone:hover,
+.file-field__dropzone:hover {
+  border-color: var(--pmcc-gold) !important;
+  background: rgba(201, 162, 39, 0.05) !important;
+}
+
+.upload__dropzone svg {
+  color: var(--slate-500) !important;
+}
+
+.upload__dropzone-label {
+  color: var(--slate-400) !important;
+}
+
+.upload__dropzone-label strong {
+  color: var(--pmcc-gold) !important;
+}
+
+/* Thumbnail preview */
+.thumbnail {
+  background: var(--slate-700) !important;
+  border: 1px solid var(--slate-600) !important;
+  border-radius: 8px !important;
+}
+
+/* ============================================
+   RICH TEXT EDITOR - Dark Style
+   ============================================ */
+
+.rich-text,
+.rich-text-editor,
+.lexical {
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+}
+
+.rich-text:focus-within,
+.lexical:focus-within {
+  border-color: var(--pmcc-gold) !important;
+  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.15) !important;
+}
+
+.rich-text__toolbar,
+.lexical-toolbar,
+.toolbar {
+  background: var(--slate-700) !important;
+  border-bottom: 1px solid var(--slate-600) !important;
+  padding: 8px 12px !important;
+}
+
+.rich-text__toolbar button,
+.toolbar button {
+  background: transparent !important;
+  border: none !important;
+  padding: 8px 10px !important;
+  border-radius: 6px !important;
+  color: var(--slate-400) !important;
+  cursor: pointer !important;
+}
+
+.rich-text__toolbar button:hover {
+  background: var(--slate-600) !important;
+  color: white !important;
+}
+
+.rich-text__toolbar button.active,
+.rich-text__toolbar button[aria-pressed="true"] {
+  background: var(--pmcc-gold) !important;
+  color: var(--slate-900) !important;
+}
+
+.rich-text__editor,
+.lexical-editor,
+.ContentEditable__root {
+  padding: 20px 24px !important;
+  min-height: 200px !important;
+  font-size: 16px !important;
+  line-height: 1.7 !important;
+  color: var(--slate-300) !important;
+}
+
+/* ============================================
+   TABS - Dark Style
+   ============================================ */
+
+.tabs-field {
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+}
+
+.tabs-field__tabs {
+  display: flex !important;
+  background: var(--slate-700) !important;
+  border-bottom: 1px solid var(--slate-600) !important;
+}
+
+.tabs-field__tab-button {
+  flex: 1 !important;
+  padding: 14px 20px !important;
+  border: none !important;
+  background: transparent !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: var(--slate-400) !important;
+  cursor: pointer !important;
+  position: relative !important;
+}
+
+.tabs-field__tab-button:hover {
+  background: var(--slate-600) !important;
+  color: white !important;
+}
+
+.tabs-field__tab-button--active {
+  background: var(--slate-800) !important;
+  color: var(--pmcc-gold) !important;
+  font-weight: 600 !important;
+}
+
+.tabs-field__tab-button--active::after {
+  content: '' !important;
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 3px !important;
+  background: var(--pmcc-gold) !important;
+}
+
+.tabs-field__content {
+  padding: 24px !important;
+}
+
+/* ============================================
+   COLLAPSIBLE/ACCORDION - Dark Style
+   ============================================ */
+
+.collapsible {
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 10px !important;
+  margin-bottom: 12px !important;
+  overflow: hidden !important;
+}
+
+.collapsible__header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 16px 20px !important;
+  background: var(--slate-700) !important;
+  border-bottom: 1px solid var(--slate-600) !important;
+  cursor: pointer !important;
+}
+
+.collapsible__header:hover {
+  background: var(--slate-600) !important;
+}
+
+.collapsible__header-text {
+  font-weight: 600 !important;
+  color: white !important;
+}
+
+.collapsible__header svg {
+  color: var(--slate-400) !important;
+}
+
+.collapsible__content {
+  padding: 20px !important;
+}
+
+/* Array/Repeater fields */
+.array-field {
+  background: var(--slate-900) !important;
+  border-radius: 12px !important;
+  padding: 16px !important;
+}
+
+.array-field__row {
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 10px !important;
+  margin-bottom: 12px !important;
+}
+
+.array-field__add-button,
+.blocks-field__add-button {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  padding: 14px !important;
+  background: var(--slate-800) !important;
+  border: 2px dashed var(--slate-600) !important;
+  border-radius: 10px !important;
+  color: var(--slate-400) !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  margin-top: 12px !important;
+}
+
+.array-field__add-button:hover,
+.blocks-field__add-button:hover {
+  border-color: var(--pmcc-gold) !important;
+  background: rgba(201, 162, 39, 0.1) !important;
+  color: var(--pmcc-gold) !important;
+}
+
+/* ============================================
+   CHECKBOX & TOGGLE - Dark Style
+   ============================================ */
+
+.checkbox-input__icon {
+  width: 22px !important;
+  height: 22px !important;
+  border: 2px solid var(--slate-500) !important;
+  border-radius: 5px !important;
+  background: var(--slate-700) !important;
+}
+
+.checkbox-input input:checked + .checkbox-input__icon {
+  background: var(--pmcc-gold) !important;
+  border-color: var(--pmcc-gold) !important;
+}
+
+.checkbox-input input:checked + .checkbox-input__icon svg {
+  color: var(--slate-900) !important;
+}
+
+.toggle-input__button {
+  width: 48px !important;
+  height: 26px !important;
+  border-radius: 13px !important;
+  background: var(--slate-600) !important;
+  border: none !important;
+  position: relative !important;
+  cursor: pointer !important;
+}
+
+.toggle-input__button::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 3px !important;
+  left: 3px !important;
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 50% !important;
+  background: white !important;
+  transition: all 0.2s ease !important;
+}
+
+.toggle-input__button--on {
+  background: var(--pmcc-gold) !important;
+}
+
+.toggle-input__button--on::after {
+  left: 25px !important;
+}
+
+/* ============================================
+   SIDEBAR/DRAWER - Dark Style
+   ============================================ */
+
+.drawer,
+.edit-view__sidebar {
+  background: var(--slate-800) !important;
+  border-left: 1px solid var(--slate-700) !important;
+}
+
+.drawer__header {
+  padding: 20px !important;
+  border-bottom: 1px solid var(--slate-700) !important;
+}
+
+.drawer__header h2 {
+  font-family: 'Playfair Display', serif !important;
+  font-size: 20px !important;
+  color: white !important;
+}
+
+/* ============================================
+   PUBLISH/SAVE ACTIONS - Dark Floating Bar
+   ============================================ */
+
+.form-submit,
+.doc-controls {
+  position: sticky !important;
+  bottom: 0 !important;
+  background: var(--slate-800) !important;
+  border-top: 1px solid var(--slate-700) !important;
+  padding: 16px 24px !important;
+  margin: 0 -24px -24px -24px !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 12px !important;
+  z-index: 100 !important;
+}
+
+.form-submit .btn,
+.doc-controls .btn {
+  padding: 12px 24px !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.form-submit .btn--style-primary,
+.doc-controls .btn--style-primary,
+.btn.btn--style-primary {
+  background: var(--pmcc-gold) !important;
+  border: none !important;
+  color: var(--slate-900) !important;
+}
+
+.form-submit .btn--style-primary:hover,
+.doc-controls .btn--style-primary:hover,
+.btn.btn--style-primary:hover {
+  background: var(--pmcc-gold-light) !important;
+}
+
+.form-submit .btn--style-secondary,
+.doc-controls .btn--style-secondary,
+.btn.btn--style-secondary {
+  background: var(--slate-700) !important;
+  border: 1px solid var(--slate-600) !important;
+  color: white !important;
+}
+
+.form-submit .btn--style-secondary:hover,
+.doc-controls .btn--style-secondary:hover,
+.btn.btn--style-secondary:hover {
+  border-color: var(--pmcc-gold) !important;
+  color: var(--pmcc-gold) !important;
+}
+
+/* ============================================
+   COLLECTION LIST VIEW - Dark Table
+   ============================================ */
+
+.collection-list__wrap {
+  background: var(--slate-900) !important;
+  padding: 32px !important;
+}
+
+.collection-list__header {
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 12px !important;
+  padding: 24px !important;
+  margin-bottom: 24px !important;
+}
+
+.collection-list__header h1 {
+  color: white !important;
+  font-family: 'Playfair Display', serif !important;
+}
+
+.table {
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+}
+
+.table th {
+  background: var(--slate-700) !important;
+  color: var(--slate-300) !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  font-size: 12px !important;
+  letter-spacing: 0.5px !important;
+  padding: 14px 16px !important;
+  border-bottom: 1px solid var(--slate-600) !important;
+}
+
+.table td {
+  background: var(--slate-800) !important;
+  color: var(--slate-300) !important;
+  padding: 14px 16px !important;
+  border-bottom: 1px solid var(--slate-700) !important;
+}
+
+.table tr:hover td {
+  background: var(--slate-700) !important;
+}
+
+.table a {
+  color: var(--pmcc-gold) !important;
+}
+
+/* ============================================
+   SEARCH & FILTERS - Dark Style
+   ============================================ */
+
+.search-filter {
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 8px !important;
+}
+
+.search-filter input {
+  background: transparent !important;
+  color: white !important;
+  border: none !important;
+}
+
+.search-filter input::placeholder {
+  color: var(--slate-500) !important;
+}
+
+/* ============================================
+   RELATIONSHIP FIELDS - Dark Style
+   ============================================ */
+
+.relationship-add-new {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 8px 14px !important;
+  background: var(--slate-700) !important;
+  border: 1px solid var(--slate-600) !important;
+  border-radius: 6px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: var(--slate-300) !important;
+  cursor: pointer !important;
+  margin-top: 8px !important;
+}
+
+.relationship-add-new:hover {
+  background: var(--pmcc-gold) !important;
+  border-color: var(--pmcc-gold) !important;
+  color: var(--slate-900) !important;
+}
+
+/* ============================================
+   ERROR STATES - Dark Style
+   ============================================ */
+
+.field-type--error {
+  border-color: var(--red-500) !important;
+}
+
+.field-type--error .field-error {
+  color: var(--red-400) !important;
+  font-size: 13px !important;
+  margin-top: 8px !important;
+}
+
+/* ============================================
+   LOADING STATES - Dark Style
+   ============================================ */
+
+.loading-overlay {
+  background: rgba(15, 23, 42, 0.9) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+.loading-overlay__spinner {
+  border-color: var(--slate-700) !important;
+  border-top-color: var(--pmcc-gold) !important;
+}
+
+/* ============================================
+   BLOCKS FIELD - Dark Style
+   ============================================ */
+
+.blocks-field {
+  background: var(--slate-900) !important;
+  border-radius: 12px !important;
+  padding: 16px !important;
+}
+
+.blocks-field .blocks-field__block {
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 10px !important;
+  margin-bottom: 12px !important;
+}
+
+.blocks-field__block-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 12px 16px !important;
+  background: var(--slate-700) !important;
+  border-bottom: 1px solid var(--slate-600) !important;
+  cursor: grab !important;
+}
+
+.blocks-field__block-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 4px 12px !important;
+  background: var(--pmcc-gold) !important;
+  color: var(--slate-900) !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+}
+
+/* Block drawer */
+.blocks-drawer {
+  background: var(--slate-800) !important;
+}
+
+.blocks-drawer__blocks {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 12px !important;
+  padding: 16px !important;
+}
+
+.blocks-drawer__block {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 16px !important;
+  background: var(--slate-700) !important;
+  border: 1px solid var(--slate-600) !important;
+  border-radius: 10px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.blocks-drawer__block:hover {
+  border-color: var(--pmcc-gold) !important;
+  background: rgba(201, 162, 39, 0.1) !important;
+}
+
+.blocks-drawer__block-label {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: var(--slate-300) !important;
+  text-align: center !important;
+}
+
+/* ============================================
+   MODAL/DIALOG - Dark Style
+   ============================================ */
+
+.modal__wrapper {
+  background: rgba(15, 23, 42, 0.8) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+.modal__content {
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 16px !important;
+}
+
+.modal__header {
+  border-bottom: 1px solid var(--slate-700) !important;
+  padding: 20px 24px !important;
+}
+
+.modal__header h2 {
+  color: white !important;
+}
+
+/* ============================================
+   PAGINATION - Dark Style
+   ============================================ */
+
+.paginator {
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 8px !important;
+  padding: 12px !important;
+}
+
+.paginator button {
+  background: var(--slate-700) !important;
+  border: 1px solid var(--slate-600) !important;
+  color: var(--slate-300) !important;
+  border-radius: 6px !important;
+}
+
+.paginator button:hover {
+  background: var(--slate-600) !important;
+  color: white !important;
+}
+
+.paginator button.active {
+  background: var(--pmcc-gold) !important;
+  border-color: var(--pmcc-gold) !important;
+  color: var(--slate-900) !important;
+}
+
+/* ============================================
+   FLOATING SAVE BUTTON - Top Right
+   ============================================ */
+
+.doc-controls,
+.form-submit {
+  position: fixed !important;
+  top: 16px !important;
+  right: 16px !important;
+  bottom: auto !important;
+  left: auto !important;
+  margin: 0 !important;
+  padding: 8px !important;
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+  z-index: 1000 !important;
+  display: flex !important;
+  gap: 8px !important;
+}
+
+.doc-controls .btn,
+.form-submit .btn {
+  padding: 10px 20px !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+/* ============================================
+   ENHANCED TABS - News/Events Style
+   ============================================ */
+
+.tabs-field {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+.tabs-field__tabs {
+  display: flex !important;
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 12px !important;
+  padding: 6px !important;
+  gap: 6px !important;
+  margin-bottom: 20px !important;
+}
+
+.tabs-field__tab-button {
+  flex: 1 !important;
+  padding: 14px 20px !important;
+  border: none !important;
+  background: transparent !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: var(--slate-400) !important;
+  cursor: pointer !important;
+  position: relative !important;
+  border-radius: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+.tabs-field__tab-button:hover {
+  background: var(--slate-700) !important;
+  color: white !important;
+}
+
+.tabs-field__tab-button--active {
+  background: var(--pmcc-gold) !important;
+  color: var(--slate-900) !important;
+  font-weight: 600 !important;
+}
+
+.tabs-field__tab-button--active:hover {
+  background: var(--pmcc-gold-light) !important;
+  color: var(--slate-900) !important;
+}
+
+.tabs-field__tab-button--active::after {
+  display: none !important;
+}
+
+.tabs-field__content {
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+/* Tab icons/emojis */
+.tabs-field__tab-button::before {
+  margin-right: 8px !important;
+  font-size: 16px !important;
+}
+
+/* ============================================
+   CONTENT MODE SELECTOR - Enhanced
+   ============================================ */
+
+.field-type.select[data-field-name="contentMode"] {
+  background: linear-gradient(135deg, var(--slate-800) 0%, var(--slate-700) 100%) !important;
+  border: 2px solid var(--pmcc-gold) !important;
+  padding: 24px !important;
+}
+
+.field-type.select[data-field-name="contentMode"] .field-label {
+  color: var(--pmcc-gold) !important;
+  font-size: 14px !important;
+}
+
+/* ============================================
+   VISUAL EDITOR SECTION - Dark Theme
+   ============================================ */
+
+.field-type.ui {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+/* ============================================
+   ROW FIELDS - Better spacing
+   ============================================ */
+
+.field-type.row {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  display: flex !important;
+  gap: 16px !important;
+}
+
+.field-type.row > .render-fields {
+  flex: 1 !important;
+}
+
+/* ============================================
+   GROUP FIELDS - Card style
+   ============================================ */
+
+.field-type.group {
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 12px !important;
+  padding: 20px !important;
+}
+
+.field-type.group > .group-field__label {
+  color: var(--pmcc-gold) !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  margin-bottom: 16px !important;
+  padding-bottom: 12px !important;
+  border-bottom: 1px solid var(--slate-700) !important;
+}
+
+/* ============================================
+   CHECKBOX FIELDS - Better visibility
+   ============================================ */
+
+.field-type.checkbox {
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 10px !important;
+  padding: 16px 20px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.field-type.checkbox:hover {
+  border-color: var(--pmcc-gold) !important;
+}
+
+.field-type.checkbox label {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  cursor: pointer !important;
+  width: 100% !important;
+}
+
+/* ============================================
+   UPLOAD FIELDS - Enhanced preview
+   ============================================ */
+
+.field-type.upload {
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 12px !important;
+  padding: 20px !important;
+}
+
+.upload__file-wrap {
+  background: var(--slate-700) !important;
+  border-radius: 8px !important;
+  padding: 12px !important;
+}
+
+/* ============================================
+   ARRAY FIELDS - Gallery style
+   ============================================ */
+
+.field-type.array {
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 12px !important;
+  padding: 20px !important;
+}
+
+.array-field__header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 16px !important;
+}
+
+.array-field__row {
+  background: var(--slate-700) !important;
+  border: 1px solid var(--slate-600) !important;
+  border-radius: 10px !important;
+  margin-bottom: 12px !important;
+  overflow: hidden !important;
+}
+
+.array-field__row-header {
+  background: var(--slate-600) !important;
+  padding: 12px 16px !important;
+  cursor: grab !important;
+}
+
+/* ============================================
+   DATE FIELDS - Better calendar
+   ============================================ */
+
+.field-type.date,
+.field-type.date-time {
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 12px !important;
+  padding: 20px !important;
+}
+
+/* React Datepicker dark theme */
+.react-datepicker {
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 12px !important;
+  font-family: 'Inter', sans-serif !important;
+}
+
+.react-datepicker__header {
+  background: var(--slate-700) !important;
+  border-bottom: 1px solid var(--slate-600) !important;
+}
+
+.react-datepicker__current-month,
+.react-datepicker__day-name {
+  color: white !important;
+}
+
+.react-datepicker__day {
+  color: var(--slate-300) !important;
+}
+
+.react-datepicker__day:hover {
+  background: var(--slate-600) !important;
+}
+
+.react-datepicker__day--selected {
+  background: var(--pmcc-gold) !important;
+  color: var(--slate-900) !important;
+}
+
+/* ============================================
+   RELATIONSHIP FIELDS - Enhanced
+   ============================================ */
+
+.field-type.relationship {
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 12px !important;
+  padding: 20px !important;
+}
+
+/* ============================================
+   TEXTAREA FIELDS - Better for descriptions
+   ============================================ */
+
+.field-type.textarea {
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 12px !important;
+  padding: 20px !important;
+}
+
+.field-type.textarea textarea {
+  background: var(--slate-700) !important;
+  border: 1px solid var(--slate-600) !important;
+  border-radius: 8px !important;
+  color: white !important;
+  min-height: 100px !important;
+}
+
+/* ============================================
+   NUMBER FIELDS
+   ============================================ */
+
+.field-type.number {
+  background: var(--slate-800) !important;
+  border: 1px solid var(--slate-700) !important;
+  border-radius: 12px !important;
+  padding: 20px !important;
+}
+
+/* ============================================
+   SIDEBAR FIELDS - Compact style
+   ============================================ */
+
+.edit-view__sidebar {
+  background: var(--slate-800) !important;
+  border-left: 1px solid var(--slate-700) !important;
+  padding: 20px !important;
+}
+
+.edit-view__sidebar .field-type {
+  background: var(--slate-700) !important;
+  border: 1px solid var(--slate-600) !important;
+  border-radius: 10px !important;
+  padding: 16px !important;
+  margin-bottom: 12px !important;
+}
+
+.edit-view__sidebar .field-type:hover {
+  border-color: var(--slate-500) !important;
+}
+
+/* ============================================
+   GLOBAL FIXES
+   ============================================ */
+
+/* Fix all text colors */
+h1, h2, h3, h4, h5, h6 {
+  color: white !important;
+}
+
+p, span, label {
+  color: var(--slate-300) !important;
+}
+
+a {
+  color: var(--pmcc-gold) !important;
+}
+
+/* Fix SVG icons */
+.template-default svg {
+  max-width: 100% !important;
+  max-height: 100% !important;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--slate-800);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--slate-600);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--slate-500);
+}
