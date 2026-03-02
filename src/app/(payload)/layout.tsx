@@ -1,9 +1,8 @@
-/* THIS FILE WAS GENERATED AUTOMATICALLY BY PAYLOAD. */
-/* DO NOT MODIFY IT BECAUSE IT COULD BE REWRITTEN AT ANY TIME. */
+/* MODIFIED: Fixed nested HTML tags issue - use PayloadProvider instead of RootLayout */
 
 import type { ServerFunctionClient } from "payload";
 import config from "@payload-config";
-import { handleServerFunctions, RootLayout } from "@payloadcms/next/layouts";
+import { handleServerFunctions, PayloadAdmin, PayloadProvider } from "@payloadcms/next/providers";
 import React from "react";
 
 import { importMap } from "./admin/importMap";
@@ -23,9 +22,11 @@ const serverFunction: ServerFunctionClient = async function (args) {
 };
 
 const Layout = ({ children }: Args) => (
-  <RootLayout config={config} importMap={importMap} serverFunction={serverFunction}>
-    {children}
-  </RootLayout>
+  <PayloadProvider config={config} importMap={importMap} serverFunction={serverFunction}>
+    <PayloadAdmin>
+      {children}
+    </PayloadAdmin>
+  </PayloadProvider>
 );
 
 export default Layout;
