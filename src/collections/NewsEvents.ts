@@ -149,30 +149,30 @@ export const NewsEvents: CollectionConfig = {
           ],
         },
 
-        // TAB 3: Page Design (Puck)
-        {
-          label: "Page Design",
-          fields: [
-            {
-              name: "puckData",
-              type: "json",
-              admin: {
-                description: "Visual page builder data - Use the Visual Editor button below",
-              },
-            },
-            {
-              name: "openVisualEditor",
-              type: "ui",
-              admin: {
-                components: {
-                  Field: "/app/(payload)/admin/components/PuckEditorButton#PuckEditorButton",
-                },
-              },
-            },
-          ],
-        },
+        // TAB 3: Page Design (Puck) - DISABLED FOR TESTING
+        // {
+        //   label: "Page Design",
+        //   fields: [
+        //     {
+        //       name: "puckData",
+        //       type: "json",
+        //       admin: {
+        //         description: "Visual page builder data - Use the Visual Editor button below",
+        //       },
+        //     },
+        //     {
+        //       name: "openVisualEditor",
+        //       type: "ui",
+        //       admin: {
+        //         components: {
+        //           Field: "/app/(payload)/admin/components/PuckEditorButton#PuckEditorButton",
+        //         },
+        //       },
+        //     },
+        //   ],
+        // },
 
-        // TAB 4: Registration
+        // TAB 3: Registration (was TAB 4)
         {
           label: "Registration",
           fields: [

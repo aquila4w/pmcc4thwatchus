@@ -19,7 +19,7 @@ import { Media } from "./collections/Media";
 import { Categories } from "./collections/Categories";
 import { Tags } from "./collections/Tags";
 import { Widgets } from "./collections/Widgets";
-import { PuckPages } from "./collections/PuckPages";
+// import { PuckPages } from "./collections/PuckPages"; // REMOVED FOR TESTING
 
 // Globals
 import { Header } from "./globals/Header";
@@ -63,7 +63,7 @@ export default buildConfig({
     NewsEvents,
     Posts,
     Pages,
-    PuckPages,
+    // PuckPages, // REMOVED FOR TESTING
     Media,
     Categories,
     Tags,
