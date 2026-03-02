@@ -82,7 +82,7 @@ export const Pages: CollectionConfig = {
               defaultValue: "blocks",
               options: [
                 { label: "Block Builder", value: "blocks" },
-                { label: "Visual Page Builder (Puck)", value: "puck" },
+                // { label: "Visual Page Builder (Puck)", value: "puck" }, // DISABLED FOR TESTING
                 { label: "Rich Text Editor", value: "richtext" },
               ],
               admin: {
@@ -98,24 +98,24 @@ export const Pages: CollectionConfig = {
                 condition: (data) => data?.contentMode === "blocks" || !data?.contentMode,
               },
             },
-            {
-              name: "puckData",
-              type: "json",
-              admin: {
-                description: "Visual page builder data (edit via Page Builder button)",
-                condition: (data) => data?.contentMode === "puck",
-              },
-            },
-            {
-              name: "editWithPuck",
-              type: "ui",
-              admin: {
-                condition: (data) => data?.contentMode === "puck",
-                components: {
-                  Field: "/app/(payload)/admin/components/PuckEditorButton#PuckEditorButton",
-                },
-              },
-            },
+            // {
+            //   name: "puckData",
+            //   type: "json",
+            //   admin: {
+            //     description: "Visual page builder data (edit via Page Builder button)",
+            //     condition: (data) => data?.contentMode === "puck",
+            //   },
+            // },
+            // {
+            //   name: "editWithPuck",
+            //   type: "ui",
+            //   admin: {
+            //     condition: (data) => data?.contentMode === "puck",
+            //     components: {
+            //       Field: "/app/(payload)/admin/components/PuckEditorButton#PuckEditorButton",
+            //     },
+            //   },
+            // },
             {
               name: "content",
               type: "richText",

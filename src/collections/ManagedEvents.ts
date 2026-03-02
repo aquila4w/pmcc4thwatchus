@@ -240,7 +240,7 @@ export const ManagedEvents: CollectionConfig = {
               options: [
                 { label: "Rich Text Editor", value: "richtext" },
                 { label: "Block Builder", value: "blocks" },
-                { label: "Visual Page Builder (Puck)", value: "puck" },
+                // { label: "Visual Page Builder (Puck)", value: "puck" }, // DISABLED FOR TESTING
               ],
               admin: {
                 description: "Choose how to edit content",
@@ -263,24 +263,24 @@ export const ManagedEvents: CollectionConfig = {
                 condition: (data) => data?.contentMode === "blocks",
               },
             },
-            {
-              name: "puckData",
-              type: "json",
-              admin: {
-                description: "Visual page builder data",
-                condition: (data) => data?.contentMode === "puck",
-              },
-            },
-            {
-              name: "editWithPuck",
-              type: "ui",
-              admin: {
-                condition: (data) => data?.contentMode === "puck",
-                components: {
-                  Field: "/app/(payload)/admin/components/PuckEditorButton#PuckEditorButton",
-                },
-              },
-            },
+            // {
+            //   name: "puckData",
+            //   type: "json",
+            //   admin: {
+            //     description: "Visual page builder data",
+            //     condition: (data) => data?.contentMode === "puck",
+            //   },
+            // },
+            // {
+            //   name: "editWithPuck",
+            //   type: "ui",
+            //   admin: {
+            //     condition: (data) => data?.contentMode === "puck",
+            //     components: {
+            //       Field: "/app/(payload)/admin/components/PuckEditorButton#PuckEditorButton",
+            //     },
+            //   },
+            // },
           ],
         },
         {
