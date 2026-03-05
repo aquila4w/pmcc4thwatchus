@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     const payload = await getPayload({ config });
 
     // Find the US District Quad Events
-    const result: any = await payload.find({
+    const result = await payload.find({
       collection: "news-events",
       where: {
         slug: {
@@ -119,7 +119,7 @@ export async function GET() {
   try {
     const payload = await getPayload({ config });
 
-    const result: any = await payload.find({
+    const result = await payload.find({
       collection: "news-events",
       where: {
         slug: {

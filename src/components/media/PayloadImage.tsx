@@ -39,7 +39,7 @@ export function PayloadImage({
 
   // Extract URL if src is an object
   let imageUrl = typeof src === "string" ? src : src.url;
-  let imageAlt = alt || (typeof src === "object" ? src.alt : "");
+  const imageAlt = alt || (typeof src === "object" ? src.alt : "");
 
   // Convert relative Payload URLs to absolute URLs
   // Next.js Image needs absolute URLs or properly configured rewrites
