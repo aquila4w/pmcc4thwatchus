@@ -181,6 +181,7 @@ function ImageCarousel({ images, title }: { images: GalleryImage[]; title: strin
                 fill
                 sizes="(max-width: 768px) 100vw, 66vw"
                 className="object-cover"
+                unoptimized={images[currentIndex].url.startsWith("/payload-api/")}
               />
               {images[currentIndex].caption && (
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
@@ -231,6 +232,7 @@ function ImageCarousel({ images, title }: { images: GalleryImage[]; title: strin
                   fill
                   sizes="80px"
                   className="object-cover"
+                  unoptimized={image.url.startsWith("/payload-api/")}
                 />
               </button>
             ))}
@@ -288,6 +290,7 @@ function ImageCarousel({ images, title }: { images: GalleryImage[]; title: strin
                 width={1200}
                 height={800}
                 className="object-contain w-full h-auto max-h-[85vh]"
+                unoptimized={images[lightboxIndex].url.startsWith("/payload-api/")}
               />
               {images[lightboxIndex].caption && (
                 <p className="text-white text-center mt-4 text-lg">{images[lightboxIndex].caption}</p>

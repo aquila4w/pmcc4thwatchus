@@ -209,6 +209,7 @@ export function EventsSection() {
                               sizes="(max-width: 768px) 100vw, 50vw"
                               className="object-cover transition-transform duration-500 group-hover:scale-105"
                               loading="lazy"
+                              unoptimized={event.heroImage.url.startsWith("/payload-api/")}
                             />
                           ) : (
                             <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-secondary/20" />
