@@ -36,7 +36,7 @@ interface Church {
 
 // Google Sheets configuration
 const SHEET_ID = "1tmlYhjUlbk5SU4T9kAa6hgHwg1pMscxev6s6NFyr69Y";
-const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY || "AIzaSyDbrWpHnAZb4bEL3WzLms9CUOfhkOFAVE8";
+const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY || "";
 const RANGE = "A8:I100";
 
 export default function LocateChurchesPage() {
