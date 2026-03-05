@@ -29,9 +29,31 @@ const nextConfig = {
         hostname: "ugc.same-assets.com",
         pathname: "/**",
       },
+      // Cloudflare R2 for media storage
+      {
+        protocol: "https",
+        hostname: "*.r2.cloudflarestorage.com",
+        pathname: "/**",
+      },
     ],
   },
   compress: true,
+  // Fix for S3 storage plugin Jest worker errors
+  // Exclude AWS SDK from bundling to prevent worker process issues
+  experimental: {
+    serverComponentsExternalPackages: [
+      "@aws-sdk/client-s3",
+      "@aws-sdk/s3-request-presigner",
+      "@aws-sdk/signature-v4-crt",
+    ],
+  },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // Exclude AWS SDK from server-side bundling
+      config.externals = [...(config.externals || []), "@aws-sdk/client-s3", "@aws-sdk/s3-request-presigner"];
+    }
+    return config;
+  },
 };
 
 export default withPayload(nextConfig);

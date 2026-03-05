@@ -48,9 +48,9 @@ const navigation = [
     ],
   },
   {
-    label: "Events",
+    label: "News & Events",
     type: "link",
-    link: "/events",
+    link: "/news-events",
   },
 ];
 

@@ -125,12 +125,12 @@ export function EventsSection() {
   useEffect(() => {
     async function fetchEvents() {
       try {
-        const response = await fetch("/api/events?homepage=true&limit=8");
+        const response = await fetch("/api/news-events?homepage=true&limit=8&type=event");
         if (!response.ok) throw new Error("Failed to fetch");
         const data = await response.json();
 
-        if (data.events && data.events.length > 0) {
-          setEvents(data.events);
+        if (data.items && data.items.length > 0) {
+          setEvents(data.items);
         }
         // If no events, keep fallback data
       } catch (error) {
@@ -176,10 +176,10 @@ export function EventsSection() {
               transition={{ duration: 0.6, delay: 0.2 }}
             >
               <Link
-                href="/events"
+                href="/news-events"
                 className="inline-flex items-center gap-3 px-6 py-4 bg-[#0a0f1a] dark:bg-white text-white dark:text-[#0a0f1a] rounded-full group hover:bg-primary dark:hover:bg-secondary transition-colors duration-300"
               >
-                <span className="font-medium">View All Events</span>
+                <span className="font-medium">View All News & Events</span>
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
             </motion.div>
@@ -197,7 +197,7 @@ export function EventsSection() {
                     viewport={{ once: true, margin: "-50px" }}
                     transition={{ duration: 0.6, delay: index * 0.1 }}
                   >
-                    <Link href={`/events/${event.slug}`} className="group block">
+                    <Link href={`/news-events/${event.slug}`} className="group block">
                       <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-[#1a1f2e]">
                         {/* Image Container */}
                         <div className="relative aspect-[16/10] overflow-hidden">

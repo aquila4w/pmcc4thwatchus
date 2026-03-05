@@ -1,32 +1,14 @@
-/* MODIFIED: Fixed nested HTML tags issue - use PayloadProvider instead of RootLayout */
+// Payload CMS route group layout
+// We do NOT use RootLayout here because it creates html/head/body tags
+// which would conflict with Next.js's root layout. Instead, we just include
+// the CSS and let the admin routes handle their own layout.
 
-import type { ServerFunctionClient } from "payload";
-import config from "@payload-config";
-import { handleServerFunctions, PayloadAdmin, PayloadProvider } from "@payloadcms/next/providers";
-import React from "react";
-
-import { importMap } from "./admin/importMap";
 import "./custom.scss";
 
-type Args = {
+export default function PayloadRouteLayout({
+  children,
+}: {
   children: React.ReactNode;
-};
-
-const serverFunction: ServerFunctionClient = async function (args) {
-  "use server";
-  return handleServerFunctions({
-    ...args,
-    config,
-    importMap,
-  });
-};
-
-const Layout = ({ children }: Args) => (
-  <PayloadProvider config={config} importMap={importMap} serverFunction={serverFunction}>
-    <PayloadAdmin>
-      {children}
-    </PayloadAdmin>
-  </PayloadProvider>
-);
-
-export default Layout;
+}) {
+  return <>{children}</>;
+}

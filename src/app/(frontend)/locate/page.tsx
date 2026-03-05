@@ -36,7 +36,7 @@ interface Church {
 
 // Google Sheets configuration
 const SHEET_ID = "1tmlYhjUlbk5SU4T9kAa6hgHwg1pMscxev6s6NFyr69Y";
-const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY || "";
+const API_KEY = "AIzaSyDbrWpHnAZb4bEL3WzLms9CUOfhkOFAVE8";
 const RANGE = "A8:I100";
 
 export default function LocateChurchesPage() {
@@ -176,14 +176,17 @@ export default function LocateChurchesPage() {
     setExpandedChurch(null);
   };
 
-  // Generate Google Maps Embed URL
-  const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+  // Generate Google Maps Embed URL (no API key required)
   const getMapEmbedUrl = () => {
     if (selectedChurch) {
-      return `https://www.google.com/maps/embed/v1/place?key=${mapsApiKey}&q=${encodeURIComponent(selectedChurch.address)}&zoom=15`;
+      // Use coordinates for precise location, or address as fallback
+      const query = selectedChurch.lat && selectedChurch.lng
+        ? `${selectedChurch.lat},${selectedChurch.lng}`
+        : encodeURIComponent(selectedChurch.address);
+      return `https://maps.google.com/maps?q=${query}&output=embed`;
     }
-    // Default: show all US
-    return `https://www.google.com/maps/embed/v1/view?key=${mapsApiKey}&center=39.8283,-98.5795&zoom=4`;
+    // Default: US centered view
+    return "https://maps.google.com/maps?q=United+States&t=&z=4&ie=UTF8&iwloc=&output=embed";
   };
 
   return (
@@ -476,7 +479,7 @@ export default function LocateChurchesPage() {
               )}
             </div>
 
-            {/* Google Map Embed */}
+            {/* Map Embed */}
             <div className="lg:sticky lg:top-24 h-fit">
               <Card className="overflow-hidden">
                 <iframe
@@ -496,7 +499,7 @@ export default function LocateChurchesPage() {
                   <span className="flex items-center justify-center gap-2">
                     Showing: <strong>{selectedChurch.localeName}</strong>
                     <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedChurch.address)}`}
+                      href={`https://www.google.com/maps/search/${encodeURIComponent(selectedChurch.localeName + " " + selectedChurch.address)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary hover:underline inline-flex items-center gap-1"

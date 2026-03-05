@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
 
     // Query parameters
+    const type = searchParams.get("type"); // "news" or "event" or null for both
     const homepage = searchParams.get("homepage") === "true";
     const published = searchParams.get("published") !== "false"; // Default to true
     const category = searchParams.get("category");
@@ -19,6 +20,11 @@ export async function GET(request: NextRequest) {
     // Build where clause - using 'and' array for combining conditions
     const conditions: Where[] = [];
 
+    // Filter by type (news or event)
+    if (type && (type === "news" || type === "event")) {
+      conditions.push({ type: { equals: type } });
+    }
+
     // Filter by isPublished
     if (published) {
       conditions.push({ isPublished: { equals: true } });
@@ -29,7 +35,7 @@ export async function GET(request: NextRequest) {
       conditions.push({ showOnHomepage: { equals: true } });
     }
 
-    // Filter by category (eventType)
+    // Filter by category (eventType - sub-category)
     if (category && category !== "All") {
       conditions.push({ eventType: { equals: category.toLowerCase() } });
     }
@@ -54,10 +60,15 @@ export async function GET(request: NextRequest) {
     // Build final where clause
     const where: Where = conditions.length > 0 ? { and: conditions } : {};
 
-    // Determine sort order
-    const sort = homepage
-      ? "homepageOrder" // Sort by homepage order for homepage
-      : "-eventDate"; // Sort by date (newest first) for events page
+    // Determine sort order based on type
+    let sort: string;
+    if (homepage) {
+      sort = "homepageOrder"; // Sort by homepage order for homepage
+    } else if (type === "news") {
+      sort = "-newsDate"; // Sort by news date (newest first) for news
+    } else {
+      sort = "-eventDate"; // Sort by event date (upcoming first) for events
+    }
 
     const newsEvents = await payload.find({
       collection: "news-events",
@@ -71,18 +82,37 @@ export async function GET(request: NextRequest) {
     // Transform the data for frontend
     const transformedEvents = newsEvents.docs.map((event: Record<string, unknown>) => ({
       id: event.id,
+      type: event.type || "event",
       title: event.title,
       subtitle: event.subtitle || "",
       slug: event.slug,
       description: event.description || "",
+      // News fields
+      newsDate: event.newsDate,
+      content: event.content,
+      // Event fields
       startDate: event.eventDate, // Map eventDate to startDate for frontend compatibility
       endDate: event.endDate,
       location: event.location || "",
-      eventType: event.eventType || "event",
+      address: event.address || "",
+      coordinates: event.coordinates || null,
+      // Common fields
+      eventType: event.eventType || "general",
       heroImage: event.heroImage ? {
         url: (event.heroImage as Record<string, unknown>).url,
         alt: (event.heroImage as Record<string, unknown>).alt || event.title,
       } : null,
+      featuredImage: event.featuredImage ? {
+        url: (event.featuredImage as Record<string, unknown>).url,
+        alt: (event.featuredImage as Record<string, unknown>).alt || event.title,
+      } : null,
+      gallery: Array.isArray(event.gallery) ? event.gallery.map((item: Record<string, unknown>) => ({
+        image: item.image ? {
+          url: (item.image as Record<string, unknown>).url,
+          alt: (item.image as Record<string, unknown>).alt,
+        } : null,
+        caption: item.caption || "",
+      })) : [],
       tags: Array.isArray(event.tags) ? event.tags.map((tag: Record<string, unknown>) => ({
         id: tag.id,
         name: tag.name,
@@ -97,16 +127,22 @@ export async function GET(request: NextRequest) {
       isPublished: event.isPublished,
       showOnHomepage: event.showOnHomepage,
       homepageOrder: event.homepageOrder || 0,
-      // Puck visual builder data
-      contentMode: event.contentMode || "richtext",
-      puckData: event.puckData || null,
-      content: event.content,
+      isFeatured: event.isFeatured || false,
+      // Event registration fields
+      requiresRegistration: event.requiresRegistration || false,
+      registrationUrl: event.registrationUrl || "",
+      registrationDeadline: event.registrationDeadline,
+      maxAttendees: event.maxAttendees,
+      registrationNote: event.registrationNote || "",
+      organizer: event.organizer,
+      contactEmail: event.contactEmail || "",
+      contactPhone: event.contactPhone || "",
       createdAt: event.createdAt,
       updatedAt: event.updatedAt,
     }));
 
     return NextResponse.json({
-      events: transformedEvents,
+      items: transformedEvents,
       totalDocs: newsEvents.totalDocs,
       totalPages: newsEvents.totalPages,
       page: newsEvents.page,
@@ -117,6 +153,72 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching news-events:", error);
     return NextResponse.json(
       { error: "Failed to fetch news and events" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST /api/news-events
+ * Creates a new news-event item (admin only)
+ * Requires authentication in production
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const payload = await getPayload({ config });
+    const body = await request.json();
+
+    // Validate required fields
+    if (!body.title || !body.type) {
+      return NextResponse.json(
+        { error: "Missing required fields: title and type are required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate type
+    if (body.type !== "news" && body.type !== "event") {
+      return NextResponse.json(
+        { error: "Type must be either 'news' or 'event'" },
+        { status: 400 }
+      );
+    }
+
+    // Generate slug from title if not provided
+    const slug = body.slug || body.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+
+    // Check if slug already exists
+    const existing = await payload.find({
+      collection: "news-events",
+      where: { slug: { equals: slug } },
+      limit: 1,
+    });
+
+    if (existing.docs.length > 0) {
+      return NextResponse.json(
+        { error: "An item with this slug already exists" },
+        { status: 409 }
+      );
+    }
+
+    // Create the news-event
+    const result = await payload.create({
+      collection: "news-events",
+      data: {
+        ...body,
+        slug,
+        isPublished: body.isPublished ?? true, // Default to published
+      },
+    });
+
+    return NextResponse.json({ item: result }, { status: 201 });
+  } catch (error) {
+    console.error("Error creating news-event:", error);
+    return NextResponse.json(
+      { error: "Failed to create news-event", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

@@ -25,6 +25,7 @@ import { ItalicFeatureClient as ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0
 import { Icon as Icon_f4955d2230a67587ebf9f26830a9f24e } from '../../../../app/(payload)/admin/components/Icon'
 import { Logo as Logo_07cc9ca2033c6e28676327e11f703ccf } from '../../../../app/(payload)/admin/components/Logo'
 import { Dashboard as Dashboard_3d629a63553b389e2b9f50ca35e34061 } from '../../../../app/(payload)/admin/components/Dashboard'
+import { S3ClientUploadHandler as S3ClientUploadHandler_f97aa6c64367fa259c5bc0567239ef24 } from '@payloadcms/storage-s3/client'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
 export const importMap = {
@@ -55,5 +56,6 @@ export const importMap = {
   "/app/(payload)/admin/components/Icon#Icon": Icon_f4955d2230a67587ebf9f26830a9f24e,
   "/app/(payload)/admin/components/Logo#Logo": Logo_07cc9ca2033c6e28676327e11f703ccf,
   "/app/(payload)/admin/components/Dashboard#Dashboard": Dashboard_3d629a63553b389e2b9f50ca35e34061,
+  "@payloadcms/storage-s3/client#S3ClientUploadHandler": S3ClientUploadHandler_f97aa6c64367fa259c5bc0567239ef24,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }

@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPayload, Where } from "payload";
 import config from "@/payload.config";
 
+/**
+ * GET /api/events
+ * Returns only events (type: "event"), not news items
+ */
 export async function GET(request: NextRequest) {
   try {
     const payload = await getPayload({ config });
@@ -19,6 +23,9 @@ export async function GET(request: NextRequest) {
     // Build where clause - using 'and' array for combining conditions
     const conditions: Where[] = [];
 
+    // ALWAYS filter by type: event (this endpoint only returns events)
+    conditions.push({ type: { equals: "event" } });
+
     // Filter by isPublished
     if (published) {
       conditions.push({ isPublished: { equals: true } });
@@ -29,7 +36,7 @@ export async function GET(request: NextRequest) {
       conditions.push({ showOnHomepage: { equals: true } });
     }
 
-    // Filter by category
+    // Filter by category (eventType - sub-category)
     if (category && category !== "All") {
       conditions.push({ eventType: { equals: category.toLowerCase() } });
     }
@@ -57,7 +64,7 @@ export async function GET(request: NextRequest) {
     // Determine sort order
     const sort = homepage
       ? "homepageOrder" // Sort by homepage order for homepage
-      : "-eventDate"; // Sort by date (newest first) for events page
+      : "eventDate"; // Sort by date (upcoming events first)
 
     const events = await payload.find({
       collection: "news-events",
@@ -71,6 +78,7 @@ export async function GET(request: NextRequest) {
     // Transform the data for frontend
     const transformedEvents = events.docs.map((event: Record<string, unknown>) => ({
       id: event.id,
+      type: event.type || "event",
       title: event.title,
       subtitle: event.subtitle || "",
       slug: event.slug,
@@ -80,7 +88,7 @@ export async function GET(request: NextRequest) {
       location: event.location || "",
       address: event.address || "",
       coordinates: event.coordinates || null,
-      eventType: event.eventType || "event",
+      eventType: event.eventType || "general",
       heroImage: event.heroImage ? {
         url: (event.heroImage as Record<string, unknown>).url,
         alt: (event.heroImage as Record<string, unknown>).alt || event.title,
@@ -114,6 +122,9 @@ export async function GET(request: NextRequest) {
       requiresRegistration: event.requiresRegistration || false,
       registrationUrl: event.registrationUrl || "",
       registrationDeadline: event.registrationDeadline,
+      maxAttendees: event.maxAttendees,
+      registrationNote: event.registrationNote || "",
+      organizer: event.organizer,
       contactEmail: event.contactEmail || "",
       contactPhone: event.contactPhone || "",
       createdAt: event.createdAt,

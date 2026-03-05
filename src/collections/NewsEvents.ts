@@ -5,8 +5,8 @@ export const NewsEvents: CollectionConfig = {
   admin: {
     useAsTitle: "title",
     group: "Content",
-    defaultColumns: ["title", "eventDate", "location", "isPublished", "showOnHomepage"],
-    description: "Public news and events shown on homepage and events page",
+    defaultColumns: ["title", "type", "eventDate", "isPublished", "showOnHomepage"],
+    description: "News (past events/announcements) and Events (upcoming)",
   },
   access: {
     read: () => true,
@@ -25,14 +25,38 @@ export const NewsEvents: CollectionConfig = {
   },
   fields: [
     // ===================
-    // BASIC INFO
+    // TYPE SELECTOR (First field, clearly visible)
+    // ===================
+    {
+      name: "type",
+      type: "radio",
+      required: true,
+      defaultValue: "news",
+      options: [
+        {
+          label: "News",
+          value: "news",
+        },
+        {
+          label: "Event",
+          value: "event",
+        },
+      ],
+      admin: {
+        description: "News = past events, announcements, updates. Events = upcoming with registration.",
+        layout: "horizontal",
+      },
+    },
+
+    // ===================
+    // BASIC INFO (Both types)
     // ===================
     {
       name: "title",
       type: "text",
       required: true,
       admin: {
-        description: "The main title of the news/event",
+        description: "The main title",
       },
     },
     {
@@ -60,12 +84,34 @@ export const NewsEvents: CollectionConfig = {
     },
 
     // ===================
-    // TABS
+    // NEWS-SPECIFIC FIELDS
     // ===================
+    {
+      name: "newsDate",
+      type: "date",
+      admin: {
+        date: { pickerAppearance: "dayOnly" },
+        description: "Publication date (for News items)",
+        condition: (data) => data?.type === "news",
+      },
+    },
+    {
+      name: "content",
+      type: "textarea",
+      admin: {
+        description: "Full news content",
+        condition: (data) => data?.type === "news",
+      },
+    },
+
+    // ===================
+    // EVENT-SPECIFIC FIELDS
+    // ===================
+    // Schedule & Location (Events only)
     {
       type: "tabs",
       tabs: [
-        // TAB 1: Schedule & Location
+        // TAB 1: Schedule & Location (Events only)
         {
           label: "Schedule & Location",
           fields: [
@@ -80,6 +126,7 @@ export const NewsEvents: CollectionConfig = {
                     date: { pickerAppearance: "dayAndTime" },
                     description: "Start date and time",
                     width: "50%",
+                    condition: (data) => data?.type === "event",
                   },
                 },
                 {
@@ -89,6 +136,7 @@ export const NewsEvents: CollectionConfig = {
                     date: { pickerAppearance: "dayAndTime" },
                     description: "End date (multi-day events)",
                     width: "50%",
+                    condition: (data) => data?.type === "event",
                   },
                 },
               ],
@@ -97,17 +145,26 @@ export const NewsEvents: CollectionConfig = {
               name: "location",
               type: "text",
               required: true,
-              admin: { description: "Venue name" },
+              admin: {
+                description: "Venue name",
+                condition: (data) => data?.type === "event",
+              },
             },
             {
               name: "address",
               type: "textarea",
-              admin: { description: "Full street address" },
+              admin: {
+                description: "Full street address",
+                condition: (data) => data?.type === "event",
+              },
             },
             {
               name: "coordinates",
               type: "group",
-              admin: { description: "For map display" },
+              admin: {
+                description: "For map display",
+                condition: (data) => data?.type === "event",
+              },
               fields: [
                 {
                   type: "row",
@@ -121,7 +178,7 @@ export const NewsEvents: CollectionConfig = {
           ],
         },
 
-        // TAB 2: Images & Media
+        // TAB 2: Images & Media (Both types)
         {
           label: "Images & Media",
           fields: [
@@ -149,30 +206,7 @@ export const NewsEvents: CollectionConfig = {
           ],
         },
 
-        // TAB 3: Page Design (Puck) - DISABLED FOR TESTING
-        // {
-        //   label: "Page Design",
-        //   fields: [
-        //     {
-        //       name: "puckData",
-        //       type: "json",
-        //       admin: {
-        //         description: "Visual page builder data - Use the Visual Editor button below",
-        //       },
-        //     },
-        //     {
-        //       name: "openVisualEditor",
-        //       type: "ui",
-        //       admin: {
-        //         components: {
-        //           Field: "/app/(payload)/admin/components/PuckEditorButton#PuckEditorButton",
-        //         },
-        //       },
-        //     },
-        //   ],
-        // },
-
-        // TAB 3: Registration (was TAB 4)
+        // TAB 3: Registration (Events only)
         {
           label: "Registration",
           fields: [
@@ -180,14 +214,17 @@ export const NewsEvents: CollectionConfig = {
               name: "requiresRegistration",
               type: "checkbox",
               defaultValue: false,
-              admin: { description: "Enable registration" },
+              admin: {
+                description: "Enable event registration",
+                condition: (data) => data?.type === "event",
+              },
             },
             {
               name: "registrationUrl",
               type: "text",
               admin: {
                 description: "External registration link",
-                condition: (data) => data?.requiresRegistration,
+                condition: (data) => data?.type === "event" && data?.requiresRegistration,
               },
             },
             {
@@ -196,7 +233,7 @@ export const NewsEvents: CollectionConfig = {
               admin: {
                 date: { pickerAppearance: "dayAndTime" },
                 description: "Last date to register",
-                condition: (data) => data?.requiresRegistration,
+                condition: (data) => data?.type === "event" && data?.requiresRegistration,
               },
             },
             {
@@ -204,7 +241,7 @@ export const NewsEvents: CollectionConfig = {
               type: "number",
               admin: {
                 description: "Max capacity (empty = unlimited)",
-                condition: (data) => data?.requiresRegistration,
+                condition: (data) => data?.type === "event" && data?.requiresRegistration,
               },
             },
             {
@@ -212,7 +249,7 @@ export const NewsEvents: CollectionConfig = {
               type: "textarea",
               admin: {
                 description: "Additional info for registrants",
-                condition: (data) => data?.requiresRegistration,
+                condition: (data) => data?.type === "event" && data?.requiresRegistration,
               },
             },
           ],
@@ -227,7 +264,7 @@ export const NewsEvents: CollectionConfig = {
       name: "isPublished",
       type: "checkbox",
       defaultValue: false,
-      admin: { position: "sidebar", description: "Show on Events page" },
+      admin: { position: "sidebar", description: "Publish to site" },
     },
     {
       name: "showOnHomepage",
@@ -254,18 +291,17 @@ export const NewsEvents: CollectionConfig = {
     {
       name: "eventType",
       type: "select",
-      defaultValue: "event",
+      defaultValue: "general",
       options: [
-        { label: "Event", value: "event" },
-        { label: "News", value: "news" },
-        { label: "Announcement", value: "announcement" },
+        { label: "General", value: "general" },
         { label: "Conference", value: "conference" },
         { label: "Training", value: "training" },
         { label: "Worship", value: "worship" },
         { label: "Crusade", value: "crusade" },
         { label: "Youth", value: "youth" },
+        { label: "Announcement", value: "announcement" },
       ],
-      admin: { position: "sidebar", description: "Content type" },
+      admin: { position: "sidebar", description: "Sub-category" },
     },
     {
       name: "tags",
@@ -285,17 +321,27 @@ export const NewsEvents: CollectionConfig = {
       name: "organizer",
       type: "relationship",
       relationTo: "churches",
-      admin: { position: "sidebar", description: "Organizing church" },
+      admin: {
+        position: "sidebar",
+        description: "Organizing church (Events only)",
+        condition: (data) => data?.type === "event",
+      },
     },
     {
       name: "contactEmail",
       type: "email",
-      admin: { position: "sidebar" },
+      admin: {
+        position: "sidebar",
+        condition: (data) => data?.type === "event",
+      },
     },
     {
       name: "contactPhone",
       type: "text",
-      admin: { position: "sidebar" },
+      admin: {
+        position: "sidebar",
+        condition: (data) => data?.type === "event",
+      },
     },
   ],
   timestamps: true,
@@ -309,6 +355,60 @@ export const NewsEvents: CollectionConfig = {
             .replace(/(^-|-$)/g, "");
         }
         return data;
+      },
+    ],
+    afterChange: [
+      async ({ doc, req }) => {
+        // Update folder paths for associated media
+        const payload = req.payload;
+
+        // Get date based on type
+        const eventDate = doc.type === 'event'
+          ? (doc.eventDate || doc.createdAt)
+          : (doc.newsDate || doc.createdAt);
+
+        // Format date as YYYY-MM-DD
+        const dateStr = new Date(eventDate).toISOString().split('T')[0];
+        const folderPath = `news-events/${dateStr}-${doc.slug}`;
+
+        // Helper function to update media folder
+        const updateMediaFolder = async (mediaId: string | null | undefined) => {
+          if (!mediaId) return;
+          try {
+            await payload.update({
+              collection: 'media',
+              id: mediaId,
+              data: {
+                folder: folderPath,
+                newsEvent: doc.id,
+              },
+            });
+          } catch (error) {
+            console.error('Error updating media folder:', error);
+          }
+        };
+
+        // Update hero image
+        if (doc.heroImage) {
+          const heroId = typeof doc.heroImage === 'string' ? doc.heroImage : doc.heroImage.id;
+          await updateMediaFolder(heroId);
+        }
+
+        // Update featured image
+        if (doc.featuredImage) {
+          const featuredId = typeof doc.featuredImage === 'string' ? doc.featuredImage : doc.featuredImage.id;
+          await updateMediaFolder(featuredId);
+        }
+
+        // Update gallery images
+        if (Array.isArray(doc.gallery)) {
+          for (const item of doc.gallery) {
+            if (item.image) {
+              const imageId = typeof item.image === 'string' ? item.image : item.image.id;
+              await updateMediaFolder(imageId);
+            }
+          }
+        }
       },
     ],
   },
