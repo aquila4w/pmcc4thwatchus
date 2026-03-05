@@ -84,24 +84,26 @@ export default buildConfig({
     url: process.env.MONGODB_URI || process.env.DATABASE_URI || "",
   }),
   sharp,
-  plugins: [
-    // S3 storage for media uploads (Cloudflare R2)
-    // Fixed Jest worker error by adding AWS SDK to externals in next.config.mjs
-    process.env.S3_ACCESS_KEY_ID
-      ? s3Storage({
-          bucket: process.env.S3_BUCKET || "pmcc4thwatch-media",
-          config: {
-            credentials: {
-              accessKeyId: process.env.S3_ACCESS_KEY_ID || "",
-              secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || "",
+  plugins: Array.from(
+    [
+      // S3 storage for media uploads (Cloudflare R2)
+      // Fixed Jest worker error by adding AWS SDK to externals in next.config.mjs
+      process.env.S3_ACCESS_KEY_ID
+        ? s3Storage({
+            bucket: process.env.S3_BUCKET || "pmcc4thwatch-media",
+            config: {
+              credentials: {
+                accessKeyId: process.env.S3_ACCESS_KEY_ID || "",
+                secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || "",
+              },
+              region: process.env.S3_REGION || "us-east-1",
+              ...(process.env.S3_ENDPOINT && { endpoint: process.env.S3_ENDPOINT }),
             },
-            region: process.env.S3_REGION || "us-east-1",
-            ...(process.env.S3_ENDPOINT && { endpoint: process.env.S3_ENDPOINT }),
-          },
-          collections: {
-            media: true, // Apply to Media collection
-          },
-        })
-      : null,
-  ].filter(Boolean),
+            collections: {
+              media: true, // Apply to Media collection
+            },
+          })
+        : null,
+    ].filter((p): p is Exclude<typeof p, null> => p !== null),
+  ),
 });

@@ -3,6 +3,12 @@ import { withPayload } from "@payloadcms/next/withPayload";
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   allowedDevOrigins: ["*.preview.same-app.com"],
+  // Fix for S3 storage plugin - exclude AWS SDK from bundling
+  serverExternalPackages: [
+    "@aws-sdk/client-s3",
+    "@aws-sdk/s3-request-presigner",
+    "@aws-sdk/signature-v4-crt",
+  ],
   images: {
     formats: ["image/avif", "image/webp"],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
@@ -38,15 +44,6 @@ const nextConfig = {
     ],
   },
   compress: true,
-  // Fix for S3 storage plugin Jest worker errors
-  // Exclude AWS SDK from bundling to prevent worker process issues
-  experimental: {
-    serverComponentsExternalPackages: [
-      "@aws-sdk/client-s3",
-      "@aws-sdk/s3-request-presigner",
-      "@aws-sdk/signature-v4-crt",
-    ],
-  },
   webpack: (config, { isServer }) => {
     if (isServer) {
       // Exclude AWS SDK from server-side bundling

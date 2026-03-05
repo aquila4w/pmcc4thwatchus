@@ -38,7 +38,6 @@ export const BulkMediaUpload: React.FC = () => {
             // Payload CMS handles this automatically when using the admin form
           },
           body: formData,
-          // @ts-ignore - Next.js types
           credentials: "include",
         });
 
