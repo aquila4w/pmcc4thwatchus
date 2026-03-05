@@ -34,10 +34,7 @@ interface Church {
   lng: number;
 }
 
-// Google Sheets configuration
-const SHEET_ID = "1tmlYhjUlbk5SU4T9kAa6hgHwg1pMscxev6s6NFyr69Y";
-const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY || "";
-const RANGE = "A8:I100";
+// Church locations fetched from internal API (proxies Google Sheets server-side)
 
 export default function LocateChurchesPage() {
   const [churches, setChurches] = useState<Church[]>([]);
@@ -48,53 +45,20 @@ export default function LocateChurchesPage() {
   const [expandedDistricts, setExpandedDistricts] = useState<string[]>([]);
   const [selectedChurch, setSelectedChurch] = useState<Church | null>(null);
 
-  // Fetch churches from Google Sheets
+  // Fetch churches from internal API
   const fetchChurches = useCallback(async () => {
     setLoading(true);
     setError(null);
 
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
-
     try {
-      const response = await fetch(url);
+      const response = await fetch("/api/locations");
       const data = await response.json();
 
-      if (data.error) {
-        throw new Error(data.error.message || "Failed to fetch data");
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to fetch data");
       }
 
-      const places: Church[] = [];
-      let currentSubDistrict = "Other";
-
-      data.values?.forEach((row: string[]) => {
-        if (!row || row.length === 0) return;
-
-        if (row.length === 1 && row[0]?.trim()) {
-          currentSubDistrict = row[0].trim();
-          return;
-        }
-
-        if (row.length < 9) return;
-        if (row[0] === "LOCALE CHURCH") return;
-
-        const localeName = row[0]?.trim() || "";
-        const lat = parseFloat(row[7]) || 0;
-        const lng = parseFloat(row[8]) || 0;
-
-        if (lat === 0 || lng === 0) return;
-
-        places.push({
-          localeName,
-          name: row[5]?.trim() || localeName,
-          pastor: row[1]?.trim() || "",
-          address: row[2]?.trim() || "",
-          email: row[3]?.trim() || "",
-          phone: row[4]?.trim() || "",
-          subDistrict: currentSubDistrict,
-          lat,
-          lng,
-        });
-      });
+      const places: Church[] = data.churches || [];
 
       setChurches(places);
 
