@@ -1,5 +1,17 @@
 import { NextResponse } from "next/server";
 
+interface Church {
+  localeName: string;
+  name: string;
+  pastor: string;
+  address: string;
+  phone: string;
+  email: string;
+  lat: number;
+  lng: number;
+  subDistrict: string;
+}
+
 // Google Sheets configuration (server-side only - not exposed to client)
 const SHEET_ID = "1tmlYhjUlbk5SU4T9kAa6hgHwg1pMscxev6s6NFyr69Y";
 const API_KEY = process.env.GOOGLE_SHEETS_API_KEY || "";
@@ -23,7 +35,7 @@ export async function GET() {
       throw new Error(data.error.message || "Failed to fetch data");
     }
 
-    const places: any[] = [];
+    const places: Church[] = [];
     let currentSubDistrict = "Other";
 
     data.values?.forEach((row: string[]) => {
