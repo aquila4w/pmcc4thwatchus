@@ -41,6 +41,12 @@ const nextConfig = {
         hostname: "*.r2.cloudflarestorage.com",
         pathname: "/**",
       },
+      // Production custom domain for media
+      {
+        protocol: "https",
+        hostname: process.env.NEXT_PUBLIC_MEDIA_URL || "pmcc4thwatch.media",
+        pathname: "/**",
+      },
     ],
   },
   compress: true,

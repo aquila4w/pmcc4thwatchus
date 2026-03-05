@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     const payload = await getPayload({ config });
 
     // Find the US District Quad Events
-    const newsEvents = await payload.find({
+    const result: any = await payload.find({
       collection: "news-events",
       where: {
         slug: {
@@ -29,14 +29,14 @@ export async function POST(request: NextRequest) {
       depth: 0,
     });
 
-    if (newsEvents.total === 0) {
+    if (!result.docs || result.docs.length === 0) {
       return NextResponse.json(
         { error: "US District Quad Events not found. Please create it first." },
         { status: 404 }
       );
     }
 
-    const newsEvent = newsEvents.docs[0];
+    const newsEvent = result.docs[0];
 
     // Read the uploaded file from form data
     const formData = await request.formData();
@@ -119,7 +119,7 @@ export async function GET() {
   try {
     const payload = await getPayload({ config });
 
-    const newsEvents = await payload.find({
+    const result: any = await payload.find({
       collection: "news-events",
       where: {
         slug: {
@@ -129,14 +129,14 @@ export async function GET() {
       depth: 1, // Get related media info
     });
 
-    if (newsEvents.total === 0) {
+    if (!result.docs || result.docs.length === 0) {
       return NextResponse.json({
         found: false,
         message: "US District Quad Events not found",
       });
     }
 
-    const newsEvent = newsEvents.docs[0];
+    const newsEvent = result.docs[0];
 
     return NextResponse.json({
       found: true,
