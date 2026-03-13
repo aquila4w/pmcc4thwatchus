@@ -321,14 +321,14 @@ export default function MemberDashboard() {
           {["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary"].includes(member.role) && (
             <div className="mt-8 pt-8 border-t">
               <Card className="p-4 bg-primary/5 border-primary/20">
-                <Link href="/cms" className="flex items-center gap-4">
+                <Link href="/admin" className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
                     <Settings className="w-5 h-5 text-primary" />
                   </div>
                   <div className="flex-1">
                     <h3 className="font-medium text-primary">Admin Dashboard</h3>
                     <p className="text-sm text-muted-foreground">
-                      Manage events, content, and more
+                      Manage events, registrations, check-in, and more
                     </p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-primary" />
