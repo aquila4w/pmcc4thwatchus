@@ -243,8 +243,8 @@ export default function DashboardPage() {
                   <span>{event.registrationCount || 0} registered</span>
                 </div>
                 <Button asChild variant="outline" size="sm" className="w-full">
-                  <Link href={`/admin/events/${event.id}/invites`}>
-                    Manage Invites
+                  <Link href={`/admin/events/${event.id}`}>
+                    View Event
                   </Link>
                 </Button>
               </Card>
@@ -263,7 +263,7 @@ export default function DashboardPage() {
             Create an event to get started with invite links and guest registration
           </p>
           <Button asChild>
-            <Link href="/cms/collections/managed-events/create">
+            <Link href="/admin/events">
               <Calendar className="w-4 h-4 mr-2" />
               Create Event
             </Link>
