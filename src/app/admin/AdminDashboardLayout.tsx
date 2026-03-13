@@ -93,25 +93,25 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
       label: "Dashboard",
       icon: LayoutDashboard,
       href: "/admin",
-      roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary"],
+      roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary", "eventAdmin"],
     },
     {
       label: "Events",
       icon: Calendar,
       href: "/admin/events",
-      roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary"],
+      roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary", "eventAdmin"],
     },
     {
       label: "Campaigns",
       icon: Mail,
       href: "/admin/campaigns",
-      roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary"],
+      roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary", "eventAdmin"],
     },
     {
       label: "Guests",
       icon: Users,
       href: "/admin/guests",
-      roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister"],
+      roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "eventAdmin"],
     },
     {
       label: "CMS Admin",
@@ -123,7 +123,7 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
       label: "My Church",
       icon: Church,
       href: "/admin/my-church",
-      roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary"],
+      roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary", "eventAdmin"],
     },
   ];
 
@@ -226,6 +226,8 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
                     ? "Head Minister"
                     : user.role === "secretary"
                     ? "Secretary"
+                    : user.role === "eventAdmin"
+                    ? "Event Admin"
                     : user.role}
                 </p>
               </div>

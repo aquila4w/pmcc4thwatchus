@@ -318,7 +318,7 @@ export default function MemberDashboard() {
           </div>
 
           {/* Admin Link (if admin role) */}
-          {["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary"].includes(member.role) && (
+          {["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary", "eventAdmin"].includes(member.role) && (
             <div className="mt-8 pt-8 border-t">
               <Card className="p-4 bg-primary/5 border-primary/20">
                 <Link href="/admin" className="flex items-center gap-4">
