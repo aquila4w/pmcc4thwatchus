@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   Home,
@@ -54,6 +54,7 @@ export function AdminDashboardLayout({ children }: DashboardLayoutProps) {
 
 function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -145,8 +146,6 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
     );
   }
 
-  const currentPath = window.location.pathname;
-
   return (
     <div className="min-h-screen bg-slate-100">
       {/* Sidebar */}
@@ -177,7 +176,7 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
         {/* Navigation */}
         <nav className="p-4 space-y-2 overflow-y-auto h-[calc(100vh-8rem)]">
           {filteredItems.map((item) => {
-            const isActive = currentPath === item.href || currentPath.startsWith(item.href + "/");
+            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
             return (
               <Link
                 key={item.label}
@@ -265,7 +264,7 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
             </Button>
             <div>
               <h1 className="text-lg font-semibold">
-                {filteredItems.find((item) => currentPath === item.href || currentPath.startsWith(item.href + "/"))?.label ||
+                {filteredItems.find((item) => pathname === item.href || pathname.startsWith(item.href + "/"))?.label ||
                   "Dashboard"}
               </h1>
             </div>
