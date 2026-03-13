@@ -40,7 +40,7 @@ interface WelcomeData {
     landingPage: {
       heroImageUrl?: string;
       title: string;
-      content?: any; // Rich text content
+      content?: string; // Rich text content
       showQR: boolean;
       showInviter: boolean;
       cta?: string;

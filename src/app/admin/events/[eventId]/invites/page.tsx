@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useCallback } from "react";
 import Link from "next/link";
 import {
   Users,
@@ -18,6 +18,14 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+interface Event {
+  id: string;
+  title: string;
+  slug: string;
+  startDate: string;
+  location: string;
+}
 
 interface EventInvite {
   id: string;
@@ -46,18 +54,14 @@ export default function EventInvitesPage({
   const resolvedParams = use(params);
   const [invites, setInvites] = useState<EventInvite[]>([]);
   const [churches, setChurches] = useState<Church[]>([]);
-  const [event, setEvent] = useState<any>(null);
+  const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedChurch, setSelectedChurch] = useState<string>("");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchData();
-  }, [resolvedParams.eventId]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       // Get event details
@@ -89,7 +93,11 @@ export default function EventInvitesPage({
     } finally {
       setLoading(false);
     }
-  };
+  }, [resolvedParams.eventId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleGenerateInvites = async (churchId?: string) => {
     setGenerating(true);

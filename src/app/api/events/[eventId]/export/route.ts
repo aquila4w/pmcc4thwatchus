@@ -2,6 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
 
+interface EventRegistration {
+  registrationCode?: string;
+  guestName?: string;
+  guestEmail?: string;
+  guestPhone?: string;
+  status?: string;
+  checkedInAt?: string;
+  baptizedAt?: string;
+  createdAt?: string;
+}
+
+interface Event {
+  id: string;
+  title: string;
+  startDate?: string;
+  location?: string;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
@@ -34,39 +52,48 @@ export async function GET(
     });
 
     // Format data based on type
-    let exportData: any[] = [];
+    let exportData: Record<string, string | number>[] = [];
 
     if (type === "all" || type === "registrations") {
-      exportData = registrations.docs.map((reg: any) => ({
-        "Registration Code": reg.registrationCode || "",
-        "Guest Name": reg.guestName || "",
-        "Guest Email": reg.guestEmail || "",
-        "Guest Phone": reg.guestPhone || "",
-        Status: reg.status || "",
-        "Checked In At": reg.checkedInAt
-          ? new Date(reg.checkedInAt).toISOString()
-          : "",
-        "Baptized At": reg.baptizedAt
-          ? new Date(reg.baptizedAt).toISOString()
-          : "",
-        "Registered At": reg.createdAt
-          ? new Date(reg.createdAt).toISOString()
-          : "",
-      }));
+      exportData = registrations.docs.map((reg) => {
+        const regData = reg as Record<string, unknown>;
+        return {
+          "Registration Code": String(regData.registrationCode || ""),
+          "Guest Name": String(regData.guestName || ""),
+          "Guest Email": String(regData.guestEmail || ""),
+          "Guest Phone": String(regData.guestPhone || ""),
+          Status: String(regData.status || ""),
+          "Checked In At": regData.checkedInAt
+            ? new Date(String(regData.checkedInAt)).toISOString()
+            : "",
+          "Baptized At": regData.baptizedAt
+            ? new Date(String(regData.baptizedAt)).toISOString()
+            : "",
+          "Registered At": regData.createdAt
+            ? new Date(String(regData.createdAt)).toISOString()
+            : "",
+        };
+      });
     }
 
     if (type === "attendance") {
       exportData = registrations.docs
-        .filter((reg: any) => reg.status === "attended" || reg.status === "baptized")
-        .map((reg: any) => ({
-          "Registration Code": reg.registrationCode || "",
-          "Guest Name": reg.guestName || "",
-          "Guest Phone": reg.guestPhone || "",
-          Status: reg.status || "",
-          "Checked In At": reg.checkedInAt
-            ? new Date(reg.checkedInAt).toISOString()
-            : "",
-        }));
+        .filter((reg) => {
+          const status = (reg as Record<string, unknown>).status;
+          return status === "attended" || status === "baptized";
+        })
+        .map((reg) => {
+          const regData = reg as Record<string, unknown>;
+          return {
+            "Registration Code": String(regData.registrationCode || ""),
+            "Guest Name": String(regData.guestName || ""),
+            "Guest Phone": String(regData.guestPhone || ""),
+            Status: String(regData.status || ""),
+            "Checked In At": regData.checkedInAt
+              ? new Date(String(regData.checkedInAt)).toISOString()
+              : "",
+          };
+        });
     }
 
     if (type === "summary") {
@@ -79,10 +106,13 @@ export async function GET(
           Location: event.location || "",
           "Total Registrations": registrations.totalDocs,
           "Attended": registrations.docs.filter(
-            (r: any) => r.status === "attended" || r.status === "baptized"
+            (r) => {
+              const status = (r as Record<string, unknown>).status;
+              return status === "attended" || status === "baptized";
+            }
           ).length,
           "Baptized": registrations.docs.filter(
-            (r: any) => r.status === "baptized"
+            (r) => (r as Record<string, unknown>).status === "baptized"
           ).length,
         },
       ];

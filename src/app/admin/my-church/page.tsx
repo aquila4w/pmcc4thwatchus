@@ -46,6 +46,14 @@ interface User {
   church?: ChurchData;
 }
 
+interface Member {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
+  createdAt: string;
+}
+
 interface MemberStats {
   totalMembers: number;
   activeMembers: number;
@@ -88,13 +96,13 @@ export default function MyChurchPage() {
           if (membersRes.ok) {
             const membersData = await membersRes.json();
             const approvedMembers = membersData.docs?.filter(
-              (m: any) => m.status === "approved"
+              (m: Member) => m.status === "approved"
             ) || [];
             setStats({
               totalMembers: approvedMembers.length,
               activeMembers: approvedMembers.length, // Could filter by recent activity
               recentRegistrations: approvedMembers.filter(
-                (m: any) => {
+                (m: Member) => {
                   const createdAt = new Date(m.createdAt);
                   const thirtyDaysAgo = new Date();
                   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);

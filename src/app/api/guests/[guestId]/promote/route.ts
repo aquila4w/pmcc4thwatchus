@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
 import { sendRegistrationEmail } from "@/lib/email";
+import type { Where } from "payload";
 
 // Generate a readable invite code (same as in Users collection)
 const generateInviteCode = (): string => {
@@ -37,9 +38,9 @@ export async function POST(
     }
 
     // Verify the requesting user has permission
-    let reqUser = null;
     try {
       // Use Payload to verify the token and get the user
+      // TODO: Implement proper user verification from token
       const users = await payload.find({
         collection: "users",
         where: {
@@ -204,7 +205,7 @@ export async function GET(
     const subDistrict = searchParams.get("subDistrict");
 
     // Build where clause to find baptized guests
-    const where: Record<string, unknown> = {
+    const where: Where = {
       role: { equals: "guest" },
     };
 

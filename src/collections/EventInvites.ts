@@ -53,7 +53,7 @@ export const EventInvites: CollectionConfig = {
       type: "text",
       required: true,
       unique: true,
-      indexed: true,
+      index: true,
       admin: {
         description: "Unique UUID invite code (not guessable)",
         position: "sidebar",
@@ -65,7 +65,7 @@ export const EventInvites: CollectionConfig = {
       type: "relationship",
       relationTo: "managed-events",
       required: true,
-      indexed: true,
+      index: true,
       admin: {
         description: "The event this invite is for",
       },
@@ -76,7 +76,7 @@ export const EventInvites: CollectionConfig = {
       type: "relationship",
       relationTo: "users",
       required: true,
-      indexed: true,
+      index: true,
       admin: {
         description: "The member who generated this invite",
       },

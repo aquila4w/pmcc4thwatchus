@@ -1,4 +1,4 @@
-import { Payload } from "payload";
+import { Payload, type Where } from "payload";
 
 // Data structure for placeholder replacement
 export interface CampaignData {
@@ -38,26 +38,32 @@ export async function getRecipients(
   guestPhone?: string;
   inviteCode: string;
 }>> {
-  let whereClause: Record<string, unknown> = {
-    event: { equals: eventId },
+  const whereClause: Where = {
+    and: [
+      { event: { equals: eventId } },
+    ],
   };
 
   switch (targetAudience) {
     case "all":
-      whereClause.status = {
-        in: ["registered", "attended", "baptized"],
-      };
+      whereClause.and?.push({
+        status: { in: ["registered", "attended", "baptized"] },
+      });
       break;
     case "notAttended":
-      whereClause.status = { equals: "registered" };
+      whereClause.and?.push({
+        status: { equals: "registered" },
+      });
       break;
     case "attended":
-      whereClause.status = { equals: "attended" };
+      whereClause.and?.push({
+        status: { equals: "attended" },
+      });
       break;
     case "notBaptized":
-      whereClause.status = {
-        in: ["registered", "attended"],
-      };
+      whereClause.and?.push({
+        status: { in: ["registered", "attended"] },
+      });
       break;
   }
 
@@ -76,11 +82,11 @@ export async function getRecipients(
     } | null;
 
     return {
-      id: reg.id,
+      id: String(reg.id),
       guestName: guestInfo?.name || "Guest",
       guestEmail: guestInfo?.email,
       guestPhone: guestInfo?.phone,
-      inviteCode: reg.inviteCode,
+      inviteCode: String(reg.inviteCode || ""),
     };
   });
 }

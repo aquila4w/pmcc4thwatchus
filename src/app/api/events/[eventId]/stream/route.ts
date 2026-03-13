@@ -30,11 +30,11 @@ export async function GET(
       }, 30000);
 
       // Store the interval for cleanup
-      (controller as any)._heartbeat = heartbeat;
+      (controller as ReadableStreamDefaultController & { _heartbeat?: NodeJS.Timeout })._heartbeat = heartbeat;
     },
     cancel() {
       // Clear heartbeat on disconnect
-      const controller = this as any;
+      const controller = this as ReadableStreamDefaultController & { _heartbeat?: NodeJS.Timeout };
       if (controller._heartbeat) {
         clearInterval(controller._heartbeat);
       }

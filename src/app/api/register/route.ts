@@ -4,39 +4,94 @@ import config from "@payload-config";
 import { sendRegistrationEmail } from "@/lib/email";
 import { sendRegistrationSMS, shortenUrl } from "@/lib/sms";
 
+// Generate a readable registration code
+function generateRegistrationCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 8; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const payload = await getPayload({ config });
     const body = await request.json();
 
-    const { eventSlug, memberInviteCode, guestName, guestEmail, guestPhone, joinWaitlist } = body;
+    const { eventInviteCode, guestName, guestEmail, guestPhone, joinWaitlist } = body;
 
     // Validate required fields
-    if (!eventSlug || !memberInviteCode || !guestName) {
+    if (!eventInviteCode || !guestName) {
       return NextResponse.json(
-        { error: "Missing required fields: eventSlug, memberInviteCode, guestName" },
+        { error: "Missing required fields: eventInviteCode, guestName" },
         { status: 400 }
       );
     }
 
-    // Find the event by slug
-    const events = await payload.find({
-      collection: "managed-events",
+    // Find the event invite by UUID code
+    const invites = await payload.find({
+      collection: "event-invites",
       where: {
-        slug: { equals: eventSlug },
-        status: { equals: "registration-open" },
+        and: [
+          { inviteCode: { equals: eventInviteCode } },
+          { status: { equals: "active" } },
+        ],
       },
       limit: 1,
+      depth: 2, // Include event and invitedBy
     });
 
-    if (events.docs.length === 0) {
+    if (invites.docs.length === 0) {
       return NextResponse.json(
-        { error: "Event not found or registration is closed" },
+        { error: "Invalid or expired invite link" },
         { status: 404 }
       );
     }
 
-    const event = events.docs[0];
+    const eventInvite = invites.docs[0];
+    const event = eventInvite.event as {
+      id?: string;
+      title?: string;
+      slug?: string;
+      description?: string;
+      startDate?: string;
+      location?: string;
+      address?: string;
+      maxAttendees?: number;
+      hasBaptism?: boolean;
+      landingPageTitle?: string;
+      landingPageShowQR?: boolean;
+      landingPageShowInviter?: boolean;
+    } | null;
+
+    const invitingMember = eventInvite.invitedBy as {
+      id?: string;
+      name?: string;
+      phone?: string;
+      email?: string;
+      church?: { id?: string; name?: string };
+    } | null;
+
+    if (!event?.id) {
+      return NextResponse.json(
+        { error: "Event not found" },
+        { status: 404 }
+      );
+    }
+
+    // Check if event is open for registration
+    const fullEvent = await payload.findByID({
+      collection: "managed-events",
+      id: event.id,
+    });
+
+    if (fullEvent?.status !== "registration-open") {
+      return NextResponse.json(
+        { error: "Event registration is not open" },
+        { status: 400 }
+      );
+    }
 
     // Check capacity and determine if waitlist
     let isWaitlisted = false;
@@ -89,24 +144,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Find the inviting member by invite code
-    const members = await payload.find({
-      collection: "users",
-      where: {
-        inviteCode: { equals: memberInviteCode },
-      },
-      limit: 1,
-    });
-
-    if (members.docs.length === 0) {
-      return NextResponse.json(
-        { error: "Invalid invite code" },
-        { status: 400 }
-      );
-    }
-
-    const invitingMember = members.docs[0];
-
     // Generate unique registration code
     const registrationCode = generateRegistrationCode();
 
@@ -120,14 +157,55 @@ export async function POST(request: NextRequest) {
     // Generate QR code URL using external service
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrData)}`;
 
+    // Create guest user account first
+    let guestUserId;
+    const emailToUse = guestEmail || `guest-${registrationCode.toLowerCase()}@pmcc4thwatch.us`;
+
+    try {
+      // Check if guest already exists with this email
+      const existingGuests = await payload.find({
+        collection: "users",
+        where: {
+          email: { equals: emailToUse },
+        },
+        limit: 1,
+      });
+
+      if (existingGuests.docs.length > 0) {
+        // Use existing guest user
+        guestUserId = existingGuests.docs[0].id;
+      } else {
+        // Create new guest user
+        const guestUser = await payload.create({
+          collection: "users",
+          data: {
+            name: guestName,
+            email: emailToUse,
+            phone: guestPhone || undefined,
+            role: "guest",
+            status: "approved",
+            authProvider: "event-registration",
+            // No password - guest users cannot login via credentials
+          },
+          depth: 0,
+        });
+        guestUserId = guestUser.id;
+      }
+    } catch (guestError) {
+      console.error("Failed to create guest user:", guestError);
+      // Continue without guest user - non-fatal
+    }
+
     // Create the registration
     const registration = await payload.create({
       collection: "event-registrations",
       data: {
         inviteCode: registrationCode,
         event: event.id,
-        invitedBy: invitingMember.id,
-        invitedByChurch: invitingMember.church || undefined,
+        eventInvite: eventInvite.id, // Link to the EventInvite
+        invitedBy: invitingMember?.id,
+        invitedByChurch: invitingMember?.church || undefined,
+        guest: guestUserId, // Link to guest user
         guestInfo: {
           name: guestName,
           email: guestEmail || undefined,
@@ -141,12 +219,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Generate ticket page URL
+    // Generate landing page URL
     const baseUrl = request.headers.get("origin") || "https://pmcc4thwatch.us";
-    const ticketUrl = `${baseUrl}/ticket/${registrationCode}`;
+    const landingPageUrl = `${baseUrl}/event/${event.id}/welcome/${registrationCode}`;
 
     // Format event date for notifications
-    const eventDate = new Date(event.startDate).toLocaleDateString("en-US", {
+    const eventDate = new Date(event.startDate || Date.now()).toLocaleDateString("en-US", {
       weekday: "long",
       year: "numeric",
       month: "long",
@@ -160,23 +238,23 @@ export async function POST(request: NextRequest) {
       sendRegistrationEmail({
         to: guestEmail,
         guestName: guestName,
-        eventTitle: event.title,
+        eventTitle: event.title || "Upcoming Event",
         eventDate: eventDate,
         eventLocation: event.location || "TBD",
         registrationCode: registrationCode,
         qrCodeUrl: qrCodeUrl,
-        ticketUrl: ticketUrl,
-        invitedByName: invitingMember.name,
+        ticketUrl: landingPageUrl,
+        invitedByName: invitingMember?.name,
       }).catch((err) => console.error("Email send failed:", err));
     }
 
-    // Send SMS with shortened ticket URL if guestPhone provided
+    // Send SMS with shortened landing page URL if guestPhone provided
     if (guestPhone) {
-      shortenUrl(ticketUrl).then((shortUrl) => {
+      shortenUrl(landingPageUrl).then((shortUrl) => {
         sendRegistrationSMS({
           to: guestPhone,
           guestName: guestName,
-          eventTitle: event.title,
+          eventTitle: event.title || "Upcoming Event",
           ticketUrl: shortUrl,
         }).catch((err) => console.error("SMS send failed:", err));
       });
@@ -190,7 +268,8 @@ export async function POST(request: NextRequest) {
         id: registration.id,
         code: registrationCode,
         qrCodeUrl: qrCodeUrl,
-        ticketUrl: ticketUrl,
+        landingPageUrl: landingPageUrl,
+        ticketUrl: landingPageUrl, // Keep for backward compatibility
         status: isWaitlisted ? "waitlisted" : "registered",
       },
       event: {
@@ -199,10 +278,17 @@ export async function POST(request: NextRequest) {
         startDate: event.startDate,
         location: event.location,
         address: event.address,
+        landingPage: {
+          title: fullEvent?.landingPageTitle || "You're Registered!",
+          showQR: fullEvent?.landingPageShowQR ?? true,
+          showInviter: fullEvent?.landingPageShowInviter ?? true,
+        },
       },
       invitedBy: {
-        name: invitingMember.name,
-        phone: invitingMember.phone,
+        name: invitingMember?.name,
+        phone: invitingMember?.phone,
+        email: invitingMember?.email,
+        church: invitingMember?.church?.name,
       },
     });
   } catch (error) {
@@ -212,14 +298,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-// Generate a readable registration code
-function generateRegistrationCode(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let code = "";
-  for (let i = 0; i < 8; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return code;
 }

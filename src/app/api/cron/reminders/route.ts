@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPayload } from "payload";
+import { getPayload, type Payload } from "payload";
 import config from "@payload-config";
 import { sendReminderEmail } from "@/lib/email";
 import { sendRegistrationSMS, shortenUrl } from "@/lib/sms";
+
+interface Event {
+  id: string | number;
+  title?: string;
+  startDate?: string;
+  location?: string;
+  address?: string;
+}
 
 // Verify cron authorization (optional but recommended)
 function verifyCronAuth(request: NextRequest): boolean {
@@ -114,8 +122,8 @@ async function processReminders(request: NextRequest) {
 
 // Send reminders for a specific event
 async function sendEventReminders(
-  payload: any,
-  event: any,
+  payload: Payload,
+  event: Event,
   reminderType: "day-before" | "hour-before"
 ) {
   // Get all registrations for this event that haven't received this reminder yet
@@ -138,14 +146,14 @@ async function sendEventReminders(
   });
 
   // Format event date
-  const eventDate = new Date(event.startDate).toLocaleDateString("en-US", {
+  const eventDate = new Date(event.startDate || "").toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
   });
 
-  const eventTime = new Date(event.startDate).toLocaleTimeString("en-US", {
+  const eventTime = new Date(event.startDate || "").toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
   });
@@ -167,7 +175,7 @@ async function sendEventReminders(
         await sendReminderEmail({
           to: guestInfo.email,
           guestName: guestInfo.name || "Guest",
-          eventTitle: event.title,
+          eventTitle: event.title || "Upcoming Event",
           eventDate: eventDate,
           eventLocation: event.location || "TBD",
           ticketUrl: ticketUrl,
@@ -185,7 +193,7 @@ async function sendEventReminders(
         await sendRegistrationSMS({
           to: guestInfo.phone,
           guestName: guestInfo.name || "Guest",
-          eventTitle: event.title,
+          eventTitle: event.title || "Upcoming Event",
           ticketUrl: shortUrl,
         });
       } catch (error) {

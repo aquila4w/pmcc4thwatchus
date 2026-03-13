@@ -479,14 +479,14 @@ export const ManagedEvents: CollectionConfig = {
       },
     ],
     afterChange: [
-      async ({ doc, req, operation }) => {
+      async ({ doc, req, operation, previousDoc }) => {
         // Auto-generate EventInvite entries when event is created or status changes to registration-open
         const shouldGenerateInvites =
           operation === "create" ||
           (operation === "update" &&
             doc.status === "registration-open" &&
             // Check if status just changed to registration-open
-            (req.previousData?.status !== "registration-open"));
+            (!previousDoc || previousDoc.status !== "registration-open"));
 
         if (shouldGenerateInvites && doc.status === "registration-open") {
           try {

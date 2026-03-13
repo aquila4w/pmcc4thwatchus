@@ -62,7 +62,9 @@ export async function POST(
     }
 
     // Format event date/time
-    const { date: eventDate, time: eventTime } = formatCampaignEventDate(event.startDate);
+    const { date: eventDate, time: eventTime } = formatCampaignEventDate(
+      event.startDate || new Date().toISOString()
+    );
 
     // Generate QR link base URL
     const baseUrl = request.headers.get("origin") || "https://pmcc4thwatch.us";
@@ -76,7 +78,7 @@ export async function POST(
       const ticketUrl = `${baseUrl}/ticket/${recipient.inviteCode}`;
       const campaignData = {
         name: recipient.guestName,
-        event: event.title,
+        event: event.title || "Upcoming Event",
         eventDate,
         eventTime,
         eventLocation: event.location || "TBD",
@@ -104,7 +106,7 @@ export async function POST(
           await sendRegistrationEmail({
             to: recipient.guestEmail,
             guestName: recipient.guestName,
-            eventTitle: event.title,
+            eventTitle: event.title || "Upcoming Event",
             eventDate: `${eventDate} at ${eventTime}`,
             eventLocation: event.location || "TBD",
             registrationCode: recipient.inviteCode,
@@ -138,7 +140,7 @@ export async function POST(
           await sendRegistrationSMS({
             to: recipient.guestPhone,
             guestName: recipient.guestName,
-            eventTitle: event.title,
+            eventTitle: event.title || "Upcoming Event",
             ticketUrl: ticketUrl,
           });
 

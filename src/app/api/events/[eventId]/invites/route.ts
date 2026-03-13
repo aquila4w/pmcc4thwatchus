@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
+import type { Where } from "payload";
 
 // GET - List all invites for an event
 export async function GET(
@@ -14,13 +15,15 @@ export async function GET(
     const church = searchParams.get("church");
 
     // Build where clause
-    const where: Record<string, unknown> = {
-      event: { equals: eventId },
+    const where: Where = {
+      and: [
+        { event: { equals: eventId } },
+      ],
     };
 
     // Filter by church if provided
     if (church) {
-      where.church = { equals: church };
+      where.and?.push({ church: { equals: church } });
     }
 
     const invites = await payload.find({
@@ -78,7 +81,7 @@ export async function POST(
     }
 
     // Find all approved members who can invite guests
-    const memberWhere: Record<string, unknown> = {
+    const memberWhere: Where = {
       and: [
         { status: { equals: "approved" } },
         {
@@ -91,7 +94,7 @@ export async function POST(
 
     // Filter by church if provided
     if (churchId) {
-      (memberWhere.and as Record<string, unknown>[]).push({
+      memberWhere.and?.push({
         church: { equals: churchId },
       });
     }
@@ -104,12 +107,18 @@ export async function POST(
     });
 
     // Get existing invites for this event
+    const existingInvitesWhere: Where = {
+      event: { equals: eventId },
+    };
+
+    // Filter by church if provided
+    if (churchId) {
+      existingInvitesWhere.church = { equals: churchId };
+    }
+
     const existingInvites = await payload.find({
       collection: "event-invites",
-      where: {
-        event: { equals: eventId },
-        ...(churchId ? { church: { equals: churchId } } : {}),
-      },
+      where: existingInvitesWhere,
       limit: 999,
     });
 

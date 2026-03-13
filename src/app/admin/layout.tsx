@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -42,7 +42,7 @@ interface DashboardLayoutProps {
 
 interface SidebarItem {
   label: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   href: string;
   badge?: number;
   roles?: string[];
@@ -54,11 +54,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     try {
       const response = await fetch("/api/auth/me");
       if (response.ok) {
@@ -71,7 +67,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     } catch (error) {
       router.push("/member/login?redirect=" + encodeURIComponent(window.location.pathname));
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   const handleLogout = async () => {
     try {
