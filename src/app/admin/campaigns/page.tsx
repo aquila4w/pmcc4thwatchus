@@ -162,7 +162,7 @@ export default function CampaignsPage() {
           <p className="text-slate-500">Manage SMS and email campaigns</p>
         </div>
         <Button asChild>
-          <Link href="/cms/collections/campaigns/create">
+          <Link href="/dashboard/campaigns/new">
             <Plus className="w-4 h-4 mr-2" />
             Create Campaign
           </Link>
@@ -303,7 +303,7 @@ export default function CampaignsPage() {
                   {campaign.status === "draft" && (
                     <>
                       <Button variant="outline" size="sm" asChild>
-                        <Link href={`/cms/collections/campaigns/${campaign.id}`}>
+                        <Link href={`/dashboard/campaigns/${campaign.id}/edit`}>
                           <Edit className="w-4 h-4 mr-1" />
                           Edit
                         </Link>
@@ -321,7 +321,7 @@ export default function CampaignsPage() {
                   {campaign.status === "scheduled" && (
                     <>
                       <Button variant="outline" size="sm" asChild>
-                        <Link href={`/cms/collections/campaigns/${campaign.id}`}>
+                        <Link href={`/dashboard/campaigns/${campaign.id}/edit`}>
                           <Edit className="w-4 h-4 mr-1" />
                           Edit
                         </Link>
@@ -338,15 +338,15 @@ export default function CampaignsPage() {
                   )}
                   {campaign.status === "sent" && (
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={`/cms/collections/campaigns/${campaign.id}`}>
-                        <Eye className="w-4 h-4 mr-1" />
-                        View
+                      <Link href={`/dashboard/campaigns/${campaign.id}/analytics`}>
+                        <BarChart3 className="w-4 h-4 mr-1" />
+                        Analytics
                       </Link>
                     </Button>
                   )}
                   <Button variant="ghost" size="sm" asChild>
-                    <Link href={`/cms/collections/campaigns/${campaign.id}`}>
-                      <BarChart3 className="w-4 h-4" />
+                    <Link href={`/dashboard/campaigns/${campaign.id}/analytics`}>
+                      <Eye className="w-4 h-4" />
                     </Link>
                   </Button>
                 </div>
@@ -367,7 +367,7 @@ export default function CampaignsPage() {
               </p>
               {!searchQuery && (
                 <Button asChild>
-                  <Link href="/cms/collections/campaigns/create">
+                  <Link href="/dashboard/campaigns/new">
                     <Plus className="w-4 h-4 mr-2" />
                     Create Campaign
                   </Link>
@@ -447,7 +447,7 @@ export default function CampaignsPage() {
                   </p>
                 </div>
                 <Button variant="outline" size="sm" asChild>
-                  <Link href={`/cms/collections/campaigns/${campaign.id}`}>
+                  <Link href={`/dashboard/campaigns/${campaign.id}/edit`}>
                     <Edit className="w-4 h-4 mr-1" />
                     Edit
                   </Link>
