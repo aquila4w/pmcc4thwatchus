@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, ChevronDown, Facebook, Youtube, ArrowUpRight } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { UserMenu } from "@/components/UserMenu";
 import { useTheme } from "next-themes";
 
 const navigation = [
@@ -237,6 +238,7 @@ export function Header() {
               <div className={`w-px h-6 ${isScrolled ? "bg-slate-200 dark:bg-white/10" : "bg-slate-300 dark:bg-white/10"}`} />
               <LanguageSwitcher variant="toggle" className={isScrolled ? "text-slate-600 dark:text-slate-300" : "text-slate-600 dark:text-white/70"} />
               <ThemeToggle />
+              <UserMenu />
               <Link
                 href="/give"
                 className="px-5 py-2.5 bg-secondary text-[#0a0f1a] font-semibold text-sm rounded-full hover:bg-amber-300 transition-colors"
@@ -309,15 +311,20 @@ export function Header() {
                 ))}
               </nav>
 
-              <div className="mt-12 pt-8 border-t border-slate-200 dark:border-white/10 flex items-center gap-4">
-                <Link
-                  href="/give"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="inline-block px-8 py-4 bg-secondary text-[#0a0f1a] font-semibold rounded-full"
-                >
-                  Give
-                </Link>
-                <ThemeToggle />
+              <div className="mt-12 pt-8 border-t border-slate-200 dark:border-white/10">
+                <div className="flex items-center gap-4 mb-4">
+                  <Link
+                    href="/give"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="inline-block px-8 py-4 bg-secondary text-[#0a0f1a] font-semibold rounded-full"
+                  >
+                    Give
+                  </Link>
+                  <ThemeToggle />
+                </div>
+                <div className="px-4 py-3 bg-slate-100 dark:bg-white/5 rounded-xl">
+                  <UserMenu />
+                </div>
               </div>
             </div>
           </motion.div>

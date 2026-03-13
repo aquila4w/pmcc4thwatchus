@@ -20,16 +20,19 @@ import {
   Home,
   AlertCircle,
   Users,
-  Heart
+  Heart,
+  Church,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { PuckRenderer } from "@/components/PuckRenderer";
-import type { Data } from "@measured/puck";
 
 interface EventData {
+  invite: {
+    id: string;
+    inviteCode: string;
+  };
   event: {
     id: string;
     title: string;
@@ -43,21 +46,23 @@ interface EventData {
     heroImageUrl: string | null;
     hasBaptism: boolean;
     eventType: string;
-    contentMode?: "richtext" | "blocks" | "puck";
-    puckData?: Data | null;
-  };
-  registration: {
-    isOpen: boolean;
     spotsRemaining: number | null;
-    totalRegistrations: number;
-    maxAttendees: number | null;
-    deadline: string | null;
+    isFull: boolean;
+    isPastDeadline: boolean;
+    landingPage: {
+      title: string;
+      showQR: boolean;
+      showInviter: boolean;
+    };
   };
   invitedBy: {
+    id: string;
     name: string;
-    phone: string;
-    church: string | null;
-  } | null;
+    phone?: string;
+    email?: string;
+    church?: string;
+  };
+  registrationCount: number;
 }
 
 interface FormData {
@@ -67,19 +72,26 @@ interface FormData {
 }
 
 interface RegistrationResult {
+  id: string;
   code: string;
   qrCodeUrl: string;
+  landingPageUrl: string;
   ticketUrl: string;
+  status: string;
   isWaitlisted?: boolean;
   waitlistPosition?: number;
 }
 
 type Step = "loading" | "form" | "submitting" | "success" | "error" | "closed" | "waitlist";
 
-export default function RegisterPage({ params }: { params: Promise<{ eventSlug: string }> }) {
+export default function RegisterPage({
+  params,
+}: {
+  params: Promise<{ eventSlug: string }>;
+}) {
   const resolvedParams = use(params);
   const searchParams = useSearchParams();
-  const memberCode = searchParams.get("ref");
+  const inviteCode = searchParams.get("invite");
 
   const [step, setStep] = useState<Step>("loading");
   const [eventData, setEventData] = useState<EventData | null>(null);
@@ -89,45 +101,46 @@ export default function RegisterPage({ params }: { params: Promise<{ eventSlug: 
     phone: "",
   });
   const [errors, setErrors] = useState<Partial<FormData>>({});
-  const [registrationResult, setRegistrationResult] = useState<RegistrationResult | null>(null);
+  const [registrationResult, setRegistrationResult] =
+    useState<RegistrationResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>("");
 
   // Fetch event data on mount
   useEffect(() => {
     const fetchEvent = async () => {
-      try {
-        const url = memberCode
-          ? `/api/events/${resolvedParams.eventSlug}?ref=${memberCode}`
-          : `/api/events/${resolvedParams.eventSlug}`;
+      if (!inviteCode) {
+        setErrorMessage(
+          "Invalid invite link. Please use the link shared by a church member."
+        );
+        setStep("error");
+        return;
+      }
 
-        const response = await fetch(url);
+      try {
+        const response = await fetch(`/api/event-invite/${inviteCode}`);
 
         if (!response.ok) {
-          throw new Error("Event not found");
+          throw new Error("Invalid or expired invite link");
         }
 
         const data = await response.json();
         setEventData(data);
 
-        if (!data.registration.isOpen) {
+        if (data.event.isFull || data.event.isPastDeadline) {
           setStep("closed");
-        } else if (!memberCode) {
-          setErrorMessage("Invalid invite link. Please use the link shared by a church member.");
-          setStep("error");
-        } else if (!data.invitedBy) {
-          setErrorMessage("Invalid invite code. The member who shared this link could not be found.");
-          setStep("error");
         } else {
           setStep("form");
         }
       } catch (error) {
-        setErrorMessage("Could not load event details. Please try again later.");
+        setErrorMessage(
+          "Could not load event details. Please try again later or contact the person who invited you."
+        );
         setStep("error");
       }
     };
 
     fetchEvent();
-  }, [resolvedParams.eventSlug, memberCode]);
+  }, [inviteCode]);
 
   const validateForm = () => {
     const newErrors: Partial<FormData> = {};
@@ -140,6 +153,10 @@ export default function RegisterPage({ params }: { params: Promise<{ eventSlug: 
       newErrors.email = "Please enter a valid email";
     }
 
+    if (formData.phone && formData.phone.length < 10) {
+      newErrors.phone = "Please enter a valid phone number";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -147,7 +164,7 @@ export default function RegisterPage({ params }: { params: Promise<{ eventSlug: 
   const handleSubmit = async (e: React.FormEvent, joinWaitlist = false) => {
     e.preventDefault();
 
-    if (!validateForm() || !memberCode) return;
+    if (!validateForm() || !inviteCode) return;
 
     setStep("submitting");
 
@@ -158,8 +175,7 @@ export default function RegisterPage({ params }: { params: Promise<{ eventSlug: 
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          eventSlug: resolvedParams.eventSlug,
-          memberInviteCode: memberCode,
+          eventInviteCode: inviteCode,
           guestName: formData.name,
           guestEmail: formData.email || undefined,
           guestPhone: formData.phone || undefined,
@@ -172,7 +188,9 @@ export default function RegisterPage({ params }: { params: Promise<{ eventSlug: 
       if (!response.ok) {
         // Check if this is a capacity reached response with waitlist option
         if (data.capacityReached && data.canJoinWaitlist) {
-          setErrorMessage(`Event is at full capacity. ${data.waitlistCount} people are on the waitlist. Would you like to join?`);
+          setErrorMessage(
+            `Event is at full capacity. ${data.waitlistCount} people are on the waitlist. Would you like to join?`
+          );
           setStep("waitlist");
           return;
         }
@@ -180,15 +198,19 @@ export default function RegisterPage({ params }: { params: Promise<{ eventSlug: 
       }
 
       setRegistrationResult({
+        id: data.registration.id,
         code: data.registration.code,
         qrCodeUrl: data.registration.qrCodeUrl,
+        landingPageUrl: data.registration.landingPageUrl,
         ticketUrl: data.registration.ticketUrl,
+        status: data.registration.status,
         isWaitlisted: data.isWaitlisted,
         waitlistPosition: data.waitlistPosition,
       });
       setStep("success");
-    } catch (error: unknown) {
-      const errorMsg = error instanceof Error ? error.message : "Registration failed. Please try again.";
+    } catch (error) {
+      const errorMsg =
+        error instanceof Error ? error.message : "Registration failed. Please try again.";
       setErrorMessage(errorMsg);
       setStep("error");
     }
@@ -196,9 +218,9 @@ export default function RegisterPage({ params }: { params: Promise<{ eventSlug: 
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name as keyof FormData]) {
-      setErrors(prev => ({ ...prev, [name]: undefined }));
+      setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
   };
 
@@ -242,11 +264,18 @@ export default function RegisterPage({ params }: { params: Promise<{ eventSlug: 
               Registration Closed
             </h1>
             <p className="text-white/60 mb-4">
-              Registration for <strong className="text-white">{eventData.event.title}</strong> is currently closed.
+              Registration for{" "}
+              <strong className="text-white">{eventData.event.title}</strong> is
+              currently closed.
             </p>
-            {eventData.registration.spotsRemaining === 0 && (
+            {eventData.event.isFull && (
               <p className="text-orange-400 text-sm mb-6">
                 This event has reached maximum capacity.
+              </p>
+            )}
+            {eventData.event.isPastDeadline && (
+              <p className="text-orange-400 text-sm mb-6">
+                Registration deadline has passed.
               </p>
             )}
             <Button asChild className="bg-secondary hover:bg-secondary/90 text-[#0a0f1a]">
@@ -359,33 +388,34 @@ export default function RegisterPage({ params }: { params: Promise<{ eventSlug: 
                   {eventData.event.description}
                 </p>
 
-                {/* Puck Visual Content */}
-                {eventData.event.contentMode === "puck" && eventData.event.puckData && (
-                  <div className="mb-6 bg-white rounded-xl overflow-hidden">
-                    <PuckRenderer data={eventData.event.puckData} />
-                  </div>
-                )}
-
                 <div className="space-y-4">
                   <div className="flex items-start gap-3">
                     <MapPin className="w-5 h-5 text-secondary flex-shrink-0 mt-1" />
                     <div>
-                      <p className="text-white font-medium">{eventData.event.location}</p>
-                      <p className="text-white/50 text-sm">{eventData.event.address}</p>
+                      <p className="text-white font-medium">
+                        {eventData.event.location}
+                      </p>
+                      <p className="text-white/50 text-sm">
+                        {eventData.event.address}
+                      </p>
                     </div>
                   </div>
-                  {eventData.registration.spotsRemaining !== null && (
+                  {eventData.event.spotsRemaining !== null && (
                     <div className="flex items-center gap-3">
                       <Users className="w-5 h-5 text-secondary" />
                       <p className="text-white/70">
-                        <span className="text-white font-bold">{eventData.registration.spotsRemaining}</span> spots remaining
+                        <span className="text-white font-bold">
+                          {eventData.event.spotsRemaining}
+                        </span>{" "}
+                        spots remaining
                       </p>
                     </div>
                   )}
                   {eventData.event.hasBaptism && (
                     <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg">
                       <p className="text-purple-300 text-sm">
-                        This event includes a baptism ceremony. If you're interested, please let the staff know at the event.
+                        This event includes a baptism ceremony. If you're interested,
+                        please let the staff know at the event.
                       </p>
                     </div>
                   )}
@@ -393,7 +423,7 @@ export default function RegisterPage({ params }: { params: Promise<{ eventSlug: 
               </Card>
 
               {/* Invited By Card */}
-              {eventData.invitedBy && (
+              {eventData.invitedBy && eventData.event.landingPage.showInviter && (
                 <Card className="bg-secondary/10 border-secondary/20 p-6">
                   <h2 className="font-serif text-lg font-semibold text-white mb-4 flex items-center gap-2">
                     <Heart className="w-5 h-5 text-secondary" />
@@ -403,15 +433,26 @@ export default function RegisterPage({ params }: { params: Promise<{ eventSlug: 
                     <div className="w-14 h-14 rounded-full bg-secondary/20 flex items-center justify-center">
                       <User className="w-7 h-7 text-secondary" />
                     </div>
-                    <div>
-                      <p className="text-white text-lg font-semibold">{eventData.invitedBy.name}</p>
+                    <div className="flex-1">
+                      <p className="text-white text-lg font-semibold">
+                        {eventData.invitedBy.name}
+                      </p>
                       {eventData.invitedBy.church && (
-                        <p className="text-white/60 text-sm">{eventData.invitedBy.church}</p>
+                        <p className="text-white/60 text-sm flex items-center gap-1">
+                          <Church className="w-4 h-4" />
+                          {eventData.invitedBy.church}
+                        </p>
                       )}
                       {eventData.invitedBy.phone && (
                         <p className="text-secondary text-sm flex items-center gap-1 mt-1">
                           <Phone className="w-4 h-4" />
                           {eventData.invitedBy.phone}
+                        </p>
+                      )}
+                      {eventData.invitedBy.email && (
+                        <p className="text-secondary text-sm flex items-center gap-1">
+                          <Mail className="w-4 h-4" />
+                          {eventData.invitedBy.email}
                         </p>
                       )}
                     </div>
@@ -462,13 +503,18 @@ export default function RegisterPage({ params }: { params: Promise<{ eventSlug: 
                             />
                           </div>
                           {errors.name && (
-                            <p className="text-red-400 text-sm mt-1">{errors.name}</p>
+                            <p className="text-red-400 text-sm mt-1">
+                              {errors.name}
+                            </p>
                           )}
                         </div>
 
                         <div>
                           <Label htmlFor="email" className="text-white mb-2 block">
-                            Email Address <span className="text-white/40">(for confirmation)</span>
+                            Email Address{" "}
+                            <span className="text-white/40">
+                              (for confirmation & ticket)
+                            </span>
                           </Label>
                           <div className="relative">
                             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
@@ -485,13 +531,18 @@ export default function RegisterPage({ params }: { params: Promise<{ eventSlug: 
                             />
                           </div>
                           {errors.email && (
-                            <p className="text-red-400 text-sm mt-1">{errors.email}</p>
+                            <p className="text-red-400 text-sm mt-1">
+                              {errors.email}
+                            </p>
                           )}
                         </div>
 
                         <div>
                           <Label htmlFor="phone" className="text-white mb-2 block">
-                            Phone Number <span className="text-white/40">(for ticket link)</span>
+                            Phone Number{" "}
+                            <span className="text-white/40">
+                              (for SMS ticket link)
+                            </span>
                           </Label>
                           <div className="relative">
                             <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
@@ -502,9 +553,16 @@ export default function RegisterPage({ params }: { params: Promise<{ eventSlug: 
                               value={formData.phone}
                               onChange={handleInputChange}
                               placeholder="+1 (555) 000-0000"
-                              className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                              className={`pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/30 ${
+                                errors.phone ? "border-red-500" : ""
+                              }`}
                             />
                           </div>
+                          {errors.phone && (
+                            <p className="text-red-400 text-sm mt-1">
+                              {errors.phone}
+                            </p>
+                          )}
                         </div>
 
                         <Button
@@ -516,7 +574,9 @@ export default function RegisterPage({ params }: { params: Promise<{ eventSlug: 
                         </Button>
 
                         <p className="text-white/40 text-xs text-center">
-                          By registering, you agree to receive event updates via email and SMS
+                          By registering, you agree to receive event updates via email
+                          and SMS. Your information will be used for event coordination
+                          only.
                         </p>
                       </form>
                     </motion.div>
@@ -554,9 +614,7 @@ export default function RegisterPage({ params }: { params: Promise<{ eventSlug: 
                       <h2 className="font-serif text-2xl font-semibold text-white mb-2">
                         Event at Full Capacity
                       </h2>
-                      <p className="text-white/60 mb-6">
-                        {errorMessage}
-                      </p>
+                      <p className="text-white/60 mb-6">{errorMessage}</p>
                       <div className="flex flex-col gap-3">
                         <Button
                           onClick={(e) => handleSubmit(e, true)}
@@ -587,9 +645,13 @@ export default function RegisterPage({ params }: { params: Promise<{ eventSlug: 
                       exit={{ opacity: 0 }}
                       className="text-center"
                     >
-                      <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${
-                        registrationResult.isWaitlisted ? "bg-orange-500/20" : "bg-green-500/20"
-                      }`}>
+                      <div
+                        className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${
+                          registrationResult.isWaitlisted
+                            ? "bg-orange-500/20"
+                            : "bg-green-500/20"
+                        }`}
+                      >
                         {registrationResult.isWaitlisted ? (
                           <Users className="w-10 h-10 text-orange-400" />
                         ) : (
@@ -597,52 +659,84 @@ export default function RegisterPage({ params }: { params: Promise<{ eventSlug: 
                         )}
                       </div>
                       <h2 className="font-serif text-2xl font-semibold text-white mb-2">
-                        {registrationResult.isWaitlisted ? "Added to Waitlist!" : "Registration Successful!"}
+                        {registrationResult.isWaitlisted
+                          ? "Added to Waitlist!"
+                          : "Registration Successful!"}
                       </h2>
                       <p className="text-white/50 mb-8">
                         {registrationResult.isWaitlisted
-                          ? `Thank you, ${formData.name}! You're #${registrationResult.waitlistPosition} on the waitlist.`
-                          : `Thank you, ${formData.name}! You're all set for the event.`
-                        }
+                          ? `Thank you, ${
+                              formData.name
+                            }! You're #${registrationResult.waitlistPosition} on the waitlist.`
+                          : `Thank you, ${
+                              formData.name
+                            }! You're all set for the event.`}
                       </p>
 
                       {/* QR Code */}
-                      <div className="bg-white rounded-xl p-6 inline-block mb-6">
-                        <img
-                          src={registrationResult.qrCodeUrl}
-                          alt="Your QR Code"
-                          className="w-48 h-48 mx-auto"
-                        />
-                        <p className="text-[#0a0f1a] font-mono text-lg mt-4 font-bold">
-                          {registrationResult.code}
-                        </p>
-                      </div>
+                      {eventData.event.landingPage.showQR && (
+                        <>
+                          <div className="bg-white rounded-xl p-6 inline-block mb-6">
+                            <img
+                              src={registrationResult.qrCodeUrl}
+                              alt="Your QR Code"
+                              className="w-48 h-48 mx-auto"
+                            />
+                            <p className="text-[#0a0f1a] font-mono text-lg mt-4 font-bold">
+                              {registrationResult.code}
+                            </p>
+                          </div>
 
-                      <div className="bg-white/5 border border-white/10 rounded-lg p-4 mb-6">
-                        <p className="text-white/70 text-sm">
-                          <strong className="text-white">Save this QR code!</strong> Present it at the event check-in.
-                          {formData.email && (
-                            <> We've also sent a confirmation to <strong className="text-white">{formData.email}</strong></>
-                          )}
-                        </p>
-                      </div>
+                          <div className="bg-white/5 border border-white/10 rounded-lg p-4 mb-6">
+                            <p className="text-white/70 text-sm">
+                              <strong className="text-white">
+                                Save this QR code!
+                              </strong>{" "}
+                              Present it at the event check-in.
+                              {formData.email && (
+                                <>
+                                  {" "}
+                                  We've also sent a confirmation to{" "}
+                                  <strong className="text-white">
+                                    {formData.email}
+                                  </strong>
+                                </>
+                              )}
+                              {formData.phone && (
+                                <>
+                                  {" "}
+                                  and an SMS to{" "}
+                                  <strong className="text-white">
+                                    {formData.phone}
+                                  </strong>
+                                </>
+                              )}
+                            </p>
+                          </div>
+                        </>
+                      )}
 
                       <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                        {eventData.event.landingPage.showQR && (
+                          <Button
+                            variant="outline"
+                            className="bg-white/5 border-white/20 text-white hover:bg-white/10"
+                            onClick={() => {
+                              const link = document.createElement("a");
+                              link.href = registrationResult.qrCodeUrl;
+                              link.download = `registration-${registrationResult.code}.png`;
+                              link.click();
+                            }}
+                          >
+                            <Download className="w-4 h-4 mr-2" />
+                            Save QR Code
+                          </Button>
+                        )}
                         <Button
-                          variant="outline"
-                          className="bg-white/5 border-white/20 text-white hover:bg-white/10"
-                          onClick={() => {
-                            const link = document.createElement("a");
-                            link.href = registrationResult.qrCodeUrl;
-                            link.download = `ticket-${registrationResult.code}.png`;
-                            link.click();
-                          }}
+                          asChild
+                          className="bg-secondary hover:bg-secondary/90 text-[#0a0f1a]"
                         >
-                          <Download className="w-4 h-4 mr-2" />
-                          Save QR Code
-                        </Button>
-                        <Button asChild className="bg-secondary hover:bg-secondary/90 text-[#0a0f1a]">
-                          <Link href={`/ticket/${registrationResult.code}`}>
+                          <Link href={registrationResult.landingPageUrl}>
                             <QrCode className="w-4 h-4 mr-2" />
                             View My Ticket
                           </Link>
@@ -661,7 +755,8 @@ export default function RegisterPage({ params }: { params: Promise<{ eventSlug: 
       <footer className="border-t border-white/10 mt-20">
         <div className="container mx-auto px-4 py-8">
           <p className="text-white/30 text-sm text-center">
-            © {new Date().getFullYear()} Pentecostal Missionary Church of Christ (4th Watch). All rights reserved.
+            © {new Date().getFullYear()} Pentecostal Missionary Church of Christ
+            (4th Watch). All rights reserved.
           </p>
         </div>
       </footer>
@@ -675,11 +770,17 @@ function Header() {
       <div className="container mx-auto px-4 py-4">
         <Link href="/" className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full border-2 border-secondary flex items-center justify-center bg-secondary/10">
-            <span className="text-secondary font-serif font-bold text-sm">P</span>
+            <span className="text-secondary font-serif font-bold text-sm">
+              P
+            </span>
           </div>
           <div>
-            <span className="text-white font-serif text-lg font-semibold">PMCC</span>
-            <span className="text-white/50 text-xs block tracking-[0.2em] uppercase">4th Watch</span>
+            <span className="text-white font-serif text-lg font-semibold">
+              PMCC
+            </span>
+            <span className="text-white/50 text-xs block tracking-[0.2em] uppercase">
+              4th Watch
+            </span>
           </div>
         </Link>
       </div>

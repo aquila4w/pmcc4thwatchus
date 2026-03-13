@@ -13,6 +13,7 @@ import { SubDistricts } from "./collections/SubDistricts";
 import { NewsEvents } from "./collections/NewsEvents";
 import { ManagedEvents } from "./collections/ManagedEvents";
 import { EventRegistrations } from "./collections/EventRegistrations";
+import { EventInvites } from "./collections/EventInvites";
 import { Campaigns } from "./collections/Campaigns";
 import { Posts } from "./collections/Posts";
 import { Pages } from "./collections/Pages";
@@ -72,6 +73,7 @@ export default buildConfig({
     // Event Management (Admin Only)
     ManagedEvents,
     EventRegistrations,
+    EventInvites,
     Campaigns,
   ],
   globals: [Header, Footer, ThemeSettings],

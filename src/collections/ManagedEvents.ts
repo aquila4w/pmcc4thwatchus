@@ -17,11 +17,11 @@ export const ManagedEvents: CollectionConfig = {
     },
     create: ({ req: { user } }) => {
       if (!user) return false;
-      return ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary"].includes(user.role);
+      return ["superAdmin", "districtCoordinator", "eventAdmin", "subDistrictCoordinator", "headMinister", "secretary"].includes(user.role);
     },
     update: ({ req: { user } }) => {
       if (!user) return false;
-      return ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary"].includes(user.role);
+      return ["superAdmin", "districtCoordinator", "eventAdmin", "subDistrictCoordinator", "headMinister", "secretary"].includes(user.role);
     },
     delete: ({ req: { user } }) => {
       if (!user) return false;
@@ -314,6 +314,60 @@ export const ManagedEvents: CollectionConfig = {
                 description: "Send confirmation email with QR code",
               },
             },
+            // Landing Page Configuration
+            {
+              name: "landingPageHeroImage",
+              type: "upload",
+              relationTo: "media",
+              admin: {
+                description: "Hero image for the post-registration landing page",
+              },
+            },
+            {
+              name: "landingPageTitle",
+              type: "text",
+              defaultValue: "You're Registered!",
+              admin: {
+                description: "Title shown on the landing page",
+              },
+            },
+            {
+              name: "landingPageContent",
+              type: "richText",
+              admin: {
+                description: "Content shown on the landing page",
+              },
+            },
+            {
+              name: "landingPageShowQR",
+              type: "checkbox",
+              defaultValue: true,
+              admin: {
+                description: "Show QR code on the landing page",
+              },
+            },
+            {
+              name: "landingPageShowInviter",
+              type: "checkbox",
+              defaultValue: true,
+              admin: {
+                description: "Show the inviting member's contact information",
+              },
+            },
+            {
+              name: "landingPageCTA",
+              type: "text",
+              admin: {
+                description: "Call-to-action button text",
+              },
+            },
+            {
+              name: "landingPageCTALink",
+              type: "text",
+              admin: {
+                description: "Call-to-action button link",
+              },
+            },
           ],
         },
         {
@@ -422,6 +476,80 @@ export const ManagedEvents: CollectionConfig = {
             .replace(/(^-|-$)/g, "");
         }
         return data;
+      },
+    ],
+    afterChange: [
+      async ({ doc, req, operation }) => {
+        // Auto-generate EventInvite entries when event is created or status changes to registration-open
+        const shouldGenerateInvites =
+          operation === "create" ||
+          (operation === "update" &&
+            doc.status === "registration-open" &&
+            // Check if status just changed to registration-open
+            (req.previousData?.status !== "registration-open"));
+
+        if (shouldGenerateInvites && doc.status === "registration-open") {
+          try {
+            // Find all approved members who can invite guests
+            const members = await req.payload.find({
+              collection: "users",
+              where: {
+                and: [
+                  {
+                    status: { equals: "approved" },
+                  },
+                  {
+                    role: {
+                      in: ["member", "eventAdmin", "headMinister", "secretary", "subDistrictCoordinator", "districtCoordinator", "superAdmin"],
+                    },
+                  },
+                ],
+              },
+              limit: 999,
+              depth: 0,
+            });
+
+            // Check if invites already exist for this event
+            const existingInvites = await req.payload.find({
+              collection: "event-invites",
+              where: {
+                event: { equals: doc.id },
+              },
+              limit: 0,
+            });
+
+            const existingMemberIds = new Set(
+              existingInvites.docs.map((invite: unknown) => {
+                const invitedBy = (invite as { invitedBy?: unknown }).invitedBy;
+                return typeof invitedBy === "string" ? invitedBy : (invitedBy as { id?: string })?.id;
+              })
+            );
+
+            // Create invites for members who don't have one yet
+            let createdCount = 0;
+            for (const member of members.docs) {
+              const memberId = typeof member.id === "string" ? member.id : String(member.id);
+
+              if (!existingMemberIds.has(memberId)) {
+                await req.payload.create({
+                  collection: "event-invites",
+                  data: {
+                    event: doc.id,
+                    invitedBy: memberId,
+                    status: "active",
+                  },
+                });
+                createdCount++;
+              }
+            }
+
+            if (createdCount > 0) {
+              console.log(`Auto-generated ${createdCount} event invites for event: ${doc.title}`);
+            }
+          } catch (error) {
+            console.error("Failed to auto-generate event invites:", error);
+          }
+        }
       },
     ],
   },

@@ -11,7 +11,7 @@ export const EventRegistrations: CollectionConfig = {
   access: {
     read: ({ req: { user } }) => {
       if (!user) return false;
-      if (["superAdmin", "districtCoordinator"].includes(user.role)) return true;
+      if (["superAdmin", "districtCoordinator", "eventAdmin"].includes(user.role)) return true;
       if (user.role === "guest") {
         return {
           guest: { equals: user.id },
@@ -22,7 +22,7 @@ export const EventRegistrations: CollectionConfig = {
     create: () => true, // Public registration
     update: ({ req: { user } }) => {
       if (!user) return false;
-      return ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary"].includes(user.role);
+      return ["superAdmin", "districtCoordinator", "eventAdmin", "subDistrictCoordinator", "headMinister", "secretary"].includes(user.role);
     },
     delete: ({ req: { user } }) => {
       if (!user) return false;
@@ -58,6 +58,14 @@ export const EventRegistrations: CollectionConfig = {
       name: "invitedByChurch",
       type: "relationship",
       relationTo: "churches",
+    },
+    {
+      name: "eventInvite",
+      type: "relationship",
+      relationTo: "event-invites",
+      admin: {
+        description: "The EventInvite that was used to register",
+      },
     },
     {
       name: "guest",

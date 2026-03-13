@@ -120,6 +120,7 @@ export const Users: CollectionConfig = {
         { label: "Super Admin", value: "superAdmin" },
         { label: "District Coordinator", value: "districtCoordinator" },
         { label: "Sub-District Coordinator", value: "subDistrictCoordinator" },
+        { label: "Event Admin", value: "eventAdmin" },
         { label: "Head Minister", value: "headMinister" },
         { label: "Secretary", value: "secretary" },
         { label: "Member", value: "member" },
@@ -264,6 +265,28 @@ export const Users: CollectionConfig = {
         position: "sidebar",
         readOnly: true,
         condition: (data) => !!data?.church,
+      },
+    },
+    // Guest Promotion Tracking
+    {
+      name: "promotedFromGuestAt",
+      type: "date",
+      admin: {
+        position: "sidebar",
+        readOnly: true,
+        description: "When this user was promoted from guest to member",
+        condition: (data) => !!data?.promotedFromGuestAt,
+      },
+    },
+    {
+      name: "promotedFromGuestBy",
+      type: "relationship",
+      relationTo: "users",
+      admin: {
+        position: "sidebar",
+        readOnly: true,
+        description: "User who promoted this guest to member",
+        condition: (data) => !!data?.promotedFromGuestAt,
       },
     },
   ],
