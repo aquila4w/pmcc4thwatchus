@@ -21,6 +21,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { EventDialog } from "@/components/admin/events/EventDialog";
+import { EventStatusBadge } from "@/components/admin/events/EventStatusBadge";
 
 interface Event {
   id: string;
@@ -45,12 +47,12 @@ interface SubDistrict {
 }
 
 const statusConfig = {
-  "draft": { label: "Draft", color: "bg-slate-100 text-slate-700", icon: AlertCircle },
-  "registration-open": { label: "Registration Open", color: "bg-green-100 text-green-700", icon: CheckCircle },
-  "registration-closed": { label: "Registration Closed", color: "bg-yellow-100 text-yellow-700", icon: Clock },
-  "in-progress": { label: "In Progress", color: "bg-blue-100 text-blue-700", icon: Clock },
-  "completed": { label: "Completed", color: "bg-slate-100 text-slate-700", icon: CheckCircle },
-  "cancelled": { label: "Cancelled", color: "bg-red-100 text-red-700", icon: XCircle },
+  "draft": "Draft",
+  "registration-open": "Registration Open",
+  "registration-closed": "Registration Closed",
+  "in-progress": "In Progress",
+  "completed": "Completed",
+  "cancelled": "Cancelled",
 };
 
 export default function EventsPage() {
@@ -62,6 +64,7 @@ export default function EventsPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [selectedChurch, setSelectedChurch] = useState<string>("");
   const [selectedSubDistrict, setSelectedSubDistrict] = useState<string>("");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -140,11 +143,9 @@ export default function EventsPage() {
           <h1 className="text-2xl font-bold">Events</h1>
           <p className="text-slate-500">Manage events and invitations</p>
         </div>
-        <Button asChild>
-          <Link href="/cms/collections/managed-events/create">
-            <Plus className="w-4 h-4 mr-2" />
-            Create Event
-          </Link>
+        <Button onClick={() => setCreateDialogOpen(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Create Event
         </Button>
       </div>
 
@@ -166,7 +167,7 @@ export default function EventsPage() {
             className="border rounded-lg px-3 py-2"
           >
             <option value="">All Statuses</option>
-            {Object.entries(statusConfig).map(([key, { label }]) => (
+            {Object.entries(statusConfig).map(([key, label]) => (
               <option key={key} value={key}>
                 {label}
               </option>
@@ -177,19 +178,12 @@ export default function EventsPage() {
 
       {/* Events List */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredEvents.map((event) => {
-          const statusInfo = statusConfig[event.status as keyof typeof statusConfig] || statusConfig.draft;
-          const StatusIcon = statusInfo.icon;
-
-          return (
+        {filteredEvents.map((event) => (
             <Card key={event.id} className="bg-white overflow-hidden">
               <div className="p-5">
                 <div className="flex items-start justify-between mb-3">
                   <h3 className="font-semibold text-lg line-clamp-2">{event.title}</h3>
-                  <Badge className={statusInfo.color}>
-                    <StatusIcon className="w-3 h-3 mr-1" />
-                    {statusInfo.label}
-                  </Badge>
+                  <EventStatusBadge status={event.status} />
                 </div>
 
                 <div className="space-y-2 mb-4">
@@ -230,22 +224,21 @@ export default function EventsPage() {
                 {/* Actions */}
                 <div className="flex gap-2">
                   <Button asChild variant="outline" size="sm" className="flex-1">
-                    <Link href={`/admin/events/${event.id}/invites`}>
+                    <Link href={`/admin/events/${event.id}`}>
                       <QrCode className="w-4 h-4 mr-1" />
-                      Invites
+                      View Details
                       <ChevronRight className="w-4 h-4 ml-1" />
                     </Link>
                   </Button>
                   <Button asChild variant="ghost" size="sm">
-                    <Link href={`/cms/collections/managed-events/${event.id}`}>
-                      Edit
+                    <Link href={`/admin/events/${event.id}/invites`}>
+                      Invites
                     </Link>
                   </Button>
                 </div>
               </div>
             </Card>
-          );
-        })}
+          ))}
       </div>
 
       {filteredEvents.length === 0 && (
@@ -261,6 +254,12 @@ export default function EventsPage() {
           </p>
         </Card>
       )}
+
+      <EventDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onSuccess={fetchData}
+      />
     </div>
   );
 }
