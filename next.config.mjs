@@ -44,7 +44,7 @@ const nextConfig = {
       // Production custom domain for media
       {
         protocol: "https",
-        hostname: process.env.NEXT_PUBLIC_MEDIA_URL || "pmcc4thwatch.media",
+        hostname: process.env.NEXT_PUBLIC_MEDIA_URL || "images.pmcc4thwatch.us",
         pathname: "/**",
       },
     ],
