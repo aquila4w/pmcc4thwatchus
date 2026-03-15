@@ -6,7 +6,7 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, ChevronDown, Facebook, Youtube, ArrowUpRight } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+// import { LanguageSwitcher } from "@/components/LanguageSwitcher"; // Hidden - not working yet
 import { UserMenu } from "@/components/UserMenu";
 import { useTheme } from "next-themes";
 
@@ -236,7 +236,7 @@ export function Header() {
                 </a>
               </div>
               <div className={`w-px h-6 ${isScrolled ? "bg-slate-200 dark:bg-white/10" : "bg-slate-300 dark:bg-white/20"}`} />
-              <LanguageSwitcher variant="toggle" className={isScrolled ? "text-slate-600 dark:text-slate-300" : "text-slate-600 dark:text-white/90"} />
+              {/* <LanguageSwitcher variant="toggle" className={isScrolled ? "text-slate-600 dark:text-slate-300" : "text-slate-600 dark:text-white/90"} /> */}
               <ThemeToggle />
               <UserMenu />
               <Link
@@ -247,7 +247,7 @@ export function Header() {
               </Link>
             </div>
 
-            {/* Mobile Right side - Give button, ThemeToggle, LanguageSwitcher, Menu Button */}
+            {/* Mobile Right side - Give button, ThemeToggle, Menu Button */}
             <div className="lg:hidden flex items-center gap-2">
               <Link
                 href="/give"
@@ -255,7 +255,7 @@ export function Header() {
               >
                 Give
               </Link>
-              <LanguageSwitcher variant="toggle" className="text-slate-600 dark:text-white/90" />
+              {/* <LanguageSwitcher variant="toggle" className="text-slate-600 dark:text-white/90" /> */}
               <ThemeToggle />
               <button
                 type="button"
