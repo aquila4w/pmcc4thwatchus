@@ -181,7 +181,11 @@ function ImageCarousel({ images, title }: { images: GalleryImage[]; title: strin
                 fill
                 sizes="(max-width: 768px) 100vw, 66vw"
                 className="object-cover"
-                unoptimized={images[currentIndex].url.startsWith("/payload-api/")}
+                unoptimized={
+                  images[currentIndex].url.startsWith("/payload-api/") ||
+                  images[currentIndex].url.startsWith("http://") ||
+                  images[currentIndex].url.startsWith("https://")
+                }
               />
               {images[currentIndex].caption && (
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
@@ -232,7 +236,11 @@ function ImageCarousel({ images, title }: { images: GalleryImage[]; title: strin
                   fill
                   sizes="80px"
                   className="object-cover"
-                  unoptimized={image.url.startsWith("/payload-api/")}
+                  unoptimized={
+                    image.url.startsWith("/payload-api/") ||
+                    image.url.startsWith("http://") ||
+                    image.url.startsWith("https://")
+                  }
                 />
               </button>
             ))}
@@ -290,7 +298,11 @@ function ImageCarousel({ images, title }: { images: GalleryImage[]; title: strin
                 width={1200}
                 height={800}
                 className="object-contain w-full h-auto max-h-[85vh]"
-                unoptimized={images[lightboxIndex].url.startsWith("/payload-api/")}
+                unoptimized={
+                  images[lightboxIndex].url.startsWith("/payload-api/") ||
+                  images[lightboxIndex].url.startsWith("http://") ||
+                  images[lightboxIndex].url.startsWith("https://")
+                }
               />
               {images[lightboxIndex].caption && (
                 <p className="text-white text-center mt-4 text-lg">{images[lightboxIndex].caption}</p>
