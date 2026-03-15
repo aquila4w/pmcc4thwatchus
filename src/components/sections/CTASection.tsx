@@ -43,7 +43,7 @@ function MagneticButton({ children, className }: { children: React.ReactNode; cl
 }
 
 const stats = [
-  { value: "50+", label: "Local Churches", suffix: "" },
+  { value: "50", label: "Local Churches", suffix: "" },
   { value: "8", label: "Sub-Districts", suffix: "" },
   { value: "1000+", label: "Active Members", suffix: "" },
   { value: "25", label: "Years of Service", suffix: "+" },

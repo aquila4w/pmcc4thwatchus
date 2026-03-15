@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     url: siteUrl,
     siteName: "PMCC 4th Watch US District",
     title: "PMCC 4th Watch | Holiness & Service Unto The Lord",
-    description: "Pentecostal Missionary Church of Christ (4th Watch) - An apostolic church committed to holiness, evangelism, and service unto the Lord. Join our community of 50+ local churches across the US.",
+    description: "Pentecostal Missionary Church of Christ (4th Watch) - An apostolic church committed to holiness, evangelism, and service unto the Lord. Join our community of 50 local churches across the US.",
     images: [
       {
         url: "/images/og-image.jpg",

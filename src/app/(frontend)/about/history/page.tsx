@@ -57,7 +57,7 @@ const milestones = [
   { number: "50+", label: "Years of Ministry" },
   { number: "100+", label: "Countries Reached" },
   { number: "1M+", label: "Lives Transformed" },
-  { number: "50+", label: "US Churches" },
+  { number: "50", label: "US Churches" },
 ];
 
 export default function HistoryPage() {

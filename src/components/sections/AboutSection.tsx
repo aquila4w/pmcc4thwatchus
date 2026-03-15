@@ -199,7 +199,7 @@ export function AboutSection() {
         >
           <div className="bg-stone-900/80 dark:bg-[#0a0f1a]/80 backdrop-blur-md border-l border-secondary/30 p-8 pr-16">
             <div className="text-right">
-              <span className="font-serif text-7xl font-bold text-secondary drop-shadow-lg">50+</span>
+              <span className="font-serif text-7xl font-bold text-secondary drop-shadow-lg">50</span>
               <p className="text-white/70 text-sm uppercase tracking-[0.2em] mt-2">Local Churches</p>
             </div>
           </div>
