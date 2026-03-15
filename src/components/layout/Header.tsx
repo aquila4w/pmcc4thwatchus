@@ -207,7 +207,7 @@ export function Header() {
               ))}
             </nav>
 
-            {/* Right side */}
+            {/* Desktop Right side */}
             <div className="hidden lg:flex items-center gap-4">
               <div className="flex items-center gap-1">
                 <a
@@ -247,18 +247,28 @@ export function Header() {
               </Link>
             </div>
 
-            {/* Mobile Menu Button */}
-            <button
-              type="button"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className={`lg:hidden w-10 h-10 flex items-center justify-center transition-colors ${
-                isScrolled
-                  ? "text-slate-900 dark:text-white"
-                  : "text-slate-800 dark:text-white"
-              }`}
-            >
-              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
+            {/* Mobile Right side - Give button, ThemeToggle, LanguageSwitcher, Menu Button */}
+            <div className="lg:hidden flex items-center gap-2">
+              <Link
+                href="/give"
+                className="px-3 py-2 bg-secondary text-[#0a0f1a] font-semibold text-sm rounded-full hover:bg-amber-300 transition-colors"
+              >
+                Give
+              </Link>
+              <LanguageSwitcher variant="toggle" className="text-slate-600 dark:text-white/90" />
+              <ThemeToggle />
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className={`w-10 h-10 flex items-center justify-center transition-colors ${
+                  isScrolled
+                    ? "text-slate-900 dark:text-white"
+                    : "text-slate-800 dark:text-white"
+                }`}
+              >
+                {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
+            </div>
           </div>
         </div>
       </motion.header>
@@ -312,16 +322,6 @@ export function Header() {
               </nav>
 
               <div className="mt-12 pt-8 border-t border-slate-200 dark:border-white/10">
-                <div className="flex items-center gap-4 mb-4">
-                  <Link
-                    href="/give"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="inline-block px-8 py-4 bg-secondary text-[#0a0f1a] font-semibold rounded-full"
-                  >
-                    Give
-                  </Link>
-                  <ThemeToggle />
-                </div>
                 <div className="px-4 py-3 bg-slate-100 dark:bg-white/5 rounded-xl">
                   <UserMenu />
                 </div>
