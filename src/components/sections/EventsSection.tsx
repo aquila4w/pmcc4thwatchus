@@ -6,6 +6,40 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Calendar, MapPin, ArrowUpRight } from "lucide-react";
 
+// Event image component with error handling
+function EventImage({ src, alt }: { src: string; alt: string }) {
+  const [hasError, setHasError] = useState(false);
+
+  // Reset error state when src changes
+  useEffect(() => {
+    setHasError(false);
+  }, [src]);
+
+  if (hasError) {
+    // Fallback gradient when image fails to load
+    return (
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-primary/20 to-secondary/30" />
+    );
+  }
+
+  // Disable Next.js Image optimization for all external URLs to avoid issues
+  const isExternal = src.startsWith("http://") || src.startsWith("https://");
+  const isLocalPayload = src.startsWith("/payload-api/");
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      sizes="(max-width: 768px) 100vw, 50vw"
+      className="object-cover transition-transform duration-500 group-hover:scale-105"
+      loading="lazy"
+      unoptimized={isExternal || isLocalPayload}
+      onError={() => setHasError(true)}
+    />
+  );
+}
+
 interface EventData {
   id: string;
   title: string;
@@ -202,14 +236,9 @@ export function EventsSection() {
                         {/* Image Container */}
                         <div className="relative aspect-[16/10] overflow-hidden">
                           {event.heroImage ? (
-                            <Image
+                            <EventImage
                               src={event.heroImage.url}
                               alt={event.heroImage.alt || event.title}
-                              fill
-                              sizes="(max-width: 768px) 100vw, 50vw"
-                              className="object-cover transition-transform duration-500 group-hover:scale-105"
-                              loading="lazy"
-                              unoptimized={event.heroImage.url.startsWith("/payload-api/")}
                             />
                           ) : (
                             <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-secondary/20" />
