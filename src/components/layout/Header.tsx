@@ -95,7 +95,7 @@ export function Header() {
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
           isScrolled
             ? "bg-white/95 dark:bg-[#0a0f1a]/95 backdrop-blur-xl py-2 shadow-lg dark:shadow-black/20"
-            : "bg-transparent py-4"
+            : "bg-white/80 dark:bg-[#0a0f1a]/80 backdrop-blur-md py-4 shadow-md dark:shadow-black/10"
         }`}
       >
         <div className="container mx-auto px-4">
@@ -160,7 +160,7 @@ export function Header() {
                       className={`px-4 py-2 text-sm font-medium transition-colors ${
                         isScrolled
                           ? "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
-                          : "text-slate-700 hover:text-slate-900 dark:text-white/80 dark:hover:text-white"
+                          : "text-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-secondary"
                       }`}
                     >
                       {item.label}
@@ -171,7 +171,7 @@ export function Header() {
                       className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-1 ${
                         isScrolled
                           ? "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
-                          : "text-slate-700 hover:text-slate-900 dark:text-white/80 dark:hover:text-white"
+                          : "text-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-secondary"
                       }`}
                     >
                       {item.label}
@@ -217,7 +217,7 @@ export function Header() {
                   className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
                     isScrolled
                       ? "text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/10"
-                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 dark:text-white/50 dark:hover:text-white dark:hover:bg-white/10"
+                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 dark:text-white/70 dark:hover:text-white dark:hover:bg-white/10"
                   }`}
                 >
                   <Facebook className="w-4 h-4" />
@@ -229,14 +229,14 @@ export function Header() {
                   className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
                     isScrolled
                       ? "text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/10"
-                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 dark:text-white/50 dark:hover:text-white dark:hover:bg-white/10"
+                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 dark:text-white/70 dark:hover:text-white dark:hover:bg-white/10"
                   }`}
                 >
                   <Youtube className="w-4 h-4" />
                 </a>
               </div>
-              <div className={`w-px h-6 ${isScrolled ? "bg-slate-200 dark:bg-white/10" : "bg-slate-300 dark:bg-white/10"}`} />
-              <LanguageSwitcher variant="toggle" className={isScrolled ? "text-slate-600 dark:text-slate-300" : "text-slate-600 dark:text-white/70"} />
+              <div className={`w-px h-6 ${isScrolled ? "bg-slate-200 dark:bg-white/10" : "bg-slate-300 dark:bg-white/20"}`} />
+              <LanguageSwitcher variant="toggle" className={isScrolled ? "text-slate-600 dark:text-slate-300" : "text-slate-600 dark:text-white/90"} />
               <ThemeToggle />
               <UserMenu />
               <Link
@@ -251,7 +251,7 @@ export function Header() {
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className={`lg:hidden w-10 h-10 flex items-center justify-center ${
+              className={`lg:hidden w-10 h-10 flex items-center justify-center transition-colors ${
                 isScrolled
                   ? "text-slate-900 dark:text-white"
                   : "text-slate-800 dark:text-white"
