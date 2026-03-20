@@ -188,7 +188,7 @@ export default function GivePage() {
               >
                 <div className="flex items-center gap-3 text-white/70">
                   <MapPin className="w-5 h-5 text-amber-400" />
-                  <span>Manila, Philippines — January 2026</span>
+                  <span>New York — August 2026</span>
                 </div>
                 <div className="flex items-center gap-3 text-white/70">
                   <Calendar className="w-5 h-5 text-amber-400" />
