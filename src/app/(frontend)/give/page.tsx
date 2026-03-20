@@ -371,14 +371,14 @@ export default function GivePage() {
                       <Play className="w-12 h-12 text-white/80" />
                     </div>
                     <video
-                      src={item.url}
+                      src={item.url as string}
                       className="w-full h-full object-cover opacity-80"
                       muted
                     />
                   </div>
                 ) : (
                   <img
-                    src={item.url}
+                    src={item.url as string}
                     alt={`Gallery ${index + 1}`}
                     className="w-full h-full object-cover"
                   />
@@ -503,14 +503,14 @@ export default function GivePage() {
                 </div>
               ) : currentItem.type === "video" ? (
                 <video
-                  src={currentItem.url}
+                  src={currentItem.url as string}
                   controls
                   autoPlay
                   className="max-h-[80vh] rounded-lg"
                 />
               ) : (
                 <img
-                  src={currentItem.url}
+                  src={currentItem.url as string}
                   alt="Gallery"
                   className="max-h-[80vh] rounded-lg"
                 />
