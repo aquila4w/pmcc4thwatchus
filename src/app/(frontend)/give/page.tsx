@@ -31,7 +31,7 @@ const milestones = Array.from({ length: 33 }, (_, i) => {
   const isVideo = [1, 6, 10, 14, 20, 26, 29, 30, 33].includes(num);
   return {
     id: num,
-    type: isVideo ? "video" : "image",
+    type: isVideo ? ("video" as const) : ("image" as const),
     url: `https://images.pmcc4thwatch.us/HFGC/2026/01%20-%20Manila/milestone/${num}.${isVideo ? "mp4" : "jpg"}`,
   };
 });
@@ -39,6 +39,7 @@ const milestones = Array.from({ length: 33 }, (_, i) => {
 // Favor/blessings gallery - 29 images
 const favorImages = Array.from({ length: 29 }, (_, i) => ({
   id: i + 1,
+  type: "image" as const,
   url: `https://images.pmcc4thwatch.us/HFGC/2026/01%20-%20Manila/favor/${i + 1}.png`,
 }));
 
@@ -49,7 +50,7 @@ const testimonies = Array.from({ length: 33 }, (_, i) => {
   const hasMultipleImages = num === 27;
   return {
     id: num,
-    type: isVideo ? "video" : "image",
+    type: isVideo ? ("video" as const) : ("image" as const),
     url: hasMultipleImages
       ? [
           `https://images.pmcc4thwatch.us/HFGC/2026/01%20-%20Manila/testimonies/27/27.1.jpg`,
