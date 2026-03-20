@@ -261,7 +261,7 @@ export default function GivePage() {
                     style={{ position: "absolute", border: 0, top: 0, left: 0, bottom: 0, right: 0, width: "100%", height: "100%" }}
                     src="https://www.zeffy.com/embed/donation-form/home-free-fund-drive-new-york--2026"
                     allowPaymentRequest
-                    allowTransparency="true"
+                    allowTransparency
                   />
                 </div>
               </div>
