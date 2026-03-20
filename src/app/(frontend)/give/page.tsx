@@ -62,10 +62,9 @@ const testimonies = Array.from({ length: 33 }, (_, i) => {
 
 // Impact stats
 const impactStats = [
-  { icon: Users, value: "10,000+", label: "Lives Touched" },
-  { icon: Church, value: "33", label: "Milestone Victories" },
-  { icon: Home, value: "100+", label: "Families Blessed" },
-  { icon: Gift, value: "29", label: "Divine Favors" },
+  { icon: Globe2, value: "Millions", label: "Lives Touched" },
+  { icon: Heart, value: "16,000+", label: "Last Crusade's Baptisms" },
+  { icon: Calendar, value: "6", label: "Years of Crusade" },
 ];
 
 export default function GivePage() {
