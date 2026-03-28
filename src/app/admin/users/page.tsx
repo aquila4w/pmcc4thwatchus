@@ -70,6 +70,28 @@ export default function UsersPage() {
   const [filterRole, setFilterRole] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [updatingUser, setUpdatingUser] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState("");
+
+  // Role options available to the current user in the edit dialog
+  const assignableRoles = (() => {
+    switch (currentUserRole) {
+      case "superAdmin":
+        return ROLES;
+      case "districtCoordinator":
+        return ROLES.filter((r) => r.value !== "superAdmin");
+      case "subDistrictCoordinator":
+        return ROLES.filter((r) => ["headMinister", "secretary", "member"].includes(r.value));
+      case "headMinister":
+      case "secretary":
+        return ROLES.filter((r) => r.value === "member");
+      case "eventAdmin":
+        return ROLES.filter((r) => ["member", "guest"].includes(r.value));
+      default:
+        return ROLES.filter((r) => r.value === "member");
+    }
+  })();
+
+  const canDelete = ["superAdmin", "districtCoordinator"].includes(currentUserRole);
 
   // Edit dialog
   const [editDialog, setEditDialog] = useState<{
@@ -99,6 +121,9 @@ export default function UsersPage() {
       if (res.ok) {
         const data = await res.json();
         setUsers(data.docs || []);
+        if (data.currentUserRole) {
+          setCurrentUserRole(data.currentUserRole);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch users:", error);
@@ -432,6 +457,7 @@ export default function UsersPage() {
                         >
                           <ChevronDown className="w-4 h-4" />
                         </Button>
+                        {canDelete && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -441,6 +467,7 @@ export default function UsersPage() {
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -471,10 +498,12 @@ export default function UsersPage() {
                   onChange={(e) => setEditDialog((prev) => ({ ...prev, role: e.target.value }))}
                   className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
                 >
-                  {ROLES.map((r) => (
+                  {assignableRoles.map((r) => (
                     <option key={r.value} value={r.value}>{r.label}</option>
                   ))}
-                  <option value="guest">Guest</option>
+                  {!assignableRoles.find((r) => r.value === "guest") && (
+                    <option value="guest">Guest</option>
+                  )}
                 </select>
               </div>
 

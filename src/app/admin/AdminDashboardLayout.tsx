@@ -112,7 +112,7 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
       label: "Users",
       icon: UserCog,
       href: "/admin/users",
-      roles: ["superAdmin", "districtCoordinator"],
+      roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary", "eventAdmin"],
     },
     {
       label: "Guests",
