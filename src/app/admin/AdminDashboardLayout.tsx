@@ -8,6 +8,7 @@ import {
   Calendar,
   Users,
   UserCog,
+  Building2,
   QrCode,
   Mail,
   Settings,
@@ -95,6 +96,12 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
       icon: LayoutDashboard,
       href: "/admin",
       roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary", "eventAdmin"],
+    },
+    {
+      label: "Organization",
+      icon: Building2,
+      href: "/admin/organization",
+      roles: ["superAdmin", "districtCoordinator"],
     },
     {
       label: "Events",
