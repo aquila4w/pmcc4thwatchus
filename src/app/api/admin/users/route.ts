@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import type { Where } from "payload";
+import { headers } from "next/headers";
 import config from "@payload-config";
 
-// Role hierarchy: higher index = more restricted view
 const ROLE_HIERARCHY = [
   "superAdmin",
   "districtCoordinator",
@@ -18,28 +18,45 @@ const ROLE_HIERARCHY = [
 function getHiddenRoles(myRole: string): string[] {
   if (myRole === "superAdmin") return [];
   if (myRole === "districtCoordinator") return ["superAdmin"];
-  // eventAdmin, subDistrictCoordinator, headMinister, secretary
   return ["superAdmin", "districtCoordinator"];
+}
+
+function getAssignableRoles(myRole: string): string[] {
+  switch (myRole) {
+    case "superAdmin":
+      return ROLE_HIERARCHY;
+    case "districtCoordinator":
+      return ROLE_HIERARCHY.filter((r) => r !== "superAdmin");
+    case "subDistrictCoordinator":
+      return ["headMinister", "secretary", "member", "guest"];
+    case "headMinister":
+    case "secretary":
+      return ["member", "guest"];
+    case "eventAdmin":
+      return ["member", "guest"];
+    default:
+      return [];
+  }
+}
+
+async function getCurrentUser() {
+  const payload = await getPayload({ config });
+  const headersList = await headers();
+  const { user } = await payload.auth({ headers: headersList });
+  return user;
 }
 
 export async function GET(request: NextRequest) {
   try {
     const payload = await getPayload({ config });
-
-    // Get current user
-    const meRes = await fetch(new URL("/api/auth/me", request.url));
-    if (!meRes.ok) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const meData = await meRes.json();
-    const currentUser = meData.user;
+    const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const myRole = currentUser.role;
-    const myChurch = currentUser.church?.id || currentUser.church;
-    const mySubDistrict = currentUser.subDistrict?.id || currentUser.subDistrict;
+    const myRole = currentUser.role as string;
+    const myChurch = (currentUser.church as { id?: string } | undefined)?.id || currentUser.church;
+    const mySubDistrict = (currentUser.subDistrict as { id?: string } | undefined)?.id || currentUser.subDistrict;
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
@@ -51,12 +68,10 @@ export async function GET(request: NextRequest) {
 
     const conditions: Where[] = [];
 
-    // Role-based filtering
+    // Role-based filtering: hide higher roles
     const hiddenRoles = getHiddenRoles(myRole);
-    if (hiddenRoles.length > 0) {
-      hiddenRoles.forEach((hr) => {
-        conditions.push({ role: { not_equals: hr } });
-      });
+    for (const hr of hiddenRoles) {
+      conditions.push({ role: { not_equals: hr } });
     }
 
     // Church-level roles: only see their own church
@@ -73,7 +88,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Search
     if (search) {
       conditions.push({
         or: [
@@ -119,13 +133,13 @@ export async function GET(request: NextRequest) {
       status: u.status,
       church: u.church
         ? typeof u.church === "object"
-          ? { id: u.church.id, name: u.church.name }
-          : { id: u.church, name: "" }
+          ? { id: (u.church as { id: string }).id, name: (u.church as { name: string }).name }
+          : { id: u.church as string, name: "" }
         : null,
       subDistrict: u.subDistrict
         ? typeof u.subDistrict === "object"
-          ? { id: u.subDistrict.id, name: u.subDistrict.name || "" }
-          : { id: u.subDistrict, name: "" }
+          ? { id: (u.subDistrict as { id: string }).id, name: (u.subDistrict as { name: string }).name || "" }
+          : { id: u.subDistrict as string, name: "" }
         : null,
       authProvider: u.authProvider || null,
       createdAt: u.createdAt,
@@ -150,42 +164,34 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const payload = await getPayload({ config });
-
-    // Get current user for authorization
-    const meRes = await fetch(new URL("/api/auth/me", request.url));
-    if (!meRes.ok) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const meData = await meRes.json();
-    const currentUser = meData.user;
+    const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const myRole = currentUser.role;
-    const myChurch = currentUser.church?.id || currentUser.church;
-    const mySubDistrict = currentUser.subDistrict?.id || currentUser.subDistrict;
+    const myRole = currentUser.role as string;
+    const myChurch = (currentUser.church as { id?: string } | undefined)?.id || currentUser.church;
+    const mySubDistrict = (currentUser.subDistrict as { id?: string } | undefined)?.id || currentUser.subDistrict;
 
     const { userId, role, status, church } = await request.json();
 
     if (!userId) {
-      return NextResponse.json(
-        { error: "User ID is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
     }
 
     // Verify target user is within scope
     const targetUser = await payload.findByID({ collection: "users", id: userId });
     const hiddenRoles = getHiddenRoles(myRole);
 
-    if (hiddenRoles.includes(targetUser.role)) {
+    if (hiddenRoles.includes(targetUser.role as string)) {
       return NextResponse.json({ error: "Cannot edit this user" }, { status: 403 });
     }
 
     if (["headMinister", "secretary"].includes(myRole)) {
       const targetChurch =
-        typeof targetUser.church === "object" ? targetUser.church?.id : targetUser.church;
+        typeof targetUser.church === "object"
+          ? (targetUser.church as { id?: string })?.id
+          : targetUser.church;
       if (targetChurch !== myChurch) {
         return NextResponse.json({ error: "Cannot edit users outside your church" }, { status: 403 });
       }
@@ -193,7 +199,9 @@ export async function PATCH(request: NextRequest) {
 
     if (myRole === "subDistrictCoordinator") {
       const targetSD =
-        typeof targetUser.subDistrict === "object" ? targetUser.subDistrict?.id : targetUser.subDistrict;
+        typeof targetUser.subDistrict === "object"
+          ? (targetUser.subDistrict as { id?: string })?.id
+          : targetUser.subDistrict;
       if (targetSD !== mySubDistrict) {
         return NextResponse.json({ error: "Cannot edit users outside your sub-district" }, { status: 403 });
       }
@@ -221,7 +229,7 @@ export async function PATCH(request: NextRequest) {
         if (churchDoc?.subDistrict) {
           updateData.subDistrict =
             typeof churchDoc.subDistrict === "object"
-              ? churchDoc.subDistrict.id
+              ? (churchDoc.subDistrict as { id: string }).id
               : churchDoc.subDistrict;
         }
       } else {
@@ -247,82 +255,43 @@ export async function PATCH(request: NextRequest) {
     });
   } catch (error) {
     console.error("Failed to update user:", error);
-    return NextResponse.json(
-      { error: "Failed to update user" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
     const payload = await getPayload({ config });
-
-    // Get current user for authorization
-    const meRes = await fetch(new URL("/api/auth/me", request.url));
-    if (!meRes.ok) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const meData = await meRes.json();
-    const currentUser = meData.user;
+    const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const myRole = currentUser.role;
-    const myChurch = currentUser.church?.id || currentUser.church;
-    const mySubDistrict = currentUser.subDistrict?.id || currentUser.subDistrict;
-
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("id");
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: "User ID is required" },
-        { status: 400 }
-      );
-    }
+    const myRole = currentUser.role as string;
 
     // Only superAdmin and districtCoordinator can delete
     if (!["superAdmin", "districtCoordinator"].includes(myRole)) {
       return NextResponse.json({ error: "Not authorized to delete users" }, { status: 403 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("id");
+
+    if (!userId) {
+      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+    }
+
     const targetUser = await payload.findByID({ collection: "users", id: userId });
     const hiddenRoles = getHiddenRoles(myRole);
-    if (hiddenRoles.includes(targetUser.role)) {
+    if (hiddenRoles.includes(targetUser.role as string)) {
       return NextResponse.json({ error: "Cannot delete this user" }, { status: 403 });
     }
 
-    await payload.delete({
-      collection: "users",
-      id: userId,
-    });
+    await payload.delete({ collection: "users", id: userId });
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Failed to delete user:", error);
-    return NextResponse.json(
-      { error: "Failed to delete user" },
-      { status: 500 }
-    );
-  }
-}
-
-function getAssignableRoles(myRole: string): string[] {
-  switch (myRole) {
-    case "superAdmin":
-      return ROLE_HIERARCHY;
-    case "districtCoordinator":
-      return ROLE_HIERARCHY.filter((r) => r !== "superAdmin");
-    case "subDistrictCoordinator":
-      return ["headMinister", "secretary", "member", "guest"];
-    case "headMinister":
-    case "secretary":
-      return ["member", "guest"];
-    case "eventAdmin":
-      return ["member", "guest"];
-    default:
-      return [];
+    return NextResponse.json({ error: "Failed to delete user" }, { status: 500 });
   }
 }
