@@ -5,7 +5,7 @@ import config from "@payload-config";
 export async function POST(request: NextRequest) {
   try {
     const payload = await getPayload({ config });
-    const { name, email, password, phone } = await request.json();
+    const { name, email, password, phone, church } = await request.json();
 
     // Validate required fields
     if (!name || !email || !password) {
@@ -48,6 +48,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Resolve sub-district from church if provided
+    let subDistrict: string | undefined;
+    if (church) {
+      const churchDoc = await payload.findByID({
+        collection: "churches",
+        id: church,
+      });
+      if (churchDoc?.subDistrict) {
+        subDistrict = typeof churchDoc.subDistrict === "object"
+          ? churchDoc.subDistrict.id
+          : churchDoc.subDistrict;
+      }
+    }
+
     // Create the user
     const user = await payload.create({
       collection: "users",
@@ -59,6 +73,8 @@ export async function POST(request: NextRequest) {
         role: "member",
         status: "pending", // New registrations start as pending
         authProvider: "credentials",
+        church: church || undefined,
+        subDistrict,
       },
     });
 
