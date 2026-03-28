@@ -137,7 +137,7 @@ export default function EventInvitesPage({
 
   const filteredInvites = invites.filter((invite) => {
     const matchesSearch =
-      invite.memberName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      invite.memberName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       invite.memberPhone?.includes(searchTerm) ||
       invite.memberEmail?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesChurch =
