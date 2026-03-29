@@ -54,6 +54,9 @@ export async function GET(request: NextRequest) {
     // Get invite statistics
     const inviteStats = await getInviteStats(payload, String(user.id));
 
+    // Get event-specific invites for this member (future, registration-open events only)
+    const eventInvites = await getEventInvites(payload, String(user.id));
+
     return NextResponse.json({
       user: {
         id: user.id,
@@ -65,6 +68,7 @@ export async function GET(request: NextRequest) {
         church: churchName,
       },
       stats: inviteStats,
+      eventInvites,
     });
   } catch (error) {
     console.error("Auth check error:", error);
@@ -111,5 +115,55 @@ async function getInviteStats(payload: Awaited<ReturnType<typeof getPayload>>, u
       attended: 0,
       baptized: 0,
     };
+  }
+}
+
+async function getEventInvites(payload: Awaited<ReturnType<typeof getPayload>>, userId: string) {
+  try {
+    const invites = await payload.find({
+      collection: "event-invites",
+      where: {
+        and: [
+          { invitedBy: { equals: userId } },
+          { status: { equals: "active" } },
+        ],
+      },
+      depth: 1,
+      limit: 100,
+    });
+
+    const result = [];
+    for (const invite of invites.docs) {
+      const event = invite.event as unknown as { id: string; title: string; slug: string; startDate: string; status: string; location: string } | string;
+
+      // Only include future registration-open events
+      if (typeof event === "object" && event) {
+        const startDate = new Date(event.startDate);
+        if (startDate > new Date() && event.status === "registration-open") {
+          // Get registration count for this invite
+          const registrations = await payload.find({
+            collection: "event-registrations",
+            where: {
+              eventInvite: { equals: invite.id },
+            },
+            limit: 0,
+          });
+
+          result.push({
+            eventId: event.id,
+            eventTitle: event.title,
+            eventSlug: event.slug,
+            eventDate: event.startDate,
+            eventLocation: event.location,
+            inviteCode: invite.inviteCode,
+            registrationCount: registrations.totalDocs,
+          });
+        }
+      }
+    }
+
+    return result;
+  } catch {
+    return [];
   }
 }

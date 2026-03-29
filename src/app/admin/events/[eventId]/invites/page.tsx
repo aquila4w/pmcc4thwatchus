@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   Users,
   Copy,
-  RefreshCw,
   Check,
   Loader2,
   Search,
@@ -56,7 +55,6 @@ export default function EventInvitesPage({
   const [churches, setChurches] = useState<Church[]>([]);
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedChurch, setSelectedChurch] = useState<string>("");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -98,34 +96,6 @@ export default function EventInvitesPage({
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  const handleGenerateInvites = async (churchId?: string) => {
-    setGenerating(true);
-    try {
-      const response = await fetch(`/api/events/${resolvedParams.eventId}/invites`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          regenerate: false,
-          churchId: churchId,
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        await fetchData();
-        alert(data.message);
-      } else {
-        const error = await response.json();
-        alert(error.error || "Failed to generate invites");
-      }
-    } catch (error) {
-      console.error("Failed to generate invites:", error);
-      alert("Failed to generate invites");
-    } finally {
-      setGenerating(false);
-    }
-  };
 
   const handleCopyInviteLink = (invite: EventInvite) => {
     const baseUrl = window.location.origin;
@@ -177,17 +147,6 @@ export default function EventInvitesPage({
             <p className="text-slate-500">{event?.title || "Loading..."}</p>
           </div>
         </div>
-        <Button
-          onClick={() => handleGenerateInvites()}
-          disabled={generating}
-        >
-          {generating ? (
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          ) : (
-            <RefreshCw className="w-4 h-4 mr-2" />
-          )}
-          Generate All Invites
-        </Button>
       </div>
 
       {/* Stats */}
@@ -330,25 +289,10 @@ export default function EventInvitesPage({
             <div className="space-y-6">
               {Object.entries(groupedInvites).map(([churchName, churchInvites]) => (
                 <Card key={churchName} className="bg-slate-50 p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <Church className="w-5 h-5 text-slate-500" />
-                      <h3 className="font-semibold">{churchName}</h3>
-                      <Badge variant="secondary">{churchInvites.length} members</Badge>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const church = churches.find((c) => c.name === churchName);
-                        if (church) {
-                          handleGenerateInvites(church.id);
-                        }
-                      }}
-                    >
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      Regenerate
-                    </Button>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Church className="w-5 h-5 text-slate-500" />
+                    <h3 className="font-semibold">{churchName}</h3>
+                    <Badge variant="secondary">{churchInvites.length} members</Badge>
                   </div>
                   <div className="space-y-2">
                     {churchInvites.map((invite) => (

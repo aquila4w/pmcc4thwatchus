@@ -322,7 +322,7 @@ export const Users: CollectionConfig = {
       },
     ],
     afterChange: [
-      async ({ doc, req, operation }) => {
+      async ({ doc, req, operation, previousDoc }) => {
         // Auto-populate subDistrict based on church
         if (doc.church && operation === "update") {
           try {
@@ -343,6 +343,65 @@ export const Users: CollectionConfig = {
             }
           } catch (error) {
             console.error("Failed to auto-populate subDistrict:", error);
+          }
+        }
+
+        // When user is approved, auto-generate invites for all future registration-open events
+        const wasJustApproved = doc.status === "approved" &&
+          (!previousDoc || previousDoc.status !== "approved");
+
+        if (wasJustApproved) {
+          try {
+            // Find all future events with registration open
+            const events = await req.payload.find({
+              collection: "managed-events",
+              where: {
+                and: [
+                  { status: { equals: "registration-open" } },
+                  { startDate: { greater_than: new Date().toISOString() } },
+                ],
+              },
+              limit: 100,
+              depth: 0,
+            });
+
+            // Get roles eligible for invites (same filter as ManagedEvents hook)
+            const eligibleRoles = ["member", "eventAdmin", "headMinister", "secretary", "subDistrictCoordinator", "districtCoordinator", "superAdmin"];
+
+            if (eligibleRoles.includes(doc.role)) {
+              let createdCount = 0;
+              for (const event of events.docs) {
+                // Check if invite already exists for this member+event combo
+                const existing = await req.payload.find({
+                  collection: "event-invites",
+                  where: {
+                    and: [
+                      { event: { equals: event.id } },
+                      { invitedBy: { equals: doc.id } },
+                    ],
+                  },
+                  limit: 1,
+                });
+
+                if (existing.totalDocs === 0) {
+                  await req.payload.create({
+                    collection: "event-invites",
+                    data: {
+                      event: event.id,
+                      invitedBy: doc.id,
+                      status: "active",
+                    },
+                  });
+                  createdCount++;
+                }
+              }
+
+              if (createdCount > 0) {
+                console.log(`Auto-generated ${createdCount} event invites for newly approved member: ${doc.name}`);
+              }
+            }
+          } catch (error) {
+            console.error("Failed to auto-generate invites for approved member:", error);
           }
         }
       },

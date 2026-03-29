@@ -17,10 +17,12 @@ import {
   LogOut,
   Settings,
   Sparkles,
-  UserCheck
+  UserCheck,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 interface MemberData {
   id: string;
@@ -30,6 +32,16 @@ interface MemberData {
   inviteCode: string;
   church: string | null;
   role: string;
+}
+
+interface EventInvite {
+  eventId: string;
+  eventTitle: string;
+  eventSlug: string;
+  eventDate: string;
+  eventLocation: string;
+  inviteCode: string;
+  registrationCount: number;
 }
 
 interface Stats {
@@ -43,8 +55,9 @@ export default function MemberDashboard() {
   const router = useRouter();
   const [member, setMember] = useState<MemberData | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [eventInvites, setEventInvites] = useState<EventInvite[]>([]);
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
@@ -61,6 +74,7 @@ export default function MemberDashboard() {
         const data = await response.json();
         setMember(data.user);
         setStats(data.stats);
+        setEventInvites(data.eventInvites || []);
       } catch (error) {
         console.error("Failed to fetch user:", error);
         router.push("/member/login");
@@ -71,40 +85,6 @@ export default function MemberDashboard() {
 
     fetchUser();
   }, [router]);
-
-  const inviteLink = member
-    ? `${typeof window !== "undefined" ? window.location.origin : ""}/invite/${member.inviteCode}`
-    : "";
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(inviteLink);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
-  };
-
-  const handleShare = async () => {
-    if (!member) return;
-
-    const shareData = {
-      title: "You're Invited to PMCC 4th Watch",
-      text: `${member.name} has invited you to join us at our upcoming events!`,
-      url: inviteLink,
-    };
-
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-      } catch {
-        // User cancelled
-      }
-    } else {
-      handleCopy();
-    }
-  };
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -183,60 +163,125 @@ export default function MemberDashboard() {
             </p>
           </div>
 
-          {/* Invite Link Card */}
-          <Card className="bg-gradient-to-br from-primary to-primary/80 text-white p-6 mb-8">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-semibold mb-1">Your Personal Invite Link</h2>
-                <p className="text-white/70 text-sm">
-                  Share this link with guests to invite them to our events
-                </p>
+          {/* Event Invite Links */}
+          {eventInvites.length > 0 ? (
+            <div className="mb-8">
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <QrCode className="w-5 h-5 text-primary" />
+                Your Event Invite Links
+              </h2>
+              <div className="space-y-4">
+                {eventInvites.map((invite) => {
+                  const link = `${typeof window !== "undefined" ? window.location.origin : ""}/register/${invite.eventSlug}?ref=${member.inviteCode}`;
+                  return (
+                    <Card key={invite.eventId} className="bg-gradient-to-br from-primary to-primary/80 text-white p-6">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h3 className="text-lg font-semibold">{invite.eventTitle}</h3>
+                          <div className="flex flex-wrap gap-3 mt-1 text-white/70 text-sm">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-4 h-4" />
+                              {new Date(invite.eventDate).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-4 h-4" />
+                              {invite.eventLocation}
+                            </span>
+                          </div>
+                        </div>
+                        <Badge className="bg-white/20 text-white border-0">
+                          {invite.registrationCount} registered
+                        </Badge>
+                      </div>
+
+                      <div className="bg-white/10 rounded-lg p-3 mb-3">
+                        <code className="text-white text-xs sm:text-sm break-all">{link}</code>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <Button
+                          variant="secondary"
+                          className="flex-1 bg-white text-primary hover:bg-white/90"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(link);
+                              setCopiedCode(invite.eventId);
+                              setTimeout(() => setCopiedCode(null), 2000);
+                            } catch (err) {
+                              console.error("Failed to copy:", err);
+                            }
+                          }}
+                        >
+                          {copiedCode === invite.eventId ? (
+                            <>
+                              <Check className="w-4 h-4 mr-2" />
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-4 h-4 mr-2" />
+                              Copy Link
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          className="flex-1 bg-white/20 text-white hover:bg-white/30 border-0"
+                          onClick={async () => {
+                            const shareData = {
+                              title: `You're Invited to ${invite.eventTitle}`,
+                              text: `${member.name} has invited you to ${invite.eventTitle}!`,
+                              url: link,
+                            };
+                            if (navigator.share) {
+                              try {
+                                await navigator.share(shareData);
+                              } catch {
+                                // User cancelled
+                              }
+                            } else {
+                              try {
+                                await navigator.clipboard.writeText(link);
+                                setCopiedCode(invite.eventId);
+                                setTimeout(() => setCopiedCode(null), 2000);
+                              } catch (err) {
+                                console.error("Failed to copy:", err);
+                              }
+                            }
+                          }}
+                        >
+                          <Share2 className="w-4 h-4 mr-2" />
+                          Share
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          className="flex-1 bg-white/20 text-white hover:bg-white/30 border-0"
+                          asChild
+                        >
+                          <Link href={`/register/${invite.eventSlug}?ref=${member.inviteCode}`} target="_blank">
+                            <ExternalLink className="w-4 h-4 mr-2" />
+                            Preview
+                          </Link>
+                        </Button>
+                      </div>
+                    </Card>
+                  );
+                })}
               </div>
-              <QrCode className="w-10 h-10 text-white/50" />
             </div>
-
-            <div className="bg-white/10 rounded-lg p-4 mb-4">
-              <code className="text-white text-sm break-all">{inviteLink}</code>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button
-                variant="secondary"
-                className="flex-1 bg-white text-primary hover:bg-white/90"
-                onClick={handleCopy}
-              >
-                {copied ? (
-                  <>
-                    <Check className="w-4 h-4 mr-2" />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4 mr-2" />
-                    Copy Link
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="secondary"
-                className="flex-1 bg-white/20 text-white hover:bg-white/30 border-0"
-                onClick={handleShare}
-              >
-                <Share2 className="w-4 h-4 mr-2" />
-                Share
-              </Button>
-              <Button
-                variant="secondary"
-                className="flex-1 bg-white/20 text-white hover:bg-white/30 border-0"
-                asChild
-              >
-                <Link href={`/invite/${member.inviteCode}`} target="_blank">
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Preview
-                </Link>
-              </Button>
-            </div>
-          </Card>
+          ) : (
+            <Card className="bg-slate-50 p-6 mb-8 text-center">
+              <Calendar className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+              <h3 className="font-semibold mb-1">No Active Events</h3>
+              <p className="text-muted-foreground text-sm">
+                There are no events open for registration right now. Check back later!
+              </p>
+            </Card>
+          )}
 
           {/* Stats Grid */}
           {stats && (

@@ -488,7 +488,7 @@ export const ManagedEvents: CollectionConfig = {
             // Check if status just changed to registration-open
             (!previousDoc || previousDoc.status !== "registration-open"));
 
-        if (shouldGenerateInvites && doc.status === "registration-open") {
+        if (shouldGenerateInvites && doc.status === "registration-open" && doc.startDate && new Date(doc.startDate) > new Date()) {
           try {
             // Find all approved members who can invite guests
             const members = await req.payload.find({
