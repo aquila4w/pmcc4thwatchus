@@ -2,30 +2,37 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
 import { headers } from "next/headers";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
     const payload = await getPayload({ config });
 
-    // Get token from cookie
+    // Try Payload token first (credentials login)
     const token = request.cookies.get("payload-token")?.value;
+    let user = null;
 
-    if (!token) {
-      return NextResponse.json(
-        { error: "Not authenticated" },
-        { status: 401 }
-      );
+    if (token) {
+      const headersList = await headers();
+      const authResult = await payload.auth({ headers: headersList });
+      user = authResult.user;
     }
 
-    // Verify token and get user
-    const headersList = await headers();
-
-    // Use Payload's built-in auth verification
-    const { user } = await payload.auth({ headers: headersList });
+    // If no Payload token, try NextAuth session (OAuth login)
+    if (!user) {
+      const session = await getServerSession(authOptions);
+      if (session?.user?.id) {
+        user = await payload.findByID({
+          collection: "users",
+          id: session.user.id,
+        });
+      }
+    }
 
     if (!user) {
       return NextResponse.json(
-        { error: "Invalid or expired session" },
+        { error: "Not authenticated" },
         { status: 401 }
       );
     }
