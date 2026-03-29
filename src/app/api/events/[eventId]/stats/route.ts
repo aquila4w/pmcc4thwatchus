@@ -59,26 +59,30 @@ export async function GET(
 
     const baptizedCount = baptized.totalDocs;
 
+    // Get waitlisted count
+    const waitlisted = await payload.find({
+      collection: "event-registrations",
+      where: {
+        and: [
+          { event: { equals: eventId } },
+          { status: { equals: "waitlisted" } },
+        ],
+      },
+      limit: 0,
+    });
+
+    const waitlistedCount = waitlisted.totalDocs;
+
     return NextResponse.json({
-      event: {
-        id: event.id,
-        title: event.title,
-        startDate: event.startDate,
-        endDate: event.endDate,
-        location: event.location,
-        hasBaptism: event.hasBaptism,
-        maxAttendees: event.maxAttendees,
-      },
-      stats: {
-        totalRegistrations,
-        attendedCount,
-        baptizedCount,
-        notAttended: totalRegistrations - attendedCount,
-        attendedNotBaptized: attendedCount - baptizedCount,
-        spotsRemaining: event.maxAttendees
-          ? Math.max(0, event.maxAttendees - totalRegistrations)
-          : null,
-      },
+      totalRegistrations,
+      attendedCount,
+      baptizedCount,
+      waitlistedCount,
+      notAttended: totalRegistrations - attendedCount,
+      attendedNotBaptized: attendedCount - baptizedCount,
+      spotsRemaining: event.maxAttendees
+        ? Math.max(0, event.maxAttendees - totalRegistrations)
+        : null,
     });
   } catch (error) {
     console.error("Event stats error:", error);

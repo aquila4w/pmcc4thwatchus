@@ -132,6 +132,7 @@ export function EventDialog({ open, onOpenChange, onSuccess }: EventDialogProps)
         body: JSON.stringify({
           ...formData,
           maxAttendees: formData.maxAttendees ? parseInt(formData.maxAttendees, 10) : null,
+          heroImage: formData.heroImage || undefined,
         }),
       });
 
@@ -145,6 +146,7 @@ export function EventDialog({ open, onOpenChange, onSuccess }: EventDialogProps)
       // Reset form
       setFormData(initialFormData);
       setActiveTab("basic");
+      setHeroImagePreview(null);
 
       if (goToDetail) {
         router.push(`/admin/events/${event.id}`);

@@ -26,6 +26,8 @@ interface SendRegistrationEmailParams {
   invitedByPhone?: string;
   invitedByEmail?: string;
   invitedByChurch?: string;
+  customHtml?: string;
+  subject?: string;
 }
 
 export async function sendRegistrationEmail({
@@ -41,6 +43,8 @@ export async function sendRegistrationEmail({
   invitedByPhone,
   invitedByEmail,
   invitedByChurch,
+  customHtml,
+  subject: customSubject,
 }: SendRegistrationEmailParams): Promise<{ success: boolean; error?: string }> {
   const client = getResendClient();
   if (!client) {
@@ -52,8 +56,8 @@ export async function sendRegistrationEmail({
     const { data, error } = await client.emails.send({
       from: process.env.EMAIL_FROM || "PMCC 4th Watch <events@pmcc4thwatch.us>",
       to: [to],
-      subject: `Your Registration for ${eventTitle}`,
-      html: generateEmailHtml({
+      subject: customSubject || `Your Registration for ${eventTitle}`,
+      html: customHtml || generateEmailHtml({
         guestName,
         eventTitle,
         eventDate,

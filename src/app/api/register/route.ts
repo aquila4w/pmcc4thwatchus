@@ -258,6 +258,21 @@ export async function POST(request: NextRequest) {
       });
       if (existing.totalDocs === 0) break;
       registrationCode = generateRegistrationCode();
+      if (attempt === 4) {
+        // Final attempt — verify the last generated code
+        const finalCheck = await payload.find({
+          collection: "event-registrations",
+          where: { inviteCode: { equals: registrationCode } },
+          limit: 1,
+          depth: 0,
+        });
+        if (finalCheck.totalDocs > 0) {
+          return NextResponse.json(
+            { error: "Failed to generate unique registration code. Please try again." },
+            { status: 500 },
+          );
+        }
+      }
     }
 
     // Generate QR code data — encode registration code for check-in lookup

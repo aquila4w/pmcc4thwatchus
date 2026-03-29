@@ -113,6 +113,8 @@ export async function POST(
             qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(recipient.inviteCode)}`,
             ticketUrl: ticketUrl,
             invitedByName: "PMCC 4th Watch",
+            customHtml: campaign.emailContent ? emailContent : undefined,
+            subject: campaign.subject ? subject : undefined,
           });
 
           sentCount++;
@@ -142,6 +144,7 @@ export async function POST(
             guestName: recipient.guestName,
             eventTitle: event.title || "Upcoming Event",
             ticketUrl: ticketUrl,
+            customMessage: campaign.smsContent ? smsContent : undefined,
           });
 
           sentCount++;

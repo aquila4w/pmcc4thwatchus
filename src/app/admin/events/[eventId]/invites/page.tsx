@@ -99,7 +99,9 @@ export default function EventInvitesPage({
 
   const handleCopyInviteLink = (invite: EventInvite) => {
     const baseUrl = window.location.origin;
-    const inviteLink = `${baseUrl}/event-invite/${invite.inviteCode}`;
+    const inviteLink = event?.slug
+      ? `${baseUrl}/register/${event.slug}?invite=${invite.inviteCode}`
+      : `${baseUrl}/register?invite=${invite.inviteCode}`;
     navigator.clipboard.writeText(inviteLink);
     setCopiedCode(invite.id);
     setTimeout(() => setCopiedCode(null), 2000);

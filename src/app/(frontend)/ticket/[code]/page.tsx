@@ -145,6 +145,7 @@ export default function TicketPage({ params }: { params: Promise<{ code: string 
   }
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return "";
     return new Date(dateString).toLocaleDateString("en-US", {
       weekday: "long",
       year: "numeric",
@@ -154,6 +155,7 @@ export default function TicketPage({ params }: { params: Promise<{ code: string 
   };
 
   const formatTime = (dateString: string) => {
+    if (!dateString) return "";
     return new Date(dateString).toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
@@ -185,7 +187,7 @@ export default function TicketPage({ params }: { params: Promise<{ code: string 
             <div>
               <p className="text-green-400 font-semibold">You've checked in!</p>
               <p className="text-green-400/70 text-sm">
-                Checked in on {formatDate(ticketData.registration.attendedAt!)} at {formatTime(ticketData.registration.attendedAt!)}
+                Checked in on {formatDate(ticketData.registration.attendedAt ?? "")} at {formatTime(ticketData.registration.attendedAt ?? "")}
               </p>
             </div>
           </div>
@@ -197,7 +199,7 @@ export default function TicketPage({ params }: { params: Promise<{ code: string 
             <div>
               <p className="text-purple-400 font-semibold">Congratulations on your baptism!</p>
               <p className="text-purple-400/70 text-sm">
-                Baptized on {formatDate(ticketData.registration.baptizedAt!)}
+                Baptized on {formatDate(ticketData.registration.baptizedAt ?? "")}
               </p>
             </div>
           </div>

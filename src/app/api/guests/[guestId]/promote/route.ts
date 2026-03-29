@@ -3,6 +3,9 @@ import { getPayload } from "payload";
 import config from "@payload-config";
 import { sendRegistrationEmail } from "@/lib/email";
 import type { Where } from "payload";
+import { headers } from "next/headers";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 // Generate a readable invite code (same as in Users collection)
 const generateInviteCode = (): string => {
@@ -26,36 +29,47 @@ export async function POST(
     const body = await request.json();
     const { churchId } = body;
 
-    // Get the requesting user (must be logged in)
-    const authHeader = request.headers.get("authorization");
-    const token = authHeader?.replace("Bearer ", "");
+    // Verify the requesting user is authenticated and authorized
+    const ADMIN_ROLES = [
+      "superAdmin",
+      "districtCoordinator",
+      "subDistrictCoordinator",
+      "headMinister",
+      "secretary",
+    ];
 
-    if (!token) {
+    let authUser = null;
+
+    // Try Payload token first (credentials login)
+    const token = request.cookies.get("payload-token")?.value;
+    if (token) {
+      const headersList = await headers();
+      const authResult = await payload.auth({ headers: headersList });
+      authUser = authResult.user;
+    }
+
+    // If no Payload token, try NextAuth session (OAuth login)
+    if (!authUser) {
+      const session = await getServerSession(authOptions);
+      if (session?.user?.id) {
+        authUser = await payload.findByID({
+          collection: "users",
+          id: session.user.id,
+        });
+      }
+    }
+
+    if (!authUser) {
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
       );
     }
 
-    // Verify the requesting user has permission
-    try {
-      // Use Payload to verify the token and get the user
-      // TODO: Implement proper user verification from token
-      const users = await payload.find({
-        collection: "users",
-        where: {
-          _status: { equals: "published" },
-        },
-        limit: 1,
-        depth: 0,
-      });
-
-      // For now, we'll get the user from a session cookie or similar
-      // This is a simplified version - in production you'd verify the JWT properly
-    } catch (e) {
+    if (!ADMIN_ROLES.includes(authUser.role)) {
       return NextResponse.json(
-        { error: "Invalid authentication" },
-        { status: 401 }
+        { error: "Insufficient permissions" },
+        { status: 403 }
       );
     }
 
@@ -138,7 +152,7 @@ export async function POST(
         subDistrict: fullChurch?.subDistrict,
         inviteCode: generateInviteCode(), // Generate member invite code
         promotedFromGuestAt: new Date().toISOString(),
-        // Note: promotedFromGuestBy would need to be set by the actual authenticated user
+        promotedFromGuestBy: String(authUser.id),
       },
       depth: 0,
     });

@@ -6,6 +6,7 @@ interface SendSMSParams {
   guestName: string;
   eventTitle: string;
   ticketUrl: string;
+  customMessage?: string;
 }
 
 export async function sendRegistrationSMS({
@@ -13,6 +14,7 @@ export async function sendRegistrationSMS({
   guestName,
   eventTitle,
   ticketUrl,
+  customMessage,
 }: SendSMSParams): Promise<{ success: boolean; error?: string }> {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -33,7 +35,7 @@ export async function sendRegistrationSMS({
     ? cleanPhone
     : `+1${cleanPhone}`;
 
-  const message = `Hi ${guestName}! You're registered for ${eventTitle}. View your ticket & QR code: ${ticketUrl}`;
+  const message = customMessage || `Hi ${guestName}! You're registered for ${eventTitle}. View your ticket & QR code: ${ticketUrl}`;
 
   try {
     const response = await fetch(
