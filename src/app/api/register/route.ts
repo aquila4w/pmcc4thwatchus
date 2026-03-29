@@ -311,14 +311,16 @@ export async function POST(request: NextRequest) {
       console.error("Failed to create guest user:", err);
     }
 
-    // Get inviter church
-    let inviterChurch: string | undefined;
+    // Get inviter church ID and name
+    let inviterChurchId: string | undefined;
+    let inviterChurchName: string | undefined;
     if (invitingMember?.church) {
       try {
         const church = typeof invitingMember.church === "object"
-          ? invitingMember.church
+          ? invitingMember.church as { id?: string; name?: string }
           : await payload.findByID({ collection: "churches", id: String(invitingMember.church) });
-        inviterChurch = (church as { name?: string })?.name;
+        inviterChurchId = String((church as { id?: string }).id || invitingMember.church);
+        inviterChurchName = (church as { name?: string })?.name;
       } catch {}
     }
 
@@ -330,7 +332,7 @@ export async function POST(request: NextRequest) {
         event: fullEvent.id,
         eventInvite: eventInvite?.id || undefined,
         invitedBy: invitingMember?.id,
-        invitedByChurch: inviterChurch || undefined,
+        invitedByChurch: inviterChurchId || undefined,
         guest: guestUserId,
         guestInfo: {
           name: fullName,
@@ -370,7 +372,7 @@ export async function POST(request: NextRequest) {
         invitedByName: invitingMember?.name as string | undefined,
         invitedByPhone: invitingMember?.phone as string | undefined,
         invitedByEmail: invitingMember?.email as string | undefined,
-        invitedByChurch: inviterChurch,
+        invitedByChurch: inviterChurchName,
       }).catch((err) => console.error("Email send failed:", err));
     }
 
@@ -412,7 +414,7 @@ export async function POST(request: NextRequest) {
         name: invitingMember?.name,
         phone: invitingMember?.phone,
         email: invitingMember?.email,
-        church: inviterChurch,
+        church: inviterChurchName,
       },
     });
   } catch (error) {

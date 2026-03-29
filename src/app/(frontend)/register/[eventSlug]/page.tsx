@@ -351,11 +351,6 @@ export default function RegisterPage({
                       </p>
                     </div>
                   )}
-                  {eventData.event.hasBaptism && (
-                    <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg">
-                      <p className="text-purple-300 text-sm">This event includes a baptism ceremony. If you&apos;re interested, please let the staff know at the event.</p>
-                    </div>
-                  )}
                 </div>
               </Card>
 
