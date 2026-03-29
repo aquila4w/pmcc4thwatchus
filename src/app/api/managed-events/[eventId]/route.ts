@@ -57,6 +57,7 @@ export async function PATCH(
       id: eventId,
       data: body,
       depth: 2,
+      overrideAccess: true,
     });
 
     return NextResponse.json(event);

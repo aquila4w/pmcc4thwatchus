@@ -5,7 +5,7 @@ import { Upload, X, Image as ImageIcon, Loader2 } from "lucide-react";
 
 interface ImageUploadFieldProps {
   value: string | null;
-  onChange: (value: string | null) => void;
+  onChange: (value: string | null, url?: string | null) => void;
   previewUrl?: string | null;
   label?: string;
   accept?: string;
@@ -58,7 +58,7 @@ export function ImageUploadField({
 
         const data = await res.json();
         setLocalPreview(null);
-        onChange(data.id);
+        onChange(data.id, data.url || null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Upload failed");
         setLocalPreview(null);

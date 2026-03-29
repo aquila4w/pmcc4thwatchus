@@ -415,9 +415,9 @@ export default function EditEventPage() {
           <TabsContent value="images" className="space-y-6 mt-6">
             <ImageUploadField
               value={formData.heroImage}
-              onChange={(value) => {
+              onChange={(value, url) => {
                 updateField("heroImage", value);
-                setHeroImagePreview(value === null ? null : heroImagePreview);
+                setHeroImagePreview(url !== undefined ? url : (value === null ? null : heroImagePreview));
               }}
               previewUrl={heroImagePreview}
               label="Hero Image (Registration Page)"
@@ -426,9 +426,9 @@ export default function EditEventPage() {
 
             <ImageUploadField
               value={formData.landingPageHeroImage}
-              onChange={(value) => {
+              onChange={(value, url) => {
                 updateField("landingPageHeroImage", value);
-                setLandingImagePreview(value === null ? null : landingImagePreview);
+                setLandingImagePreview(url !== undefined ? url : (value === null ? null : landingImagePreview));
               }}
               previewUrl={landingImagePreview}
               label="Thank You Page Hero Image"
