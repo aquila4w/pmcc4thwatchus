@@ -67,18 +67,13 @@ export async function sendRegistrationSMS({
   }
 }
 
-// URL shortening using TinyURL (free, no API key needed)
-export async function shortenUrl(url: string): Promise<string> {
-  try {
-    const response = await fetch(
-      `https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`
-    );
+// Built-in short URL helper — uses /t/[code] redirect route
+export function getShortTicketUrl(registrationCode: string): string {
+  const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || "https://pmcc4thwatch.us";
+  return `${baseUrl}/t/${registrationCode}`;
+}
 
-    if (response.ok) {
-      return await response.text();
-    }
-    return url; // Return original if shortening fails
-  } catch {
-    return url; // Return original if shortening fails
-  }
+// Legacy — kept for backwards compatibility
+export async function shortenUrl(url: string): Promise<string> {
+  return url;
 }

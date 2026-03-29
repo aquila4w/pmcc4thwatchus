@@ -23,6 +23,9 @@ interface SendRegistrationEmailParams {
   qrCodeUrl: string;
   ticketUrl: string;
   invitedByName?: string;
+  invitedByPhone?: string;
+  invitedByEmail?: string;
+  invitedByChurch?: string;
 }
 
 export async function sendRegistrationEmail({
@@ -35,6 +38,9 @@ export async function sendRegistrationEmail({
   qrCodeUrl,
   ticketUrl,
   invitedByName,
+  invitedByPhone,
+  invitedByEmail,
+  invitedByChurch,
 }: SendRegistrationEmailParams): Promise<{ success: boolean; error?: string }> {
   const client = getResendClient();
   if (!client) {
@@ -56,6 +62,9 @@ export async function sendRegistrationEmail({
         qrCodeUrl,
         ticketUrl,
         invitedByName,
+        invitedByPhone,
+        invitedByEmail,
+        invitedByChurch,
       }),
     });
 
@@ -81,6 +90,9 @@ function generateEmailHtml({
   qrCodeUrl,
   ticketUrl,
   invitedByName,
+  invitedByPhone,
+  invitedByEmail,
+  invitedByChurch,
 }: Omit<SendRegistrationEmailParams, "to">): string {
   return `
 <!DOCTYPE html>
@@ -130,9 +142,21 @@ function generateEmailHtml({
               </table>
 
               ${invitedByName ? `
-              <p style="margin: 0 0 24px; color: #6b7280; font-size: 14px;">
-                You were invited by <strong style="color: #1e3a5f;">${invitedByName}</strong>
-              </p>
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fef9ee; border-radius: 8px; border: 1px solid #e5d9a8; padding: 16px; margin-bottom: 24px;">
+                <tr>
+                  <td>
+                    <p style="margin: 0 0 8px; color: #1e3a5f; font-size: 14px; font-weight: 600;">
+                      Invited By
+                    </p>
+                    <p style="margin: 0; color: #374151; font-size: 16px; font-weight: 600;">
+                      ${invitedByName}
+                    </p>
+                    ${invitedByChurch ? `<p style="margin: 4px 0 0; color: #6b7280; font-size: 13px;">${invitedByChurch}</p>` : ""}
+                    ${invitedByPhone ? `<p style="margin: 4px 0 0; color: #6b7280; font-size: 13px;">${invitedByPhone}</p>` : ""}
+                    ${invitedByEmail ? `<p style="margin: 4px 0 0; color: #6b7280; font-size: 13px;">${invitedByEmail}</p>` : ""}
+                  </td>
+                </tr>
+              </table>
               ` : ""}
 
               <!-- QR Code -->

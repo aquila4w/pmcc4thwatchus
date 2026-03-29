@@ -9,21 +9,16 @@ import {
   Users,
   UserCog,
   Building2,
-  QrCode,
   Mail,
   Settings,
   LogOut,
   Menu,
   X,
   Church,
-  Sparkles,
-  Ticket,
   ChevronLeft,
-  ChevronRight,
   LayoutDashboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -54,18 +49,40 @@ export function AdminDashboardLayout({ children }: DashboardLayoutProps) {
   return <DashboardLayoutInternal>{children}</DashboardLayoutInternal>;
 }
 
+const ADMIN_ROLES = [
+  "superAdmin",
+  "districtCoordinator",
+  "subDistrictCoordinator",
+  "headMinister",
+  "secretary",
+  "eventAdmin",
+];
+
 function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [unauthorized, setUnauthorized] = useState(false);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   const checkAuth = useCallback(async () => {
     try {
       const response = await fetch("/api/auth/me");
       if (response.ok) {
         const userData = await response.json();
+        const role = userData.user?.role;
+        if (!role || !ADMIN_ROLES.includes(role)) {
+          setUnauthorized(true);
+          setLoading(false);
+          return;
+        }
         setUser(userData.user);
         setLoading(false);
       } else {
@@ -160,17 +177,60 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
     );
   }
 
+  if (unauthorized) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-8">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <X className="w-8 h-8 text-red-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-800 mb-2">Access Denied</h1>
+          <p className="text-slate-600 mb-6">
+            You do not have permission to access the admin dashboard.
+          </p>
+          <Button onClick={() => router.push("/")}>
+            <Home className="w-4 h-4 mr-2" />
+            Go to Home
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const roleLabel = user ? (
+    user.role === "superAdmin" ? "Super Admin"
+    : user.role === "districtCoordinator" ? "District Coordinator"
+    : user.role === "subDistrictCoordinator" ? "Sub-District Coordinator"
+    : user.role === "headMinister" ? "Head Minister"
+    : user.role === "secretary" ? "Secretary"
+    : user.role === "eventAdmin" ? "Event Admin"
+    : user.role
+  ) : "";
+
   return (
     <div className="min-h-screen bg-slate-100">
-      {/* Sidebar */}
+      {/* Mobile Overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar — Desktop: fixed, Mobile: overlay */}
       <aside
-        className={`fixed left-0 top-0 h-full bg-slate-900 text-white transition-all duration-300 z-50 ${
-          sidebarOpen ? "w-64" : "w-20"
-        }`}
+        className={`
+          fixed left-0 top-0 h-full bg-slate-900 text-white transition-transform duration-300 z-50
+          w-64
+          ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
+          lg:translate-x-0
+          ${desktopSidebarOpen ? "lg:w-64" : "lg:w-20"}
+          lg:transition-all
+        `}
       >
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-white/10">
-          {sidebarOpen && (
+          {(mobileMenuOpen || desktopSidebarOpen) && (
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center">
                 <span className="text-xs font-bold text-slate-900">P</span>
@@ -180,10 +240,16 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
           )}
           <button
             type="button"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
+            onClick={() => {
+              setMobileMenuOpen(false);
+              if (window.innerWidth >= 1024) {
+                setDesktopSidebarOpen(!desktopSidebarOpen);
+              }
+            }}
             className="p-2 hover:bg-white/10 rounded-lg transition-colors"
           >
-            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            <X className="w-5 h-5 lg:hidden" />
+            {desktopSidebarOpen ? <ChevronLeft className="w-5 h-5 hidden lg:block" /> : <Menu className="w-5 h-5 hidden lg:block" />}
           </button>
         </div>
 
@@ -202,7 +268,7 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
                 }`}
               >
                 <item.icon className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && (
+                {(mobileMenuOpen || desktopSidebarOpen) && (
                   <>
                     <span className="flex-1">{item.label}</span>
                     {item.badge !== undefined && item.badge > 0 && (
@@ -221,7 +287,7 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
         </nav>
 
         {/* User Info */}
-        {user && sidebarOpen && (
+        {user && (mobileMenuOpen || desktopSidebarOpen) && (
           <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center">
@@ -229,34 +295,18 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{user.name}</p>
-                <p className="text-xs text-slate-400 truncate">
-                  {user.role === "superAdmin"
-                    ? "Super Admin"
-                    : user.role === "districtCoordinator"
-                    ? "District Coordinator"
-                    : user.role === "subDistrictCoordinator"
-                    ? "Sub-District Coordinator"
-                    : user.role === "headMinister"
-                    ? "Head Minister"
-                    : user.role === "secretary"
-                    ? "Secretary"
-                    : user.role === "eventAdmin"
-                    ? "Event Admin"
-                    : user.role}
-                </p>
+                <p className="text-xs text-slate-400 truncate">{roleLabel}</p>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start text-slate-400 hover:text-white hover:bg-white/5"
-                onClick={handleLogout}
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
-            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start text-slate-400 hover:text-white hover:bg-white/5"
+              onClick={handleLogout}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
           </div>
         )}
       </aside>
@@ -264,56 +314,62 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
       {/* Main Content */}
       <div
         className={`transition-all duration-300 ${
-          sidebarOpen ? "ml-64" : "ml-20"
+          desktopSidebarOpen ? "lg:ml-64" : "lg:ml-20"
         }`}
       >
         {/* Top Bar */}
-        <header className="h-16 bg-white border-b flex items-center justify-between px-6 sticky top-0 z-40">
-          <div className="flex items-center gap-4">
+        <header className="h-16 bg-white border-b flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
+          <div className="flex items-center gap-3">
+            {/* Mobile menu button */}
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => router.back()}
+              onClick={() => setMobileMenuOpen(true)}
               className="lg:hidden"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <Menu className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="text-lg font-semibold">
+              <h1 className="text-lg font-semibold truncate">
                 {filteredItems.find((item) => pathname === item.href || pathname.startsWith(item.href + "/"))?.label ||
                   "Dashboard"}
               </h1>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 lg:gap-4">
             {user && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="relative">
-                    <Settings className="w-5 h-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => router.push("/cms")}>
-                    <LayoutDashboard className="w-4 h-4 mr-2" />
-                    Payload CMS
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => router.push("/member/admin")}>
-                    <Home className="w-4 h-4 mr-2" />
-                    My Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleLogout} className="text-red-600">
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Logout
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <>
+                <span className="text-sm text-slate-500 hidden sm:inline truncate max-w-[150px]">
+                  {user.name}
+                </span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="relative">
+                      <Settings className="w-5 h-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => router.push("/cms")}>
+                      <LayoutDashboard className="w-4 h-4 mr-2" />
+                      Payload CMS
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => router.push("/member/admin")}>
+                      <Home className="w-4 h-4 mr-2" />
+                      My Profile
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
             )}
           </div>
         </header>
 
         {/* Page Content */}
-        <main>{children}</main>
+        <main className="p-4 lg:p-6">{children}</main>
       </div>
     </div>
   );

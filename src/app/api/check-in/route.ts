@@ -138,7 +138,13 @@ export async function GET(request: NextRequest) {
 
     const registration = registrations.docs[0];
     const event = registration.event as { id?: string; title?: string; startDate?: string; location?: string; hasBaptism?: boolean } | null;
-    const invitedBy = registration.invitedBy as { name?: string; church?: string } | null;
+    const invitedBy = registration.invitedBy as { name?: string; phone?: string; email?: string; church?: string | { name?: string } } | null;
+
+    // Resolve church name
+    let inviterChurch: string | undefined;
+    if (invitedBy?.church) {
+      inviterChurch = typeof invitedBy.church === "string" ? invitedBy.church : invitedBy.church.name;
+    }
 
     return NextResponse.json({
       registration: {
@@ -161,7 +167,9 @@ export async function GET(request: NextRequest) {
       },
       invitedBy: invitedBy ? {
         name: invitedBy.name,
-        church: invitedBy.church,
+        phone: invitedBy.phone,
+        email: invitedBy.email,
+        church: inviterChurch,
       } : null,
     });
   } catch (error) {

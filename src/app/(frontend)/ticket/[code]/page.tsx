@@ -44,6 +44,8 @@ interface TicketData {
   invitedBy: {
     name: string;
     church: string;
+    phone?: string;
+    email?: string;
   } | null;
 }
 
@@ -288,6 +290,18 @@ export default function TicketPage({ params }: { params: Promise<{ code: string 
                   <p className="text-white font-medium">{ticketData.invitedBy.name}</p>
                   {ticketData.invitedBy.church && (
                     <p className="text-white/60 text-sm">{ticketData.invitedBy.church}</p>
+                  )}
+                  {ticketData.invitedBy.phone && (
+                    <p className="text-white/60 text-sm flex items-center gap-1 mt-1">
+                      <Phone className="w-4 h-4" />
+                      {ticketData.invitedBy.phone}
+                    </p>
+                  )}
+                  {ticketData.invitedBy.email && (
+                    <p className="text-white/60 text-sm flex items-center gap-1">
+                      <Mail className="w-4 h-4" />
+                      {ticketData.invitedBy.email}
+                    </p>
                   )}
                 </div>
               </div>

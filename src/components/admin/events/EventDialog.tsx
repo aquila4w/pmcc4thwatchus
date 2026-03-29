@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
+import { ImageUploadField } from "@/components/admin/ImageUploadField";
 
 interface EventDialogProps {
   open: boolean;
@@ -44,6 +45,9 @@ interface FormData {
 
   // Status
   status: string;
+
+  // Image
+  heroImage: string | null;
 }
 
 const initialFormData: FormData = {
@@ -60,6 +64,7 @@ const initialFormData: FormData = {
   hasBaptism: false,
   requireApproval: false,
   status: "draft",
+  heroImage: null,
 };
 
 export function EventDialog({ open, onOpenChange, onSuccess }: EventDialogProps) {
@@ -67,9 +72,10 @@ export function EventDialog({ open, onOpenChange, onSuccess }: EventDialogProps)
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("basic");
+  const [heroImagePreview, setHeroImagePreview] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const updateField = (field: keyof FormData, value: string | boolean) => {
+  const updateField = (field: keyof FormData, value: string | boolean | null) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear error for this field
     if (errors[field]) {
@@ -165,10 +171,11 @@ export function EventDialog({ open, onOpenChange, onSuccess }: EventDialogProps)
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
-            <TabsTrigger value="schedule">Schedule & Location</TabsTrigger>
+            <TabsTrigger value="schedule">Schedule</TabsTrigger>
             <TabsTrigger value="registration">Registration</TabsTrigger>
+            <TabsTrigger value="image">Image</TabsTrigger>
           </TabsList>
 
           {/* Basic Info Tab */}
@@ -341,6 +348,18 @@ export function EventDialog({ open, onOpenChange, onSuccess }: EventDialogProps)
                 className="w-4 h-4"
               />
             </div>
+          </TabsContent>
+
+          {/* Image Tab */}
+          <TabsContent value="image" className="space-y-4 mt-4">
+            <ImageUploadField
+              value={formData.heroImage}
+              onChange={(value) => updateField("heroImage", value as string | null)}
+              label="Hero Image"
+            />
+            <p className="text-xs text-slate-500">
+              Recommended: 1920x1080px for best display on the registration page
+            </p>
           </TabsContent>
         </Tabs>
 

@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
 import { sendRegistrationEmail } from "@/lib/email";
-import { sendRegistrationSMS, shortenUrl } from "@/lib/sms";
+import { sendRegistrationSMS } from "@/lib/sms";
 
-// Generate a readable registration code
 function generateRegistrationCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "";
@@ -14,64 +13,170 @@ function generateRegistrationCode(): string {
   return code;
 }
 
+async function verifyRecaptcha(token: string): Promise<boolean> {
+  const secret = process.env.GOOGLE_RECAPTCHA_SECRET_KEY;
+  if (!secret) {
+    console.warn("GOOGLE_RECAPTCHA_SECRET_KEY not set, skipping verification");
+    return true;
+  }
+
+  try {
+    const response = await fetch(
+      "https://www.google.com/recaptcha/api/siteverify",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `secret=${encodeURIComponent(secret)}&response=${encodeURIComponent(token)}`,
+      }
+    );
+    const data = await response.json();
+    return data.success === true;
+  } catch {
+    console.error("reCAPTCHA verification failed");
+    return false;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const payload = await getPayload({ config });
     const body = await request.json();
 
-    const { eventInviteCode, guestName, guestEmail, guestPhone, joinWaitlist } = body;
+    const {
+      eventInviteCode,
+      eventSlug,
+      refCode,
+      firstName,
+      lastName,
+      phone,
+      email,
+      recaptchaToken,
+      joinWaitlist,
+      // Legacy support
+      guestName,
+      guestEmail,
+      guestPhone,
+    } = body;
 
-    // Validate required fields
-    if (!eventInviteCode || !guestName) {
+    // Determine name fields (support both new and legacy format)
+    const fName = firstName?.trim();
+    const lName = lastName?.trim();
+    const fullName = fName && lName ? `${fName} ${lName}` : guestName?.trim();
+
+    if (!fullName) {
       return NextResponse.json(
-        { error: "Missing required fields: eventInviteCode, guestName" },
+        { error: "Name is required" },
         { status: 400 }
       );
     }
 
-    // Find the event invite by UUID code
-    const invites = await payload.find({
-      collection: "event-invites",
-      where: {
-        and: [
-          { inviteCode: { equals: eventInviteCode } },
-          { status: { equals: "active" } },
-        ],
-      },
-      limit: 1,
-      depth: 2, // Include event and invitedBy
-    });
-
-    if (invites.docs.length === 0) {
+    if (!phone && !guestPhone) {
       return NextResponse.json(
-        { error: "Invalid or expired invite link" },
-        { status: 404 }
+        { error: "Mobile number is required" },
+        { status: 400 }
       );
     }
 
-    const eventInvite = invites.docs[0];
-    const event = eventInvite.event as {
-      id?: string;
-      title?: string;
-      slug?: string;
-      description?: string;
-      startDate?: string;
-      location?: string;
-      address?: string;
-      maxAttendees?: number;
-      hasBaptism?: boolean;
-      landingPageTitle?: string;
-      landingPageShowQR?: boolean;
-      landingPageShowInviter?: boolean;
-    } | null;
+    // Verify reCAPTCHA
+    if (recaptchaToken) {
+      const isValid = await verifyRecaptcha(recaptchaToken);
+      if (!isValid) {
+        return NextResponse.json(
+          { error: "Captcha verification failed. Please try again." },
+          { status: 400 }
+        );
+      }
+    }
 
-    const invitingMember = eventInvite.invitedBy as {
-      id?: string;
-      name?: string;
-      phone?: string;
-      email?: string;
-      church?: { id?: string; name?: string };
-    } | null;
+    const phoneToUse = phone?.trim() || guestPhone?.trim();
+    const emailToUse = email?.trim() || guestEmail?.trim();
+
+    // Find the event invite — support both UUID code and ref-based lookup
+    let eventInvite: Record<string, unknown> | null = null;
+    let event: Record<string, unknown> | null = null;
+    let invitingMember: Record<string, unknown> | null = null;
+
+    if (refCode && eventSlug) {
+      // Look up by member code + event slug
+      const members = await payload.find({
+        collection: "users",
+        where: { inviteCode: { equals: refCode } },
+        limit: 1,
+        depth: 0,
+      });
+
+      if (members.docs.length === 0) {
+        return NextResponse.json(
+          { error: "Invalid invite link" },
+          { status: 404 }
+        );
+      }
+
+      invitingMember = members.docs[0];
+
+      const events = await payload.find({
+        collection: "managed-events",
+        where: { slug: { equals: eventSlug } },
+        limit: 1,
+        depth: 0,
+      });
+
+      if (events.docs.length === 0) {
+        return NextResponse.json(
+          { error: "Event not found" },
+          { status: 404 }
+        );
+      }
+
+      event = events.docs[0];
+
+      // Find or create EventInvite for this member+event
+      const existingInvites = await payload.find({
+        collection: "event-invites",
+        where: {
+          and: [
+            { event: { equals: event.id } },
+            { invitedBy: { equals: invitingMember.id } },
+          ],
+        },
+        limit: 1,
+        depth: 0,
+      });
+
+      if (existingInvites.docs.length > 0) {
+        eventInvite = existingInvites.docs[0];
+      }
+      // If no invite exists, we still allow registration (member may not have been auto-generated)
+    } else if (eventInviteCode) {
+      // Legacy: look up by EventInvite UUID code
+      const invites = await payload.find({
+        collection: "event-invites",
+        where: {
+          and: [
+            { inviteCode: { equals: eventInviteCode } },
+            { status: { equals: "active" } },
+          ],
+        },
+        limit: 1,
+        depth: 2,
+      });
+
+      if (invites.docs.length === 0) {
+        return NextResponse.json(
+          { error: "Invalid or expired invite link" },
+          { status: 404 }
+        );
+      }
+
+      eventInvite = invites.docs[0] as Record<string, unknown>;
+      event = eventInvite.event as Record<string, unknown>;
+      invitingMember = eventInvite.invitedBy as Record<string, unknown>;
+    } else {
+      return NextResponse.json(
+        { error: "Missing invite reference" },
+        { status: 400 }
+      );
+    }
 
     if (!event?.id) {
       return NextResponse.json(
@@ -80,10 +185,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if event is open for registration
+    // Get full event data
     const fullEvent = await payload.findByID({
       collection: "managed-events",
-      id: event.id,
+      id: String(event.id),
     });
 
     if (fullEvent?.status !== "registration-open") {
@@ -93,27 +198,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check capacity and determine if waitlist
+    // Check capacity
     let isWaitlisted = false;
     let waitlistPosition = 0;
 
-    if (event.maxAttendees) {
+    if (fullEvent.maxAttendees) {
       const currentRegistrations = await payload.find({
         collection: "event-registrations",
         where: {
-          event: { equals: event.id },
+          event: { equals: fullEvent.id },
           status: { in: ["registered", "confirmed", "attended", "baptized"] },
         },
         limit: 0,
       });
 
-      if (currentRegistrations.totalDocs >= event.maxAttendees) {
+      if (currentRegistrations.totalDocs >= fullEvent.maxAttendees) {
         if (!joinWaitlist) {
-          // Return capacity info so frontend can offer waitlist option
           const waitlistCount = await payload.find({
             collection: "event-registrations",
             where: {
-              event: { equals: event.id },
+              event: { equals: fullEvent.id },
               status: { equals: "waitlisted" },
             },
             limit: 0,
@@ -130,12 +234,11 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // User wants to join waitlist
         isWaitlisted = true;
         const waitlistEntries = await payload.find({
           collection: "event-registrations",
           where: {
-            event: { equals: event.id },
+            event: { equals: fullEvent.id },
             status: { equals: "waitlisted" },
           },
           limit: 0,
@@ -144,74 +247,82 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate unique registration code
-    const registrationCode = generateRegistrationCode();
+    // Generate registration code (with uniqueness check)
+    let registrationCode = generateRegistrationCode();
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const existing = await payload.find({
+        collection: "event-registrations",
+        where: { inviteCode: { equals: registrationCode } },
+        limit: 1,
+        depth: 0,
+      });
+      if (existing.totalDocs === 0) break;
+      registrationCode = generateRegistrationCode();
+    }
 
-    // Generate QR code data
-    const qrData = JSON.stringify({
-      code: registrationCode,
-      eventId: event.id,
-      guestName: guestName,
-    });
-
-    // Generate QR code URL using external service
+    // Generate QR code data — encode registration code for check-in lookup
+    const qrData = registrationCode;
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrData)}`;
 
-    // Create guest user account first
-    let guestUserId;
-    const emailToUse = guestEmail || `guest-${registrationCode.toLowerCase()}@pmcc4thwatch.us`;
+    // Create guest user
+    let guestUserId: string | undefined;
+    const emailForGuest = emailToUse || `guest-${registrationCode.toLowerCase()}@pmcc4thwatch.us`;
 
     try {
-      // Check if guest already exists with this email
       const existingGuests = await payload.find({
         collection: "users",
-        where: {
-          email: { equals: emailToUse },
-        },
+        where: { email: { equals: emailForGuest } },
         limit: 1,
       });
 
       if (existingGuests.docs.length > 0) {
-        // Use existing guest user
-        guestUserId = existingGuests.docs[0].id;
+        guestUserId = String(existingGuests.docs[0].id);
       } else {
-        // Create new guest user
         const guestUser = await payload.create({
           collection: "users",
           data: {
-            name: guestName,
-            email: emailToUse,
-            phone: guestPhone || undefined,
+            name: fullName,
+            email: emailForGuest,
+            phone: phoneToUse || undefined,
             role: "guest",
             status: "approved",
             authProvider: "event-registration",
-            // No password - guest users cannot login via credentials
           },
           depth: 0,
         });
-        guestUserId = guestUser.id;
+        guestUserId = String(guestUser.id);
       }
-    } catch (guestError) {
-      console.error("Failed to create guest user:", guestError);
-      // Continue without guest user - non-fatal
+    } catch (err) {
+      console.error("Failed to create guest user:", err);
     }
 
-    // Create the registration
+    // Get inviter church
+    let inviterChurch: string | undefined;
+    if (invitingMember?.church) {
+      try {
+        const church = typeof invitingMember.church === "object"
+          ? invitingMember.church
+          : await payload.findByID({ collection: "churches", id: String(invitingMember.church) });
+        inviterChurch = (church as { name?: string })?.name;
+      } catch {}
+    }
+
+    // Create registration
     const registration = await payload.create({
       collection: "event-registrations",
       data: {
         inviteCode: registrationCode,
-        event: event.id,
-        eventInvite: eventInvite.id, // Link to the EventInvite
+        event: fullEvent.id,
+        eventInvite: eventInvite?.id || undefined,
         invitedBy: invitingMember?.id,
-        invitedByChurch: invitingMember?.church || undefined,
-        guest: guestUserId, // Link to guest user
+        invitedByChurch: inviterChurch || undefined,
+        guest: guestUserId,
         guestInfo: {
-          name: guestName,
-          email: guestEmail || undefined,
-          phone: guestPhone || undefined,
+          name: fullName,
+          email: emailToUse || undefined,
+          phone: phoneToUse || undefined,
         },
-        qrCodeUrl: qrCodeUrl,
+        qrCodeUrl,
         qrCodeData: qrData,
         status: isWaitlisted ? "waitlisted" : "registered",
         waitlistPosition: isWaitlisted ? waitlistPosition : undefined,
@@ -219,45 +330,43 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Generate landing page URL
+    // Build URLs
     const baseUrl = request.headers.get("origin") || "https://pmcc4thwatch.us";
-    const landingPageUrl = `${baseUrl}/event/${event.id}/welcome/${registrationCode}`;
+    const landingPageUrl = `${baseUrl}/ticket/${registrationCode}`;
+    const shortUrl = `${baseUrl}/t/${registrationCode}`;
 
-    // Format event date for notifications
-    const eventDate = new Date(event.startDate || Date.now()).toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
+    // Format event date
+    const eventDate = new Date(fullEvent.startDate).toLocaleDateString("en-US", {
+      weekday: "long", year: "numeric", month: "long", day: "numeric",
+      hour: "numeric", minute: "2-digit",
     });
 
-    // Send email if guestEmail provided
-    if (guestEmail) {
+    // Send email
+    if (emailToUse) {
       sendRegistrationEmail({
-        to: guestEmail,
-        guestName: guestName,
-        eventTitle: event.title || "Upcoming Event",
-        eventDate: eventDate,
-        eventLocation: event.location || "TBD",
-        registrationCode: registrationCode,
-        qrCodeUrl: qrCodeUrl,
+        to: emailToUse,
+        guestName: fullName,
+        eventTitle: fullEvent.title || "Upcoming Event",
+        eventDate,
+        eventLocation: fullEvent.location || "TBD",
+        registrationCode,
+        qrCodeUrl,
         ticketUrl: landingPageUrl,
-        invitedByName: invitingMember?.name,
+        invitedByName: invitingMember?.name as string | undefined,
+        invitedByPhone: invitingMember?.phone as string | undefined,
+        invitedByEmail: invitingMember?.email as string | undefined,
+        invitedByChurch: inviterChurch,
       }).catch((err) => console.error("Email send failed:", err));
     }
 
-    // Send SMS with shortened landing page URL if guestPhone provided
-    if (guestPhone) {
-      shortenUrl(landingPageUrl).then((shortUrl) => {
-        sendRegistrationSMS({
-          to: guestPhone,
-          guestName: guestName,
-          eventTitle: event.title || "Upcoming Event",
-          ticketUrl: shortUrl,
-        }).catch((err) => console.error("SMS send failed:", err));
-      });
+    // Send SMS
+    if (phoneToUse) {
+      sendRegistrationSMS({
+        to: phoneToUse,
+        guestName: fullName,
+        eventTitle: fullEvent.title || "Upcoming Event",
+        ticketUrl: shortUrl,
+      }).catch((err) => console.error("SMS send failed:", err));
     }
 
     return NextResponse.json({
@@ -267,28 +376,28 @@ export async function POST(request: NextRequest) {
       registration: {
         id: registration.id,
         code: registrationCode,
-        qrCodeUrl: qrCodeUrl,
-        landingPageUrl: landingPageUrl,
-        ticketUrl: landingPageUrl, // Keep for backward compatibility
+        qrCodeUrl,
+        landingPageUrl,
+        ticketUrl: landingPageUrl,
         status: isWaitlisted ? "waitlisted" : "registered",
       },
       event: {
-        id: event.id,
-        title: event.title,
-        startDate: event.startDate,
-        location: event.location,
-        address: event.address,
+        id: fullEvent.id,
+        title: fullEvent.title,
+        startDate: fullEvent.startDate,
+        location: fullEvent.location,
+        address: fullEvent.address,
         landingPage: {
-          title: fullEvent?.landingPageTitle || "You're Registered!",
-          showQR: fullEvent?.landingPageShowQR ?? true,
-          showInviter: fullEvent?.landingPageShowInviter ?? true,
+          title: fullEvent.landingPageTitle || "You're Registered!",
+          showQR: fullEvent.landingPageShowQR ?? true,
+          showInviter: fullEvent.landingPageShowInviter ?? true,
         },
       },
       invitedBy: {
         name: invitingMember?.name,
         phone: invitingMember?.phone,
         email: invitingMember?.email,
-        church: invitingMember?.church?.name,
+        church: inviterChurch,
       },
     });
   } catch (error) {

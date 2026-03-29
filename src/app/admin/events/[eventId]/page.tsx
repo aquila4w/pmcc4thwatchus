@@ -21,6 +21,7 @@ import {
   CheckCircle,
   X,
   Plus,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -193,10 +194,10 @@ export default function EventDetailPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
-                onClick={() => router.push(`/cms/collections/managed-events/${event.id}`)}
+                onClick={() => router.push(`/admin/events/${event.id}/edit`)}
               >
                 <Edit className="w-4 h-4 mr-2" />
-                Edit in Payload CMS
+                Edit Event
               </DropdownMenuItem>
               <DropdownMenuItem onClick={copyRegistrationLink}>
                 <Copy className="w-4 h-4 mr-2" />
@@ -299,7 +300,7 @@ export default function EventDetailPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Link href={`/admin/events/${eventId}/registrations`}>
           <Card className="bg-white p-4 hover:bg-slate-50 transition-colors cursor-pointer">
             <Users className="w-5 h-5 text-slate-600 mb-2" />
@@ -316,6 +317,14 @@ export default function EventDetailPage() {
           </Card>
         </Link>
 
+        <Link href={`/event/${eventId}/baptism`}>
+          <Card className="bg-white p-4 hover:bg-slate-50 transition-colors cursor-pointer">
+            <Sparkles className="w-5 h-5 text-purple-600 mb-2" />
+            <p className="font-medium">Baptism</p>
+            <p className="text-xs text-slate-500">Record baptisms</p>
+          </Card>
+        </Link>
+
         <Link href={`/admin/events/${eventId}/analytics`}>
           <Card className="bg-white p-4 hover:bg-slate-50 transition-colors cursor-pointer">
             <BarChart3 className="w-5 h-5 text-slate-600 mb-2" />
@@ -329,6 +338,14 @@ export default function EventDetailPage() {
             <Mail className="w-5 h-5 text-slate-600 mb-2" />
             <p className="font-medium">Create Campaign</p>
             <p className="text-xs text-slate-500">Send reminders</p>
+          </Card>
+        </Link>
+
+        <Link href={`/admin/events/${eventId}/edit`}>
+          <Card className="bg-white p-4 hover:bg-slate-50 transition-colors cursor-pointer">
+            <Edit className="w-5 h-5 text-slate-600 mb-2" />
+            <p className="font-medium">Edit Event</p>
+            <p className="text-xs text-slate-500">Update details</p>
           </Card>
         </Link>
       </div>
