@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       collection: "users",
       where: { inviteCode: { equals: code } },
       limit: 1,
-      depth: 1,
+      depth: 0,
     });
 
     if (members.docs.length === 0) {
