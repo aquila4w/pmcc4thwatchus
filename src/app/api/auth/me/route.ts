@@ -131,7 +131,9 @@ async function getInviteStats(payload: Awaited<ReturnType<typeof getPayload>>, u
 }
 
 async function getEventInvites(payload: Awaited<ReturnType<typeof getPayload>>, userId: string) {
+  const t = Date.now();
   try {
+    console.log(`[EVENT-INVITES] Fetching invites for user ${userId}`);
     const invites = await payload.find({
       collection: "event-invites",
       where: {
@@ -142,7 +144,9 @@ async function getEventInvites(payload: Awaited<ReturnType<typeof getPayload>>, 
       },
       depth: 1,
       limit: 100,
+      overrideAccess: true,
     });
+    console.log(`[EVENT-INVITES] Got ${invites.docs.length} invites in ${Date.now() - t}ms`);
 
     // Filter to future registration-open events first
     const validInvites = invites.docs.filter((invite) => {
@@ -153,10 +157,12 @@ async function getEventInvites(payload: Awaited<ReturnType<typeof getPayload>>, 
       }
       return false;
     });
+    console.log(`[EVENT-INVITES] ${validInvites.length} valid invites after filtering`);
 
     if (validInvites.length === 0) return [];
 
     // Batch: get registration counts for all invites in parallel
+    console.log(`[EVENT-INVITES] Fetching registration counts...`);
     const countResults = await Promise.all(
       validInvites.map((invite) =>
         payload.find({
@@ -167,6 +173,7 @@ async function getEventInvites(payload: Awaited<ReturnType<typeof getPayload>>, 
         })
       )
     );
+    console.log(`[EVENT-INVITES] Registration counts loaded in ${Date.now() - t}ms`);
 
     return validInvites.map((invite, i) => {
       const event = invite.event as unknown as { id: string; title: string; slug: string; startDate: string; status: string; location: string };
@@ -180,7 +187,8 @@ async function getEventInvites(payload: Awaited<ReturnType<typeof getPayload>>, 
         registrationCount: countResults[i].totalDocs,
       };
     });
-  } catch {
+  } catch (error) {
+    console.error(`[EVENT-INVITES] Error after ${Date.now() - t}ms:`, error);
     return [];
   }
 }
