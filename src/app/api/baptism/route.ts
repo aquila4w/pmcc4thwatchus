@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
       },
       limit: 1,
       depth: 2,
+      overrideAccess: true,
     });
 
     if (registrations.docs.length === 0) {

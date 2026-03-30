@@ -24,7 +24,8 @@ export async function POST(request: NextRequest) {
         ...(eventId ? { event: { equals: eventId } } : {}),
       },
       limit: 1,
-      depth: 2, // Include related event and invitedBy data
+      depth: 2,
+      overrideAccess: true,
     });
 
     if (registrations.docs.length === 0) {
@@ -127,6 +128,7 @@ export async function GET(request: NextRequest) {
       },
       limit: 1,
       depth: 2,
+      overrideAccess: true,
     });
 
     if (registrations.docs.length === 0) {
