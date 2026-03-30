@@ -38,7 +38,8 @@ export async function GET(request: NextRequest) {
       collection: "managed-events",
       where: { slug: { equals: eventSlug } },
       limit: 1,
-      depth: 1,
+      depth: 0,
+      overrideAccess: true,
     });
 
     if (events.docs.length === 0) {
@@ -73,6 +74,8 @@ export async function GET(request: NextRequest) {
         status: { in: ["registered", "attended", "baptized"] },
       },
       limit: 0,
+      depth: 0,
+      overrideAccess: true,
     });
 
     const registrationCount = registrations.totalDocs;
