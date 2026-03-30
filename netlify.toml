@@ -1,0 +1,10 @@
+[build]
+command = "rm -rf .next node_modules/.cache && bun install && bun run build"
+publish = ".next"
+
+[functions]
+node_bundler = "esbuild"
+included_files = ["src/**/*"]
+
+[[plugins]]
+package = "@netlify/plugin-nextjs"
