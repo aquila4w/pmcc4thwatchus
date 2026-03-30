@@ -454,6 +454,8 @@ export const ManagedEvents: CollectionConfig = {
                   event: { equals: data.id },
                 },
                 limit: 0,
+                depth: 0,
+                overrideAccess: true,
               });
               return registrations.totalDocs;
             } catch {
