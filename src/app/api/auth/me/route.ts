@@ -59,7 +59,15 @@ export async function GET(request: NextRequest) {
     console.log(`[AUTH/ME] Stats loaded at ${Date.now() - startTime}ms`);
 
     // Get event-specific invites for this member (future, registration-open events only)
-    const eventInvites = await getEventInvites(payload, String(user.id));
+    // Wrap in timeout so it doesn't block the whole response
+    type EventInviteResult = Awaited<ReturnType<typeof getEventInvites>>;
+    const eventInvites = await Promise.race([
+      getEventInvites(payload, String(user.id)),
+      new Promise<EventInviteResult>((resolve) => setTimeout(() => {
+        console.log(`[AUTH/ME] Event invites timed out after 5s`);
+        resolve([]);
+      }, 5000)),
+    ]);
     console.log(`[AUTH/ME] Event invites loaded at ${Date.now() - startTime}ms`);
 
     return NextResponse.json({
@@ -164,6 +172,15 @@ async function getEventInvites(payload: Awaited<ReturnType<typeof getPayload>>, 
       where: {
         id: { in: eventIds },
         status: { equals: "registration-open" },
+      },
+      depth: 0,
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        startDate: true,
+        location: true,
+        status: true,
       },
       limit: 100,
       overrideAccess: true,
