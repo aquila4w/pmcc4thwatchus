@@ -6,8 +6,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
   try {
+    console.log(`[AUTH/ME] Starting at ${new Date().toISOString()}`);
     const payload = await getPayload({ config });
+    console.log(`[AUTH/ME] Payload initialized in ${Date.now() - startTime}ms`);
 
     // Try Payload token first (credentials login)
     const token = request.cookies.get("payload-token")?.value;
@@ -53,9 +56,11 @@ export async function GET(request: NextRequest) {
 
     // Get invite statistics
     const inviteStats = await getInviteStats(payload, String(user.id));
+    console.log(`[AUTH/ME] Stats loaded at ${Date.now() - startTime}ms`);
 
     // Get event-specific invites for this member (future, registration-open events only)
     const eventInvites = await getEventInvites(payload, String(user.id));
+    console.log(`[AUTH/ME] Event invites loaded at ${Date.now() - startTime}ms`);
 
     return NextResponse.json({
       user: {

@@ -3,8 +3,11 @@ import { getPayload } from "payload";
 import config from "@payload-config";
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
   try {
+    console.log(`[LOGIN] Starting login at ${new Date().toISOString()}`);
     const payload = await getPayload({ config });
+    console.log(`[LOGIN] Payload initialized in ${Date.now() - startTime}ms`);
     const { email, password } = await request.json();
 
     if (!email || !password) {
@@ -15,6 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Authenticate with Payload
+    console.log(`[LOGIN] Attempting login for: ${email}`);
     const result = await payload.login({
       collection: "users",
       data: {
@@ -22,6 +26,7 @@ export async function POST(request: NextRequest) {
         password,
       },
     });
+    console.log(`[LOGIN] Login result received at ${Date.now() - startTime}ms`);
 
     if (!result.token || !result.user) {
       return NextResponse.json(
