@@ -81,32 +81,39 @@ export async function GET(request: NextRequest) {
 
 async function getInviteStats(payload: Awaited<ReturnType<typeof getPayload>>, userId: string) {
   try {
-    // Get all registrations invited by this user
-    const registrations = await payload.find({
-      collection: "event-registrations",
-      where: {
-        invitedBy: { equals: userId },
-      },
-      limit: 1000,
-    });
-
-    const total = registrations.totalDocs;
-    const docs = registrations.docs as unknown as Array<{ status: string }>;
-    const registered = docs.filter(
-      (r) => r.status === "registered" || r.status === "attended" || r.status === "baptized"
-    ).length;
-    const attended = docs.filter(
-      (r) => r.status === "attended" || r.status === "baptized"
-    ).length;
-    const baptized = docs.filter(
-      (r) => r.status === "baptized"
-    ).length;
+    // Use limit: 0 to just get totalDocs count without fetching all documents
+    const [totalRes, registeredRes, attendedRes, baptizedRes] = await Promise.all([
+      payload.find({
+        collection: "event-registrations",
+        where: { invitedBy: { equals: userId } },
+        limit: 0,
+        overrideAccess: true,
+      }),
+      payload.find({
+        collection: "event-registrations",
+        where: { invitedBy: { equals: userId }, status: { in: ["registered", "attended", "baptized"] } },
+        limit: 0,
+        overrideAccess: true,
+      }),
+      payload.find({
+        collection: "event-registrations",
+        where: { invitedBy: { equals: userId }, status: { in: ["attended", "baptized"] } },
+        limit: 0,
+        overrideAccess: true,
+      }),
+      payload.find({
+        collection: "event-registrations",
+        where: { invitedBy: { equals: userId }, status: { equals: "baptized" } },
+        limit: 0,
+        overrideAccess: true,
+      }),
+    ]);
 
     return {
-      totalInvites: total,
-      registered,
-      attended,
-      baptized,
+      totalInvites: totalRes.totalDocs,
+      registered: registeredRes.totalDocs,
+      attended: attendedRes.totalDocs,
+      baptized: baptizedRes.totalDocs,
     };
   } catch {
     return {
@@ -132,37 +139,42 @@ async function getEventInvites(payload: Awaited<ReturnType<typeof getPayload>>, 
       limit: 100,
     });
 
-    const result = [];
-    for (const invite of invites.docs) {
+    // Filter to future registration-open events first
+    const validInvites = invites.docs.filter((invite) => {
       const event = invite.event as unknown as { id: string; title: string; slug: string; startDate: string; status: string; location: string } | string;
-
-      // Only include future registration-open events
       if (typeof event === "object" && event) {
         const startDate = new Date(event.startDate);
-        if (startDate > new Date() && event.status === "registration-open") {
-          // Get registration count for this invite
-          const registrations = await payload.find({
-            collection: "event-registrations",
-            where: {
-              eventInvite: { equals: invite.id },
-            },
-            limit: 0,
-          });
-
-          result.push({
-            eventId: event.id,
-            eventTitle: event.title,
-            eventSlug: event.slug,
-            eventDate: event.startDate,
-            eventLocation: event.location,
-            inviteCode: invite.inviteCode,
-            registrationCount: registrations.totalDocs,
-          });
-        }
+        return startDate > new Date() && event.status === "registration-open";
       }
-    }
+      return false;
+    });
 
-    return result;
+    if (validInvites.length === 0) return [];
+
+    // Batch: get registration counts for all invites in parallel
+    const countResults = await Promise.all(
+      validInvites.map((invite) =>
+        payload.find({
+          collection: "event-registrations",
+          where: { eventInvite: { equals: invite.id } },
+          limit: 0,
+          overrideAccess: true,
+        })
+      )
+    );
+
+    return validInvites.map((invite, i) => {
+      const event = invite.event as unknown as { id: string; title: string; slug: string; startDate: string; status: string; location: string };
+      return {
+        eventId: event.id,
+        eventTitle: event.title,
+        eventSlug: event.slug,
+        eventDate: event.startDate,
+        eventLocation: event.location,
+        inviteCode: invite.inviteCode,
+        registrationCount: countResults[i].totalDocs,
+      };
+    });
   } catch {
     return [];
   }
