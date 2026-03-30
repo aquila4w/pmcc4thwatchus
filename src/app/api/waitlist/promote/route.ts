@@ -17,6 +17,8 @@ export async function POST(request: NextRequest) {
     const event = await payload.findByID({
       collection: "managed-events",
       id: eventId,
+      depth: 0,
+      overrideAccess: true,
     });
 
     if (!event) {
@@ -154,6 +156,8 @@ export async function GET(request: NextRequest) {
     const event = await payload.findByID({
       collection: "managed-events",
       id: eventId,
+      depth: 0,
+      overrideAccess: true,
     });
 
     if (!event) {

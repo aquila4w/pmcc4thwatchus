@@ -14,6 +14,8 @@ export async function GET(
     const event = await payload.findByID({
       collection: "managed-events",
       id: eventId,
+      depth: 0,
+      overrideAccess: true,
     });
 
     if (!event) {
@@ -27,6 +29,8 @@ export async function GET(
         event: { equals: eventId },
       },
       limit: 0,
+      depth: 0,
+      overrideAccess: true,
     });
 
     const totalRegistrations = registrations.totalDocs;
@@ -41,6 +45,8 @@ export async function GET(
         ],
       },
       limit: 0,
+      depth: 0,
+      overrideAccess: true,
     });
 
     const attendedCount = attended.totalDocs;
@@ -55,6 +61,8 @@ export async function GET(
         ],
       },
       limit: 0,
+      depth: 0,
+      overrideAccess: true,
     });
 
     const baptizedCount = baptized.totalDocs;
@@ -69,6 +77,8 @@ export async function GET(
         ],
       },
       limit: 0,
+      depth: 0,
+      overrideAccess: true,
     });
 
     const waitlistedCount = waitlisted.totalDocs;

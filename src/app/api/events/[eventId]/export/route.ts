@@ -35,6 +35,8 @@ export async function GET(
     const event = await payload.findByID({
       collection: "managed-events",
       id: eventId,
+      depth: 0,
+      overrideAccess: true,
     });
 
     if (!event) {
