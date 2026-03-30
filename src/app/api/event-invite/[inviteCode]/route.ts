@@ -20,7 +20,8 @@ export async function GET(
         ],
       },
       limit: 1,
-      depth: 2, // Include event, invitedBy, church
+      depth: 0,
+      overrideAccess: true,
     });
 
     if (invites.docs.length === 0) {
@@ -31,63 +32,76 @@ export async function GET(
     }
 
     const invite = invites.docs[0];
-    const event = invite.event as {
-      id?: string;
-      title?: string;
-      slug?: string;
-      description?: string;
-      startDate?: string;
-      location?: string;
-      address?: string;
-      eventType?: string;
-      maxAttendees?: number;
-      registrationDeadline?: string;
-    } | null;
+    const eventId = invite.event as string;
+    const invitedById = invite.invitedBy as string;
 
-    const invitedBy = invite.invitedBy as {
-      id?: string;
-      name?: string;
-      phone?: string;
-      email?: string;
-    } | null;
+    // Get full event details (depth:0 to avoid R2 hang)
+    const fullEvent = await payload.findByID({
+      collection: "managed-events",
+      id: eventId,
+      depth: 0,
+      overrideAccess: true,
+    });
 
-    const church = invite.church as {
-      id?: string;
-      name?: string;
-    } | null;
+    // Get inviter details
+    const inviter = await payload.findByID({
+      collection: "users",
+      id: invitedById,
+      depth: 1,
+    }).catch(() => null);
+
+    // Get inviter's church name
+    let inviterChurch: string | null = null;
+    if (inviter?.church) {
+      try {
+        const churchDoc = await payload.findByID({
+          collection: "churches",
+          id: inviter.church as string,
+          depth: 0,
+          overrideAccess: true,
+        });
+        inviterChurch = churchDoc?.name || null;
+      } catch { /* no church */ }
+    }
+
+    // Fetch landing page hero image URL separately
+    let landingPageHeroImageUrl: string | null = null;
+    if (fullEvent?.landingPageHeroImage) {
+      try {
+        const media = await payload.findByID({
+          collection: "media",
+          id: fullEvent.landingPageHeroImage as string,
+          depth: 0,
+          overrideAccess: true,
+        });
+        landingPageHeroImageUrl = media?.url || null;
+      } catch { /* no image */ }
+    }
 
     // Get registration count for this event
     const registrations = await payload.find({
       collection: "event-registrations",
       where: {
-        event: { equals: event?.id },
+        event: { equals: eventId },
         status: { in: ["registered", "attended", "baptized"] },
       },
       limit: 0,
+      depth: 0,
+      overrideAccess: true,
     });
 
     const registrationCount = registrations.totalDocs;
-    const spotsRemaining = event?.maxAttendees
-      ? Math.max(0, event.maxAttendees - registrationCount)
+    const spotsRemaining = fullEvent?.maxAttendees
+      ? Math.max(0, fullEvent.maxAttendees - registrationCount)
       : null;
 
     // Check if deadline has passed
     const now = new Date();
-    const deadline = event?.registrationDeadline ? new Date(event.registrationDeadline) : null;
+    const deadline = fullEvent?.registrationDeadline ? new Date(fullEvent.registrationDeadline) : null;
     const isPastDeadline = deadline && now > deadline;
 
     // Check if event is full
     const isFull = spotsRemaining === 0;
-
-    // Get landing page configuration
-    const fullEvent = await payload.findByID({
-      collection: "managed-events",
-      id: invite.event as string,
-      depth: 0,
-    });
-
-    const landingPageHeroImage = fullEvent?.landingPageHeroImage as { url?: string; filename?: string } | null;
-    const landingPageHeroImageUrl = landingPageHeroImage?.url || (landingPageHeroImage?.filename ? `/media/${landingPageHeroImage.filename}` : null);
 
     return NextResponse.json({
       invite: {
@@ -95,14 +109,14 @@ export async function GET(
         inviteCode: invite.inviteCode,
       },
       event: {
-        id: event?.id,
-        title: event?.title,
-        slug: event?.slug,
-        description: event?.description,
-        startDate: event?.startDate,
-        location: event?.location,
-        address: event?.address,
-        eventType: event?.eventType,
+        id: eventId,
+        title: fullEvent?.title,
+        slug: fullEvent?.slug,
+        description: fullEvent?.description,
+        startDate: fullEvent?.startDate,
+        location: fullEvent?.location,
+        address: fullEvent?.address,
+        eventType: fullEvent?.eventType,
         spotsRemaining: spotsRemaining,
         isFull: isFull,
         isPastDeadline: isPastDeadline,
@@ -117,11 +131,11 @@ export async function GET(
         },
       },
       invitedBy: {
-        id: invitedBy?.id,
-        name: invitedBy?.name,
-        phone: invitedBy?.phone,
-        email: invitedBy?.email,
-        church: church?.name,
+        id: inviter?.id,
+        name: inviter?.name,
+        phone: inviter?.phone,
+        email: inviter?.email,
+        church: inviterChurch,
       },
       registrationCount: invite.registrationCount || 0,
     });
