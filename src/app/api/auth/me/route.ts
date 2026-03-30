@@ -142,23 +142,49 @@ async function getEventInvites(payload: Awaited<ReturnType<typeof getPayload>>, 
           { status: { equals: "active" } },
         ],
       },
-      depth: 1,
+      depth: 0,
       limit: 100,
       overrideAccess: true,
     });
     console.log(`[EVENT-INVITES] Got ${invites.docs.length} invites in ${Date.now() - t}ms`);
 
-    // Filter to future registration-open events first
-    const validInvites = invites.docs.filter((invite) => {
-      const event = invite.event as unknown as { id: string; title: string; slug: string; startDate: string; status: string; location: string } | string;
-      if (typeof event === "object" && event) {
-        const startDate = new Date(event.startDate);
-        return startDate > new Date() && event.status === "registration-open";
-      }
-      return false;
-    });
-    console.log(`[EVENT-INVITES] ${validInvites.length} valid invites after filtering`);
+    if (invites.docs.length === 0) return [];
 
+    // Extract event IDs and fetch events separately
+    const eventIds = invites.docs
+      .map((invite) => {
+        const event = invite.event;
+        return typeof event === "string" ? event : (event as { id?: string })?.id;
+      })
+      .filter(Boolean) as string[];
+
+    console.log(`[EVENT-INVITES] Fetching ${eventIds.length} events`);
+    const eventsResult = await payload.find({
+      collection: "managed-events",
+      where: {
+        id: { in: eventIds },
+        status: { equals: "registration-open" },
+      },
+      limit: 100,
+      overrideAccess: true,
+    });
+    console.log(`[EVENT-INVITES] Got ${eventsResult.docs.length} events in ${Date.now() - t}ms`);
+
+    // Build event lookup
+    const eventMap = new Map(
+      eventsResult.docs.map((event) => [String(event.id), event])
+    );
+
+    // Filter to future events
+    const validInvites = invites.docs.filter((invite) => {
+      const eventId = typeof invite.event === "string" ? invite.event : (invite.event as { id?: string })?.id;
+      const event = eventId ? eventMap.get(eventId) : undefined;
+      if (!event) return false;
+      const startDate = new Date(event.startDate as string);
+      return startDate > new Date();
+    });
+
+    console.log(`[EVENT-INVITES] ${validInvites.length} valid invites after filtering`);
     if (validInvites.length === 0) return [];
 
     // Batch: get registration counts for all invites in parallel
@@ -176,17 +202,23 @@ async function getEventInvites(payload: Awaited<ReturnType<typeof getPayload>>, 
     console.log(`[EVENT-INVITES] Registration counts loaded in ${Date.now() - t}ms`);
 
     return validInvites.map((invite, i) => {
-      const event = invite.event as unknown as { id: string; title: string; slug: string; startDate: string; status: string; location: string };
+      const eventId = typeof invite.event === "string" ? invite.event : (invite.event as { id?: string })?.id;
+      const event = eventId ? eventMap.get(eventId) : undefined;
+      if (!event) return null;
       return {
-        eventId: event.id,
-        eventTitle: event.title,
-        eventSlug: event.slug,
-        eventDate: event.startDate,
-        eventLocation: event.location,
-        inviteCode: invite.inviteCode,
+        eventId: String(event.id),
+        eventTitle: event.title as string,
+        eventSlug: event.slug as string,
+        eventDate: event.startDate as string,
+        eventLocation: event.location as string,
+        inviteCode: invite.inviteCode as string,
         registrationCount: countResults[i].totalDocs,
       };
-    });
+    }).filter(Boolean) as Array<{
+      eventId: string; eventTitle: string; eventSlug: string;
+      eventDate: string; eventLocation: string; inviteCode: string;
+      registrationCount: number;
+    }>;
   } catch (error) {
     console.error(`[EVENT-INVITES] Error after ${Date.now() - t}ms:`, error);
     return [];

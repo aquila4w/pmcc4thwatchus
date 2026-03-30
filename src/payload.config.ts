@@ -2,7 +2,6 @@ import { mongooseAdapter } from "@payloadcms/db-mongodb";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { buildConfig } from "payload";
 import { s3Storage } from "@payloadcms/storage-s3";
-import { nodemailerAdapter } from "@payloadcms/email-nodemailer";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
@@ -80,21 +79,6 @@ export default buildConfig({
   globals: [Header, Footer, ThemeSettings],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || "change-me",
-  email: process.env.RESEND_API_KEY
-    ? nodemailerAdapter({
-        defaultFromAddress: process.env.EMAIL_FROM || "PMCC 4th Watch <events@pmcc4thwatch.us>",
-        defaultFromName: "PMCC 4th Watch",
-        transportOptions: {
-          host: "smtp.resend.com",
-          port: 465,
-          secure: true,
-          auth: {
-            user: "resend",
-            pass: process.env.RESEND_API_KEY,
-          },
-        },
-      })
-    : undefined,
   typescript: {
     outputFile: path.resolve(dirname, "payload-types.ts"),
   },
