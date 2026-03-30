@@ -51,6 +51,22 @@ export async function GET(request: NextRequest) {
 
     const event = events.docs[0];
 
+    // Fetch heroImage media URL separately (depth:0 returns just the ID)
+    let heroImageUrl: string | null = null;
+    if (event.heroImage) {
+      try {
+        const media = await payload.findByID({
+          collection: "media",
+          id: event.heroImage as string,
+          depth: 0,
+          overrideAccess: true,
+        });
+        heroImageUrl = media?.url || null;
+      } catch {
+        heroImageUrl = null;
+      }
+    }
+
     // Find the EventInvite for this member + event
     const invites = await payload.find({
       collection: "event-invites",
@@ -105,11 +121,7 @@ export async function GET(request: NextRequest) {
         location: event.location,
         address: event.address,
         eventType: event.eventType,
-        heroImageUrl: event.heroImage
-          ? typeof event.heroImage === "object"
-            ? (event.heroImage as { url?: string }).url
-            : `/media/${event.heroImage}`
-          : null,
+        heroImageUrl,
         hasBaptism: event.hasBaptism,
         spotsRemaining,
         isFull,
