@@ -98,6 +98,27 @@ export const InviteScans: CollectionConfig = {
       },
     },
     {
+      name: "city",
+      type: "text",
+      admin: {
+        description: "City from IP geolocation",
+      },
+    },
+    {
+      name: "region",
+      type: "text",
+      admin: {
+        description: "State/region from IP geolocation",
+      },
+    },
+    {
+      name: "country",
+      type: "text",
+      admin: {
+        description: "Country from IP geolocation",
+      },
+    },
+    {
       name: "userAgent",
       type: "text",
       admin: {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -14,11 +14,13 @@ import {
   ToggleRight,
   User,
   RefreshCw,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import QRCode from "qrcode";
 
 interface ChurchInvite {
   id: string;
@@ -48,8 +50,10 @@ export default function ChurchCodesPage() {
   const [invites, setInvites] = useState<ChurchInvite[]>([]);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [downloadingAll, setDownloadingAll] = useState(false);
   const [editingContact, setEditingContact] = useState<string | null>(null);
   const [contactForm, setContactForm] = useState({ name: "", email: "", phone: "" });
+  const downloadQueueRef = useRef(0);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -149,8 +153,9 @@ export default function ChurchCodesPage() {
 
   const applyContactToAll = async (churchId: string) => {
     const churchInvites = invites.filter((i) => i.church === churchId);
-    const first = churchInvites[0];
-    if (!first) return;
+    // Find the first invite that actually has a contact set
+    const source = churchInvites.find((i) => i.contactName || i.contactEmail || i.contactPhone);
+    if (!source) return;
 
     try {
       await Promise.all(
@@ -160,9 +165,9 @@ export default function ChurchCodesPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               id: i.id,
-              contactName: first.contactName || null,
-              contactEmail: first.contactEmail || null,
-              contactPhone: first.contactPhone || null,
+              contactName: source.contactName || null,
+              contactEmail: source.contactEmail || null,
+              contactPhone: source.contactPhone || null,
             }),
           })
         )
@@ -180,6 +185,49 @@ export default function ChurchCodesPage() {
       email: invite.contactEmail || "",
       phone: invite.contactPhone || "",
     });
+  };
+
+  // --- QR Download ---
+  const downloadQR = async (invite: ChurchInvite, churchName: string, placementName: string) => {
+    const url = `${baseUrl}/register/${eventSlug}?ad=${invite.code}`;
+    try {
+      const dataUrl = await QRCode.toDataURL(url, {
+        type: "image/png",
+        width: 512,
+        margin: 2,
+        color: { dark: "#000000FF", light: "#FFFFFFFF" },
+      });
+      const link = document.createElement("a");
+      const safeChurch = churchName.replace(/[^a-zA-Z0-9]/g, "-");
+      const safePlacement = placementName.replace(/[^a-zA-Z0-9]/g, "-");
+      link.download = `qr-${safeChurch}-${safePlacement}-${invite.code}.png`;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error("Failed to generate QR code:", err);
+    }
+  };
+
+  const downloadAllQRs = async () => {
+    setDownloadingAll(true);
+    const allInvites = churches.flatMap((church) =>
+      placements
+        .map((placement) => {
+          const invite = getInvite(church.id, placement.id);
+          return invite ? { invite, churchName: church.name, placementName: placement.name } : null;
+        })
+        .filter(Boolean) as { invite: ChurchInvite; churchName: string; placementName: string }[]
+    );
+
+    // Download sequentially to avoid browser blocking
+    for (const { invite, churchName, placementName } of allInvites) {
+      await downloadQR(invite, churchName, placementName);
+      // Small delay between downloads so browser doesn't block them
+      await new Promise((r) => setTimeout(r, 300));
+    }
+    setDownloadingAll(false);
   };
 
   const activeCount = invites.filter((i) => i.status === "active").length;
@@ -214,6 +262,12 @@ export default function ChurchCodesPage() {
         <Badge variant="outline" className="text-sm py-1 px-3">{totalScans} scans</Badge>
         <Badge variant="outline" className="text-sm py-1 px-3">{totalRegs} registrations</Badge>
         <div className="ml-auto flex gap-2">
+          {invites.length > 0 && (
+            <Button size="sm" variant="outline" onClick={downloadAllQRs} disabled={downloadingAll}>
+              {downloadingAll ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
+              Download All
+            </Button>
+          )}
           <Button size="sm" onClick={generateCodes} disabled={generating}>
             {generating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RefreshCw className="w-4 h-4 mr-1" />}
             Generate Missing
@@ -298,6 +352,9 @@ export default function ChurchCodesPage() {
                             <div className="flex items-center justify-center gap-1">
                               <button onClick={() => toggleStatus(invite.id, invite.status)} className="text-slate-400 hover:text-slate-600" title={invite.status === "active" ? "Disable" : "Enable"}>
                                 {invite.status === "active" ? <ToggleRight className="w-5 h-5 text-green-500" /> : <ToggleLeft className="w-5 h-5" />}
+                              </button>
+                              <button onClick={() => downloadQR(invite, church.name, placement.name)} className="text-slate-400 hover:text-slate-600" title="Download QR code">
+                                <Download className="w-3.5 h-3.5" />
                               </button>
                               <button onClick={() => startEditContact(invite)} className="text-slate-400 hover:text-slate-600" title="Edit contact">
                                 <User className="w-3.5 h-3.5" />

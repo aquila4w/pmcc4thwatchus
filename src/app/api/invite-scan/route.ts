@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
 import { parseUserAgent } from "@/lib/user-agent";
+import { lookupIp } from "@/lib/geoip";
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,6 +24,9 @@ export async function POST(request: NextRequest) {
     // Capture IP
     const forwarded = request.headers.get("x-forwarded-for");
     const ip = forwarded ? forwarded.split(",")[0].trim() : request.headers.get("x-real-ip") || "unknown";
+
+    // Look up geolocation from IP
+    const geo = ip !== "unknown" ? await lookupIp(ip).catch(() => null) : null;
 
     // Look up church/adPlacement for denormalization
     let church: string | undefined;
@@ -67,6 +71,9 @@ export async function POST(request: NextRequest) {
         church: church || undefined,
         adPlacement: adPlacement || undefined,
         ipAddress: ip,
+        city: geo?.city || undefined,
+        region: geo?.region || undefined,
+        country: geo?.country || undefined,
         userAgent: ua,
         device,
         os,

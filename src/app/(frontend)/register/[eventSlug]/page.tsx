@@ -406,8 +406,8 @@ export default function RegisterPage({
                   <h2 className="font-serif text-lg font-semibold text-white mb-4 flex items-center gap-2">
                     {adCode ? (
                       <>
-                        <Church className="w-5 h-5 text-secondary" />
-                        Sponsored By
+                        <Phone className="w-5 h-5 text-secondary" />
+                        For any questions, please contact
                       </>
                     ) : (
                       <>
@@ -421,11 +421,16 @@ export default function RegisterPage({
                       <User className="w-7 h-7 text-secondary" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-white text-lg font-semibold">{eventData.invitedBy.name}</p>
-                      {eventData.invitedBy.church && (
+                      {!adCode && (
+                        <p className="text-white text-lg font-semibold">{eventData.invitedBy.name}</p>
+                      )}
+                      {!adCode && eventData.invitedBy.church && (
                         <p className="text-white/60 text-sm flex items-center gap-1">
                           <Church className="w-4 h-4" />{eventData.invitedBy.church}
                         </p>
+                      )}
+                      {eventData.invitedBy.name && adCode && (
+                        <p className="text-white text-lg font-semibold">{eventData.invitedBy.name}</p>
                       )}
                       {eventData.invitedBy.phone && (
                         <p className="text-secondary text-sm flex items-center gap-1 mt-1">

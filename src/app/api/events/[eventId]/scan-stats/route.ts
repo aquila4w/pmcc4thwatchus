@@ -69,6 +69,45 @@ export async function GET(
       if (scan.registered) browserMap[b].registered++;
     }
 
+    // OS breakdown
+    const osMap: Record<string, { scans: number; registered: number }> = {};
+    for (const scan of scans.docs) {
+      const o = (scan.os as string) || "unknown";
+      if (!osMap[o]) osMap[o] = { scans: 0, registered: 0 };
+      osMap[o].scans++;
+      if (scan.registered) osMap[o].registered++;
+    }
+
+    // Location breakdown
+    const locationMap: Record<string, { city: string; region: string; country: string; scans: number; registered: number }> = {};
+    for (const scan of scans.docs) {
+      const city = (scan.city as string) || "";
+      const region = (scan.region as string) || "";
+      const country = (scan.country as string) || "";
+      if (!city && !region && !country) continue; // skip scans without geo data
+      const key = `${city}|${region}|${country}`;
+      if (!locationMap[key]) {
+        locationMap[key] = { city, region, country, scans: 0, registered: 0 };
+      }
+      locationMap[key].scans++;
+      if (scan.registered) locationMap[key].registered++;
+    }
+
+    // Scan timeline (grouped by date)
+    const timelineMap: Record<string, { date: string; memberScans: number; churchScans: number; registered: number }> = {};
+    for (const scan of scans.docs) {
+      const dateStr = scan.scannedAt
+        ? new Date(scan.scannedAt as string).toISOString().split("T")[0]
+        : "unknown";
+      if (!timelineMap[dateStr]) {
+        timelineMap[dateStr] = { date: dateStr, memberScans: 0, churchScans: 0, registered: 0 };
+      }
+      if (scan.inviteType === "member") timelineMap[dateStr].memberScans++;
+      else timelineMap[dateStr].churchScans++;
+      if (scan.registered) timelineMap[dateStr].registered++;
+    }
+    const scanTimeline = Object.values(timelineMap).sort((a, b) => a.date.localeCompare(b.date));
+
     // Per-church stats (from church scans)
     const churchStats: Record<string, { scans: number; registered: number; placements: Record<string, { scans: number; registered: number }> }> = {};
     for (const scan of churchScans) {
@@ -189,6 +228,19 @@ export async function GET(
         registered: stats.registered,
         conversionRate: stats.scans > 0 ? Math.round((stats.registered / stats.scans) * 100) : 0,
       })),
+      osBreakdown: Object.entries(osMap).map(([os, stats]) => ({
+        os,
+        scans: stats.scans,
+        registered: stats.registered,
+        conversionRate: stats.scans > 0 ? Math.round((stats.registered / stats.scans) * 100) : 0,
+      })),
+      locationBreakdown: Object.values(locationMap)
+        .sort((a, b) => b.scans - a.scans)
+        .map((loc) => ({
+          ...loc,
+          conversionRate: loc.scans > 0 ? Math.round((loc.registered / loc.scans) * 100) : 0,
+        })),
+      scanTimeline,
       byChurch,
       byPlacement: Object.values(byPlacement),
       churchInviteCount: churchInvites.totalDocs,
