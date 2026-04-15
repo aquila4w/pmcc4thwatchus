@@ -253,9 +253,41 @@ export default function WelcomePage({
               </div>
               <div className="flex items-start gap-3 text-white/70">
                 <MapPin className="w-5 h-5 text-white/50 mt-0.5" />
-                <p>{data.event.location}</p>
+                <div>
+                  <p>{data.event.location}</p>
+                  {data.event.address && (
+                    <p className="text-white/40 text-sm">{data.event.address}</p>
+                  )}
+                </div>
               </div>
             </div>
+
+            {/* Embedded Map */}
+            {(data.event.address || data.event.location) && (
+              <div className="mb-6">
+                <div className="rounded-xl overflow-hidden border border-white/10">
+                  <iframe
+                    src={`https://maps.google.com/maps?q=${encodeURIComponent(data.event.address || data.event.location)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                    width="100%"
+                    height="250"
+                    style={{ border: 0 }}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    title="Event location"
+                    className="w-full"
+                  />
+                </div>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.event.address || data.event.location)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-secondary text-sm mt-3 hover:underline"
+                >
+                  <MapPin className="w-4 h-4" />
+                  Get Directions
+                </a>
+              </div>
+            )}
 
             {/* QR Code Section */}
             {data.event.landingPage.showQR && (

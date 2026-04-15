@@ -1,6 +1,186 @@
 import type { CollectionConfig } from "payload";
 import { layoutBlocks } from "../blocks";
 
+const BATCH_SIZE = 5;
+const BATCH_DELAY_MS = 200;
+
+/** Retry a single operation with exponential backoff for MongoDB M0 transient errors */
+async function retryOp<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isTransient = /retry|transaction|timeout|temporarily/i.test(msg);
+      if (attempt >= retries || !isTransient) throw err;
+      await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
+    }
+  }
+}
+
+/** Pause between batches to avoid overwhelming MongoDB M0 free tier */
+const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Generate member + church invites in batched background process */
+async function generateInvitesInBackground(
+  req: { payload: import("payload").Payload },
+  eventId: string,
+  eventTitle: string,
+) {
+  // --- Member invites ---
+  try {
+    const [members, existingInvites] = await Promise.all([
+      retryOp(() =>
+        req.payload.find({
+          collection: "users",
+          where: {
+            and: [
+              { status: { equals: "approved" } },
+              {
+                role: {
+                  in: ["member", "eventAdmin", "headMinister", "secretary", "subDistrictCoordinator", "districtCoordinator", "superAdmin"],
+                },
+              },
+            ],
+          },
+          limit: 999,
+          depth: 0,
+        })
+      ),
+      retryOp(() =>
+        req.payload.find({
+          collection: "event-invites",
+          where: { event: { equals: eventId } },
+          limit: 0,
+          depth: 0,
+        })
+      ),
+    ]);
+
+    const existingMemberIds = new Set(
+      existingInvites.docs.map((invite: unknown) => {
+        const invitedBy = (invite as { invitedBy?: unknown }).invitedBy;
+        return typeof invitedBy === "string" ? invitedBy : (invitedBy as { id?: string })?.id;
+      })
+    );
+
+    const toCreate = members.docs.filter((m) => {
+      const mid = typeof m.id === "string" ? m.id : String(m.id);
+      return !existingMemberIds.has(mid);
+    });
+
+    let createdCount = 0;
+    for (let i = 0; i < toCreate.length; i += BATCH_SIZE) {
+      const batch = toCreate.slice(i, i + BATCH_SIZE);
+      await Promise.all(
+        batch.map((member) =>
+          retryOp(() =>
+            req.payload.create({
+              collection: "event-invites",
+              data: {
+                event: eventId,
+                invitedBy: member.id,
+                status: "active",
+              },
+            })
+          ).catch(() => {})
+        )
+      );
+      createdCount += batch.length;
+      if (i + BATCH_SIZE < toCreate.length) await pause(BATCH_DELAY_MS);
+    }
+
+    if (createdCount > 0) {
+      console.log(`Auto-generated ${createdCount} event invites for: ${eventTitle}`);
+    }
+  } catch (error) {
+    console.error("Failed to auto-generate event invites:", error);
+  }
+
+  // --- Church invites ---
+  try {
+    const [churches, placements, existingChurchInvites] = await Promise.all([
+      retryOp(() =>
+        req.payload.find({
+          collection: "churches",
+          limit: 200,
+          depth: 0,
+          overrideAccess: true,
+        })
+      ),
+      retryOp(() =>
+        req.payload.find({
+          collection: "ad-placements",
+          where: { status: { equals: "active" } },
+          limit: 100,
+          depth: 0,
+          overrideAccess: true,
+        })
+      ),
+      retryOp(() =>
+        req.payload.find({
+          collection: "church-event-invites",
+          where: { event: { equals: eventId } },
+          limit: 0,
+          depth: 0,
+          overrideAccess: true,
+        })
+      ),
+    ]);
+
+    if (churches.totalDocs > 0 && placements.totalDocs > 0) {
+      const existingCombos = new Set(
+        existingChurchInvites.docs.map((ci: Record<string, unknown>) =>
+          `${ci.church}-${ci.adPlacement}`
+        )
+      );
+
+      const combos: { churchId: string; placementId: string }[] = [];
+      for (const church of churches.docs) {
+        for (const placement of placements.docs) {
+          const key = `${church.id}-${placement.id}`;
+          if (!existingCombos.has(key)) {
+            combos.push({
+              churchId: String(church.id),
+              placementId: String(placement.id),
+            });
+          }
+        }
+      }
+
+      let churchInviteCount = 0;
+      for (let i = 0; i < combos.length; i += BATCH_SIZE) {
+        const batch = combos.slice(i, i + BATCH_SIZE);
+        await Promise.all(
+          batch.map(({ churchId, placementId }) =>
+            retryOp(() =>
+              req.payload.create({
+                collection: "church-event-invites",
+                data: {
+                  event: eventId,
+                  church: churchId,
+                  adPlacement: placementId,
+                  status: "active",
+                },
+                depth: 0,
+                overrideAccess: true,
+              })
+            ).catch(() => {})
+          )
+        );
+        churchInviteCount += batch.length;
+        if (i + BATCH_SIZE < combos.length) await pause(BATCH_DELAY_MS);
+      }
+
+      if (churchInviteCount > 0) {
+        console.log(`Auto-generated ${churchInviteCount} church invites for: ${eventTitle}`);
+      }
+    }
+  } catch (error) {
+    console.error("Failed to auto-generate church event invites:", error);
+  }
+}
+
 export const ManagedEvents: CollectionConfig = {
   slug: "managed-events",
   admin: {
@@ -491,129 +671,14 @@ export const ManagedEvents: CollectionConfig = {
             (!previousDoc || previousDoc.status !== "registration-open"));
 
         if (shouldGenerateInvites && doc.status === "registration-open" && doc.startDate && new Date(doc.startDate) > new Date()) {
-          try {
-            // Find all approved members who can invite guests
-            const members = await req.payload.find({
-              collection: "users",
-              where: {
-                and: [
-                  {
-                    status: { equals: "approved" },
-                  },
-                  {
-                    role: {
-                      in: ["member", "eventAdmin", "headMinister", "secretary", "subDistrictCoordinator", "districtCoordinator", "superAdmin"],
-                    },
-                  },
-                ],
-              },
-              limit: 999,
-              depth: 0,
-            });
+          // Run invite generation in the background to avoid blocking the response
+          // and hitting MongoDB M0 free tier transaction limits
+          const eventId = typeof doc.id === "string" ? doc.id : String(doc.id);
 
-            // Check if invites already exist for this event
-            const existingInvites = await req.payload.find({
-              collection: "event-invites",
-              where: {
-                event: { equals: doc.id },
-              },
-              limit: 0,
-            });
-
-            const existingMemberIds = new Set(
-              existingInvites.docs.map((invite: unknown) => {
-                const invitedBy = (invite as { invitedBy?: unknown }).invitedBy;
-                return typeof invitedBy === "string" ? invitedBy : (invitedBy as { id?: string })?.id;
-              })
-            );
-
-            // Create invites for members who don't have one yet
-            let createdCount = 0;
-            for (const member of members.docs) {
-              const memberId = typeof member.id === "string" ? member.id : String(member.id);
-
-              if (!existingMemberIds.has(memberId)) {
-                await req.payload.create({
-                  collection: "event-invites",
-                  data: {
-                    event: doc.id,
-                    invitedBy: memberId,
-                    status: "active",
-                  },
-                });
-                createdCount++;
-              }
-            }
-
-            if (createdCount > 0) {
-              console.log(`Auto-generated ${createdCount} event invites for event: ${doc.title}`);
-            }
-          } catch (error) {
-            console.error("Failed to auto-generate event invites:", error);
-          }
-
-          // Also auto-generate church event invites for this event
-          try {
-            const [churches, placements] = await Promise.all([
-              req.payload.find({
-                collection: "churches",
-                limit: 200,
-                depth: 0,
-                overrideAccess: true,
-              }),
-              req.payload.find({
-                collection: "ad-placements",
-                where: { status: { equals: "active" } },
-                limit: 100,
-                depth: 0,
-                overrideAccess: true,
-              }),
-            ]);
-
-            if (churches.totalDocs > 0 && placements.totalDocs > 0) {
-              // Check existing church invites in batch
-              const existingChurchInvites = await req.payload.find({
-                collection: "church-event-invites",
-                where: { event: { equals: doc.id } },
-                limit: 0,
-                depth: 0,
-                overrideAccess: true,
-              });
-
-              const existingCombos = new Set(
-                existingChurchInvites.docs.map((ci: Record<string, unknown>) =>
-                  `${ci.church}-${ci.adPlacement}`
-                )
-              );
-
-              let churchInviteCount = 0;
-              for (const church of churches.docs) {
-                for (const placement of placements.docs) {
-                  const key = `${church.id}-${placement.id}`;
-                  if (!existingCombos.has(key)) {
-                    await req.payload.create({
-                      collection: "church-event-invites",
-                      data: {
-                        event: doc.id,
-                        church: church.id,
-                        adPlacement: placement.id,
-                        status: "active",
-                      },
-                      depth: 0,
-                      overrideAccess: true,
-                    });
-                    churchInviteCount++;
-                  }
-                }
-              }
-
-              if (churchInviteCount > 0) {
-                console.log(`Auto-generated ${churchInviteCount} church event invites for: ${doc.title}`);
-              }
-            }
-          } catch (error) {
-            console.error("Failed to auto-generate church event invites:", error);
-          }
+          // Fire-and-forget: don't await, let it run in background
+          generateInvitesInBackground(req, eventId, doc.title).catch((err) => {
+            console.error("Background invite generation failed:", err);
+          });
         }
       },
     ],
