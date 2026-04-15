@@ -22,6 +22,7 @@ import {
   X,
   Plus,
   Sparkles,
+  Megaphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -210,6 +211,12 @@ export default function EventDetailPage() {
                 Manage Invites
               </DropdownMenuItem>
               <DropdownMenuItem
+                onClick={() => router.push(`/admin/events/${event.id}/church-codes`)}
+              >
+                <Megaphone className="w-4 h-4 mr-2" />
+                Church QR Codes
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 className="text-red-600"
                 onClick={handleDelete}
                 disabled={deleting}
@@ -300,7 +307,7 @@ export default function EventDetailPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
         <Link href={`/admin/events/${eventId}/registrations`}>
           <Card className="bg-white p-4 hover:bg-slate-50 transition-colors cursor-pointer">
             <Users className="w-5 h-5 text-slate-600 mb-2" />
@@ -346,6 +353,14 @@ export default function EventDetailPage() {
             <Edit className="w-5 h-5 text-slate-600 mb-2" />
             <p className="font-medium">Edit Event</p>
             <p className="text-xs text-slate-500">Update details</p>
+          </Card>
+        </Link>
+
+        <Link href={`/admin/events/${eventId}/church-codes`}>
+          <Card className="bg-white p-4 hover:bg-slate-50 transition-colors cursor-pointer">
+            <Megaphone className="w-5 h-5 text-slate-600 mb-2" />
+            <p className="font-medium">Church QR Codes</p>
+            <p className="text-xs text-slate-500">Ad invite codes</p>
           </Card>
         </Link>
       </div>
