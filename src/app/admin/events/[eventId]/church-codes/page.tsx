@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -15,12 +15,14 @@ import {
   User,
   RefreshCw,
   Download,
+  Archive,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import QRCode from "qrcode";
+import JSZip from "jszip";
 
 interface ChurchInvite {
   id: string;
@@ -38,6 +40,10 @@ interface ChurchInvite {
 interface Church { id: string; name: string }
 interface Placement { id: string; name: string }
 
+function sanitize(name: string) {
+  return name.replace(/[^a-zA-Z0-9]/g, "-").replace(/-+/g, "-").replace(/(^-|-$)/g, "");
+}
+
 export default function ChurchCodesPage() {
   const params = useParams();
   const eventId = params.eventId as string;
@@ -51,9 +57,9 @@ export default function ChurchCodesPage() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [downloadingAll, setDownloadingAll] = useState(false);
+  const [downloadingChurch, setDownloadingChurch] = useState<string | null>(null);
   const [editingContact, setEditingContact] = useState<string | null>(null);
   const [contactForm, setContactForm] = useState({ name: "", email: "", phone: "" });
-  const downloadQueueRef = useRef(0);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -153,7 +159,6 @@ export default function ChurchCodesPage() {
 
   const applyContactToAll = async (churchId: string) => {
     const churchInvites = invites.filter((i) => i.church === churchId);
-    // Find the first invite that actually has a contact set
     const source = churchInvites.find((i) => i.contactName || i.contactEmail || i.contactPhone);
     if (!source) return;
 
@@ -187,47 +192,106 @@ export default function ChurchCodesPage() {
     });
   };
 
-  // --- QR Download ---
+  // --- QR Generation Helpers ---
+
+  /** Generate a QR code as a Blob (PNG) */
+  async function qrToBlob(url: string): Promise<Blob> {
+    const dataUrl = await QRCode.toDataURL(url, {
+      type: "image/png",
+      width: 512,
+      margin: 2,
+      color: { dark: "#000000FF", light: "#FFFFFFFF" },
+    });
+    const res = await fetch(dataUrl);
+    return await res.blob();
+  }
+
+  /** Generate consistent filename: qr-{churchName}-{placementName}.png */
+  function qrFilename(churchName: string, placementName: string) {
+    return `qr-${sanitize(churchName)}-${sanitize(placementName)}.png`;
+  }
+
+  // --- Download single QR ---
   const downloadQR = async (invite: ChurchInvite, churchName: string, placementName: string) => {
     const url = `${baseUrl}/register/${eventSlug}?ad=${invite.code}`;
     try {
-      const dataUrl = await QRCode.toDataURL(url, {
-        type: "image/png",
-        width: 512,
-        margin: 2,
-        color: { dark: "#000000FF", light: "#FFFFFFFF" },
-      });
+      const blob = await qrToBlob(url);
       const link = document.createElement("a");
-      const safeChurch = churchName.replace(/[^a-zA-Z0-9]/g, "-");
-      const safePlacement = placementName.replace(/[^a-zA-Z0-9]/g, "-");
-      link.download = `qr-${safeChurch}-${safePlacement}-${invite.code}.png`;
-      link.href = dataUrl;
+      link.download = qrFilename(churchName, placementName);
+      link.href = URL.createObjectURL(blob);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
     } catch (err) {
       console.error("Failed to generate QR code:", err);
     }
   };
 
-  const downloadAllQRs = async () => {
-    setDownloadingAll(true);
-    const allInvites = churches.flatMap((church) =>
-      placements
-        .map((placement) => {
-          const invite = getInvite(church.id, placement.id);
-          return invite ? { invite, churchName: church.name, placementName: placement.name } : null;
-        })
-        .filter(Boolean) as { invite: ChurchInvite; churchName: string; placementName: string }[]
-    );
+  // --- Download all QRs for one church as ZIP ---
+  const downloadChurchZip = async (church: Church) => {
+    setDownloadingChurch(church.id);
+    try {
+      const zip = new JSZip();
+      const churchInvites = placements
+        .map((p) => ({ invite: getInvite(church.id, p.id), placement: p }))
+        .filter((x): x is { invite: ChurchInvite; placement: Placement } => !!x.invite);
 
-    // Download sequentially to avoid browser blocking
-    for (const { invite, churchName, placementName } of allInvites) {
-      await downloadQR(invite, churchName, placementName);
-      // Small delay between downloads so browser doesn't block them
-      await new Promise((r) => setTimeout(r, 300));
+      for (const { invite, placement } of churchInvites) {
+        const url = `${baseUrl}/register/${eventSlug}?ad=${invite.code}`;
+        const blob = await qrToBlob(url);
+        zip.file(qrFilename(church.name, placement.name), blob);
+      }
+
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const link = document.createElement("a");
+      link.download = `${sanitize(church.name)}-qr-codes.zip`;
+      link.href = URL.createObjectURL(zipBlob);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    } catch (err) {
+      console.error("Failed to generate church ZIP:", err);
+    } finally {
+      setDownloadingChurch(null);
     }
-    setDownloadingAll(false);
+  };
+
+  // --- Download ALL QRs as ZIP (one ZIP with church folders) ---
+  const downloadAllAsZip = async () => {
+    setDownloadingAll(true);
+    try {
+      const zip = new JSZip();
+
+      for (const church of churches) {
+        const folder = zip.folder(sanitize(church.name));
+        if (!folder) continue;
+
+        for (const placement of placements) {
+          const invite = getInvite(church.id, placement.id);
+          if (!invite) continue;
+
+          const url = `${baseUrl}/register/${eventSlug}?ad=${invite.code}`;
+          const blob = await qrToBlob(url);
+          folder.file(qrFilename(church.name, placement.name), blob);
+        }
+      }
+
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const link = document.createElement("a");
+      const safeEvent = sanitize(eventTitle || "event");
+      link.download = `${safeEvent}-all-qr-codes.zip`;
+      link.href = URL.createObjectURL(zipBlob);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    } catch (err) {
+      console.error("Failed to generate all QR ZIP:", err);
+    } finally {
+      setDownloadingAll(false);
+    }
   };
 
   const activeCount = invites.filter((i) => i.status === "active").length;
@@ -263,9 +327,9 @@ export default function ChurchCodesPage() {
         <Badge variant="outline" className="text-sm py-1 px-3">{totalRegs} registrations</Badge>
         <div className="ml-auto flex gap-2">
           {invites.length > 0 && (
-            <Button size="sm" variant="outline" onClick={downloadAllQRs} disabled={downloadingAll}>
-              {downloadingAll ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
-              Download All
+            <Button size="sm" variant="outline" onClick={downloadAllAsZip} disabled={downloadingAll}>
+              {downloadingAll ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Archive className="w-4 h-4 mr-1" />}
+              Download All (ZIP)
             </Button>
           )}
           <Button size="sm" onClick={generateCodes} disabled={generating}>
@@ -306,13 +370,14 @@ export default function ChurchCodesPage() {
                     {p.name}
                   </th>
                 ))}
-                <th className="px-3 py-3 border-b min-w-[100px]" />
+                <th className="px-3 py-3 border-b min-w-[180px]" />
               </tr>
             </thead>
             <tbody>
               {churches.map((church) => {
                 const churchInvites = invites.filter((i) => i.church === church.id);
                 const firstContact = churchInvites[0];
+                const hasInvites = churchInvites.length > 0;
 
                 return (
                   <tr key={church.id} className="border-b hover:bg-slate-50/50">
@@ -388,8 +453,25 @@ export default function ChurchCodesPage() {
                         </td>
                       );
                     })}
-                    <td className="px-3 py-3">
-                      <Button size="sm" variant="ghost" className="text-xs text-slate-400 hover:text-slate-600" onClick={() => applyContactToAll(church.id)} title="Apply first placement's contact to all">
+                    <td className="px-3 py-3 space-y-1">
+                      {hasInvites && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-xs text-slate-400 hover:text-slate-600 w-full justify-start"
+                          onClick={() => downloadChurchZip(church)}
+                          disabled={downloadingChurch === church.id}
+                          title={`Download all QR codes for ${church.name} as ZIP`}
+                        >
+                          {downloadingChurch === church.id ? (
+                            <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                          ) : (
+                            <Archive className="w-3.5 h-3.5 mr-1.5" />
+                          )}
+                          {downloadingChurch === church.id ? "Zipping..." : "Download ZIP"}
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" className="text-xs text-slate-400 hover:text-slate-600 w-full justify-start" onClick={() => applyContactToAll(church.id)} title="Apply first placement's contact to all">
                         Copy contact to all
                       </Button>
                     </td>
