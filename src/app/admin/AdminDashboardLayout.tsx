@@ -17,6 +17,7 @@ import {
   Church,
   ChevronLeft,
   LayoutDashboard,
+  Megaphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -131,6 +132,12 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
       icon: Mail,
       href: "/admin/campaigns",
       roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary", "eventAdmin"],
+    },
+    {
+      label: "Ad Placements",
+      icon: Megaphone,
+      href: "/admin/ad-placements",
+      roles: ["superAdmin", "districtCoordinator", "eventAdmin"],
     },
     {
       label: "Users",
