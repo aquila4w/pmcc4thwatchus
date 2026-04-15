@@ -21,7 +21,8 @@ import {
   Church,
   MapPin,
   Mail,
-  QrCode
+  QrCode,
+  Megaphone
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -44,6 +45,7 @@ const sidebarItems = [
     items: [
       { label: "Events", icon: Calendar, href: "/admin/events", count: 8 },
       { label: "Registrations", icon: QrCode, href: "/admin/registrations", count: 234 },
+      { label: "Ad Placements", icon: Megaphone, href: "/dashboard/ad-placements" },
       { label: "Campaigns", icon: Mail, href: "/admin/campaigns", count: 3 },
     ]
   },

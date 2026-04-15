@@ -68,6 +68,27 @@ export const EventRegistrations: CollectionConfig = {
       },
     },
     {
+      name: "churchEventInvite",
+      type: "relationship",
+      relationTo: "church-event-invites",
+      admin: {
+        description: "The ChurchEventInvite used (if from a church ad QR code)",
+      },
+    },
+    {
+      name: "sourceType",
+      type: "select",
+      defaultValue: "member",
+      options: [
+        { label: "Member Invite", value: "member" },
+        { label: "Church Ad", value: "church" },
+      ],
+      admin: {
+        position: "sidebar",
+        description: "Whether this registration came from a member invite or church ad",
+      },
+    },
+    {
       name: "guest",
       type: "relationship",
       relationTo: "users",

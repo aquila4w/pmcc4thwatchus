@@ -141,5 +141,73 @@ export const Churches: CollectionConfig = {
       ],
     },
   ],
+  hooks: {
+    afterChange: [
+      async ({ doc, req, operation }) => {
+        // Auto-generate church event invites when a new church is created
+        if (operation === "create") {
+          try {
+            const [events, placements] = await Promise.all([
+              req.payload.find({
+                collection: "managed-events",
+                where: { status: { equals: "registration-open" } },
+                limit: 100,
+                depth: 0,
+                overrideAccess: true,
+              }),
+              req.payload.find({
+                collection: "ad-placements",
+                where: { status: { equals: "active" } },
+                limit: 100,
+                depth: 0,
+                overrideAccess: true,
+              }),
+            ]);
+
+            let created = 0;
+            for (const event of events.docs) {
+              for (const placement of placements.docs) {
+                // Check if already exists
+                const existing = await req.payload.find({
+                  collection: "church-event-invites",
+                  where: {
+                    and: [
+                      { event: { equals: event.id } },
+                      { church: { equals: doc.id } },
+                      { adPlacement: { equals: placement.id } },
+                    ],
+                  },
+                  limit: 1,
+                  depth: 0,
+                  overrideAccess: true,
+                });
+
+                if (existing.totalDocs === 0) {
+                  await req.payload.create({
+                    collection: "church-event-invites",
+                    data: {
+                      event: event.id,
+                      church: doc.id,
+                      adPlacement: placement.id,
+                      status: "active",
+                    },
+                    depth: 0,
+                    overrideAccess: true,
+                  });
+                  created++;
+                }
+              }
+            }
+
+            if (created > 0) {
+              console.log(`Auto-generated ${created} church event invites for new church: ${doc.name}`);
+            }
+          } catch (error) {
+            console.error("Failed to auto-generate church event invites for new church:", error);
+          }
+        }
+      },
+    ],
+  },
   timestamps: true,
 };

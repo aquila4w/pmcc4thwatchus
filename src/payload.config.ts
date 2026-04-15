@@ -14,6 +14,9 @@ import { NewsEvents } from "./collections/NewsEvents";
 import { ManagedEvents } from "./collections/ManagedEvents";
 import { EventRegistrations } from "./collections/EventRegistrations";
 import { EventInvites } from "./collections/EventInvites";
+import { AdPlacements } from "./collections/AdPlacements";
+import { ChurchEventInvites } from "./collections/ChurchEventInvites";
+import { InviteScans } from "./collections/InviteScans";
 import { Campaigns } from "./collections/Campaigns";
 import { Posts } from "./collections/Posts";
 import { Pages } from "./collections/Pages";
@@ -74,6 +77,9 @@ export default buildConfig({
     ManagedEvents,
     EventRegistrations,
     EventInvites,
+    AdPlacements,
+    ChurchEventInvites,
+    InviteScans,
     Campaigns,
   ],
   globals: [Header, Footer, ThemeSettings],

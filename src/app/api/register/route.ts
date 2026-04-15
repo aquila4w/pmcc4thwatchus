@@ -46,6 +46,8 @@ export async function POST(request: NextRequest) {
       eventInviteCode,
       eventSlug,
       refCode,
+      adCode,
+      scanId,
       firstName,
       lastName,
       phone,
@@ -91,10 +93,13 @@ export async function POST(request: NextRequest) {
     const phoneToUse = phone?.trim() || guestPhone?.trim();
     const emailToUse = email?.trim() || guestEmail?.trim();
 
-    // Find the event invite — support both UUID code and ref-based lookup
+    // Find the event invite — support UUID code, ref-based lookup, or church ad code
     let eventInvite: Record<string, unknown> | null = null;
+    let churchInvite: Record<string, unknown> | null = null;
     let event: Record<string, unknown> | null = null;
     let invitingMember: Record<string, unknown> | null = null;
+    let churchContact: { name?: string; email?: string; phone?: string } | null = null;
+    let sourceType: "member" | "church" = "member";
 
     if (refCode && eventSlug) {
       // Look up by member code + event slug
@@ -171,6 +176,38 @@ export async function POST(request: NextRequest) {
       eventInvite = invites.docs[0] as Record<string, unknown>;
       event = eventInvite.event as Record<string, unknown>;
       invitingMember = eventInvite.invitedBy as Record<string, unknown>;
+    } else if (adCode) {
+      // Church ad QR code lookup
+      sourceType = "church";
+      const ciResult = await payload.find({
+        collection: "church-event-invites",
+        where: {
+          and: [
+            { code: { equals: adCode } },
+            { status: { equals: "active" } },
+          ],
+        },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      });
+
+      if (ciResult.docs.length === 0) {
+        return NextResponse.json(
+          { error: "Invalid or disabled church invite code" },
+          { status: 404 }
+        );
+      }
+
+      churchInvite = ciResult.docs[0] as Record<string, unknown>;
+      event = { id: churchInvite.event } as Record<string, unknown>;
+
+      // Resolve contact info from the church invite
+      churchContact = {
+        name: (churchInvite.contactName as string) || undefined,
+        email: (churchInvite.contactEmail as string) || undefined,
+        phone: (churchInvite.contactPhone as string) || undefined,
+      };
     } else {
       return NextResponse.json(
         { error: "Missing invite reference" },
@@ -331,6 +368,8 @@ export async function POST(request: NextRequest) {
         inviteCode: registrationCode,
         event: fullEvent.id,
         eventInvite: eventInvite?.id || undefined,
+        churchEventInvite: churchInvite?.id || undefined,
+        sourceType,
         invitedBy: invitingMember?.id,
         invitedByChurch: inviterChurchId || undefined,
         guest: guestUserId,
@@ -386,6 +425,39 @@ export async function POST(request: NextRequest) {
       }).catch((err) => console.error("SMS send failed:", err));
     }
 
+    // Update invite scan record if scanId provided
+    if (scanId) {
+      try {
+        await payload.update({
+          collection: "invite-scans",
+          id: scanId,
+          data: {
+            registered: true,
+            registration: registration.id,
+          },
+          depth: 0,
+          overrideAccess: true,
+        });
+      } catch {
+        // Non-critical — scan update failure shouldn't fail registration
+      }
+    }
+
+    // Determine "invited by" display info
+    const invitedByDisplay = sourceType === "church" && churchContact
+      ? {
+          name: churchContact.name || null,
+          phone: churchContact.phone || null,
+          email: churchContact.email || null,
+          church: null,
+        }
+      : {
+          name: invitingMember?.name,
+          phone: invitingMember?.phone,
+          email: invitingMember?.email,
+          church: inviterChurchName,
+        };
+
     return NextResponse.json({
       success: true,
       isWaitlisted,
@@ -410,12 +482,7 @@ export async function POST(request: NextRequest) {
           showInviter: fullEvent.landingPageShowInviter ?? true,
         },
       },
-      invitedBy: {
-        name: invitingMember?.name,
-        phone: invitingMember?.phone,
-        email: invitingMember?.email,
-        church: inviterChurchName,
-      },
+      invitedBy: invitedByDisplay,
     });
   } catch (error) {
     console.error("Registration error:", error);

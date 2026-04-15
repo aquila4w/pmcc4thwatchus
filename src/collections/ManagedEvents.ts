@@ -551,6 +551,69 @@ export const ManagedEvents: CollectionConfig = {
           } catch (error) {
             console.error("Failed to auto-generate event invites:", error);
           }
+
+          // Also auto-generate church event invites for this event
+          try {
+            const [churches, placements] = await Promise.all([
+              req.payload.find({
+                collection: "churches",
+                limit: 200,
+                depth: 0,
+                overrideAccess: true,
+              }),
+              req.payload.find({
+                collection: "ad-placements",
+                where: { status: { equals: "active" } },
+                limit: 100,
+                depth: 0,
+                overrideAccess: true,
+              }),
+            ]);
+
+            if (churches.totalDocs > 0 && placements.totalDocs > 0) {
+              // Check existing church invites in batch
+              const existingChurchInvites = await req.payload.find({
+                collection: "church-event-invites",
+                where: { event: { equals: doc.id } },
+                limit: 0,
+                depth: 0,
+                overrideAccess: true,
+              });
+
+              const existingCombos = new Set(
+                existingChurchInvites.docs.map((ci: Record<string, unknown>) =>
+                  `${ci.church}-${ci.adPlacement}`
+                )
+              );
+
+              let churchInviteCount = 0;
+              for (const church of churches.docs) {
+                for (const placement of placements.docs) {
+                  const key = `${church.id}-${placement.id}`;
+                  if (!existingCombos.has(key)) {
+                    await req.payload.create({
+                      collection: "church-event-invites",
+                      data: {
+                        event: doc.id,
+                        church: church.id,
+                        adPlacement: placement.id,
+                        status: "active",
+                      },
+                      depth: 0,
+                      overrideAccess: true,
+                    });
+                    churchInviteCount++;
+                  }
+                }
+              }
+
+              if (churchInviteCount > 0) {
+                console.log(`Auto-generated ${churchInviteCount} church event invites for: ${doc.title}`);
+              }
+            }
+          } catch (error) {
+            console.error("Failed to auto-generate church event invites:", error);
+          }
         }
       },
     ],

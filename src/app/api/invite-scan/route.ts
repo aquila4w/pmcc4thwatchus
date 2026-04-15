@@ -1,0 +1,143 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getPayload } from "payload";
+import config from "@payload-config";
+import { parseUserAgent } from "@/lib/user-agent";
+
+export async function POST(request: NextRequest) {
+  try {
+    const payload = await getPayload({ config });
+    const body = await request.json();
+    const { inviteType, inviteCode, event, churchEventInvite, eventInvite } = body;
+
+    if (!inviteType || !inviteCode || !event) {
+      return NextResponse.json(
+        { error: "Missing required fields: inviteType, inviteCode, event" },
+        { status: 400 }
+      );
+    }
+
+    // Parse user-agent
+    const ua = request.headers.get("user-agent") || "";
+    const { device, os, browser } = parseUserAgent(ua);
+
+    // Capture IP
+    const forwarded = request.headers.get("x-forwarded-for");
+    const ip = forwarded ? forwarded.split(",")[0].trim() : request.headers.get("x-real-ip") || "unknown";
+
+    // Look up church/adPlacement for denormalization
+    let church: string | undefined;
+    let adPlacement: string | undefined;
+
+    if (inviteType === "church" && churchEventInvite) {
+      try {
+        const ci = await payload.findByID({
+          collection: "church-event-invites",
+          id: churchEventInvite,
+          depth: 0,
+          overrideAccess: true,
+        });
+        church = ci?.church as string | undefined;
+        adPlacement = ci?.adPlacement as string | undefined;
+      } catch {
+        // Church invite not found, continue without denormalized fields
+      }
+    } else if (inviteType === "member" && eventInvite) {
+      try {
+        const ei = await payload.findByID({
+          collection: "event-invites",
+          id: eventInvite,
+          depth: 0,
+          overrideAccess: true,
+        });
+        church = ei?.church as string | undefined;
+      } catch {
+        // Event invite not found
+      }
+    }
+
+    // Create scan record
+    const scan = await payload.create({
+      collection: "invite-scans",
+      data: {
+        inviteType,
+        inviteCode,
+        eventInvite: eventInvite || undefined,
+        churchEventInvite: churchEventInvite || undefined,
+        event,
+        church: church || undefined,
+        adPlacement: adPlacement || undefined,
+        ipAddress: ip,
+        userAgent: ua,
+        device,
+        os,
+        browser,
+        scannedAt: new Date().toISOString(),
+        registered: false,
+      },
+      depth: 0,
+      overrideAccess: true,
+    });
+
+    // Increment scanCount on the source invite
+    try {
+      if (inviteType === "church" && churchEventInvite) {
+        const ci = await payload.findByID({
+          collection: "church-event-invites",
+          id: churchEventInvite,
+          depth: 0,
+          overrideAccess: true,
+        });
+        await payload.update({
+          collection: "church-event-invites",
+          id: churchEventInvite,
+          data: { scanCount: (ci?.scanCount || 0) + 1 },
+          depth: 0,
+          overrideAccess: true,
+        });
+      } else if (inviteType === "member" && eventInvite) {
+        // Could add scanCount to event-invites later if needed
+      }
+    } catch {
+      // Non-critical — don't fail the scan if counter update fails
+    }
+
+    return NextResponse.json({ scanId: scan.id });
+  } catch (error) {
+    console.error("Invite scan error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+// PATCH: update scan record when registration completes
+export async function PATCH(request: NextRequest) {
+  try {
+    const payload = await getPayload({ config });
+    const body = await request.json();
+    const { scanId, registered, registrationId } = body;
+
+    if (!scanId) {
+      return NextResponse.json({ error: "Missing scanId" }, { status: 400 });
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (registered !== undefined) updateData.registered = registered;
+    if (registrationId) updateData.registration = registrationId;
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: "No update fields provided" }, { status: 400 });
+    }
+
+    await payload.update({
+      collection: "invite-scans",
+      id: scanId,
+      data: updateData,
+      depth: 0,
+      overrideAccess: true,
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Invite scan update error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}

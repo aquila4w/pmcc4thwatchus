@@ -94,9 +94,10 @@ export default function RegisterPage({
   const searchParams = useSearchParams();
   const refCode = searchParams.get("ref");
   const inviteCode = searchParams.get("invite");
+  const adCode = searchParams.get("ad");
 
-  // Support both ?ref= and ?invite= params
-  const code = refCode || inviteCode;
+  // Support ?ref=, ?invite=, and ?ad= params
+  const code = refCode || inviteCode || adCode;
 
   const [step, setStep] = useState<Step>("loading");
   const [eventData, setEventData] = useState<EventData | null>(null);
@@ -110,6 +111,8 @@ export default function RegisterPage({
   const [registrationResult, setRegistrationResult] = useState<RegistrationResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [scanId, setScanId] = useState<string | null>(null);
+  const [inviteType, setInviteType] = useState<"member" | "church">("member");
   const captchaRef = useRef<ReCAPTCHA>(null);
 
   useEffect(() => {
@@ -121,20 +124,61 @@ export default function RegisterPage({
       }
 
       try {
-        let url: string;
-        if (refCode) {
+        let data: EventData;
+
+        if (adCode) {
+          // Church ad QR code lookup
+          setInviteType("church");
+          const response = await fetch(`/api/church-invite/${encodeURIComponent(adCode)}`);
+          if (!response.ok) throw new Error("Invalid or disabled church invite code");
+          const churchData = await response.json();
+
+          // Map church invite response to EventData interface
+          data = {
+            invite: { id: churchData.churchInvite.id, inviteCode: churchData.churchInvite.code },
+            event: churchData.event,
+            invitedBy: {
+              id: "",
+              name: churchData.contact?.name || churchData.church?.name || "",
+              phone: churchData.contact?.phone || undefined,
+              email: churchData.contact?.email || undefined,
+              church: churchData.church?.name || undefined,
+            },
+            registrationCount: churchData.registrationCount || 0,
+          };
+        } else if (refCode) {
           // Look up by member code + event slug
-          url = `/api/event-invite/by-ref?code=${encodeURIComponent(refCode)}&eventSlug=${encodeURIComponent(resolvedParams.eventSlug)}`;
+          const response = await fetch(`/api/event-invite/by-ref?code=${encodeURIComponent(refCode)}&eventSlug=${encodeURIComponent(resolvedParams.eventSlug)}`);
+          if (!response.ok) throw new Error("Invalid or expired invite link");
+          data = await response.json();
         } else {
           // Look up by event-invite UUID
-          url = `/api/event-invite/${encodeURIComponent(inviteCode!)}`;
+          const response = await fetch(`/api/event-invite/${encodeURIComponent(inviteCode!)}`);
+          if (!response.ok) throw new Error("Invalid or expired invite link");
+          data = await response.json();
         }
 
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("Invalid or expired invite link");
-
-        const data = await response.json();
         setEventData(data);
+
+        // Record scan (fire-and-forget)
+        fetch("/api/invite-scan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            inviteType,
+            inviteCode: adCode || code,
+            event: data.event.id,
+            eventInvite: !adCode ? data.invite?.id || undefined : undefined,
+            churchEventInvite: adCode ? data.invite?.id : undefined,
+          }),
+        })
+          .then((res) => res.json())
+          .then((scanResult) => {
+            if (scanResult.scanId) setScanId(scanResult.scanId);
+          })
+          .catch(() => {
+            // Non-critical — scan recording failure shouldn't block the page
+          });
 
         if (data.event.isFull || data.event.isPastDeadline) {
           setStep("closed");
@@ -148,7 +192,7 @@ export default function RegisterPage({
     };
 
     fetchEvent();
-  }, [code, refCode, inviteCode, resolvedParams.eventSlug]);
+  }, [code, refCode, inviteCode, adCode, inviteType, resolvedParams.eventSlug]);
 
   const validateForm = () => {
     const newErrors: Partial<Record<keyof FormData, string>> = {};
@@ -184,9 +228,11 @@ export default function RegisterPage({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          eventInviteCode: eventData?.invite?.inviteCode || code,
+          eventInviteCode: !adCode ? (eventData?.invite?.inviteCode || code) : undefined,
           eventSlug: resolvedParams.eventSlug,
           refCode: refCode || undefined,
+          adCode: adCode || undefined,
+          scanId: scanId || undefined,
           firstName: formData.firstName.trim(),
           lastName: formData.lastName.trim(),
           phone: formData.phone.trim(),
@@ -354,12 +400,21 @@ export default function RegisterPage({
                 </div>
               </Card>
 
-              {/* Invited By Card */}
+              {/* Invited By / Sponsored By Card */}
               {eventData.invitedBy && eventData.event.landingPage.showInviter && (
                 <Card className="bg-secondary/10 border-secondary/20 p-6">
                   <h2 className="font-serif text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <Heart className="w-5 h-5 text-secondary" />
-                    You&apos;ve Been Invited By
+                    {adCode ? (
+                      <>
+                        <Church className="w-5 h-5 text-secondary" />
+                        Sponsored By
+                      </>
+                    ) : (
+                      <>
+                        <Heart className="w-5 h-5 text-secondary" />
+                        You&apos;ve Been Invited By
+                      </>
+                    )}
                   </h2>
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-full bg-secondary/20 flex items-center justify-center">
