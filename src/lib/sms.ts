@@ -21,7 +21,11 @@ export async function sendRegistrationSMS({
   const fromNumber = process.env.TWILIO_PHONE_NUMBER;
 
   if (!accountSid || !authToken || !fromNumber) {
-    console.warn("Twilio not configured, skipping SMS");
+    console.error("[SMS] Missing env vars:", {
+      hasSid: !!accountSid,
+      hasToken: !!authToken,
+      hasFrom: !!fromNumber,
+    });
     return { success: false, error: "SMS service not configured" };
   }
 
@@ -36,6 +40,8 @@ export async function sendRegistrationSMS({
     : `+1${cleanPhone}`;
 
   const message = customMessage || `Hi ${guestName}! You're registered for ${eventTitle}. View your ticket & QR code: ${ticketUrl}`;
+
+  console.log(`[SMS] Sending to ${phoneNumber} from ${fromNumber}: ${message.substring(0, 50)}...`);
 
   try {
     const response = await fetch(
