@@ -38,6 +38,7 @@ export async function GET(
       invites: invites.docs.map((invite) => ({
         id: invite.id,
         inviteCode: invite.inviteCode,
+        invitedBy: typeof invite.invitedBy === "string" ? invite.invitedBy : (invite.invitedBy as { id?: string })?.id,
         memberName: invite.memberContactName,
         memberPhone: invite.memberContactPhone,
         memberEmail: invite.memberContactEmail,

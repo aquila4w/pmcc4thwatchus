@@ -11,12 +11,16 @@ import {
   Church,
   Download,
   ArrowLeft,
+  QrCode,
+  Archive,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import QRCode from "qrcode";
+import JSZip from "jszip";
 
 interface Event {
   id: string;
@@ -29,6 +33,7 @@ interface Event {
 interface EventInvite {
   id: string;
   inviteCode: string;
+  invitedBy?: string;
   memberName: string;
   memberPhone?: string;
   memberEmail?: string;
@@ -58,6 +63,12 @@ export default function EventInvitesPage({
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedChurch, setSelectedChurch] = useState<string>("");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [expandedInviteId, setExpandedInviteId] = useState<string | null>(null);
+  const [expandedQrDataUrl, setExpandedQrDataUrl] = useState<string | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [downloadingAll, setDownloadingAll] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState("");
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -86,6 +97,13 @@ export default function EventInvitesPage({
         const churchesData = await churchesRes.json();
         setChurches(churchesData.docs || []);
       }
+
+      // Get current user role (for gating QR features)
+      const meRes = await fetch("/api/auth/me");
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        setCurrentUserRole(meData.user?.role || null);
+      }
     } catch (error) {
       console.error("Failed to fetch data:", error);
     } finally {
@@ -105,6 +123,79 @@ export default function EventInvitesPage({
     navigator.clipboard.writeText(inviteLink);
     setCopiedCode(invite.id);
     setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const isAdmin = currentUserRole === "superAdmin" || currentUserRole === "eventAdmin";
+
+  const buildInviteLink = (invite: EventInvite) => {
+    const baseUrl = window.location.origin;
+    return event?.slug
+      ? `${baseUrl}/register/${event.slug}?invite=${invite.inviteCode}`
+      : `${baseUrl}/register?invite=${invite.inviteCode}`;
+  };
+
+  const toggleQr = async (invite: EventInvite) => {
+    if (expandedInviteId === invite.id) {
+      setExpandedInviteId(null);
+      setExpandedQrDataUrl(null);
+      return;
+    }
+    setExpandedInviteId(invite.id);
+    setQrLoading(true);
+    setExpandedQrDataUrl(null);
+    try {
+      const link = buildInviteLink(invite);
+      const dataUrl = await QRCode.toDataURL(link, { type: "image/png", width: 256, margin: 2 });
+      setExpandedQrDataUrl(dataUrl);
+    } catch (err) {
+      console.error("QR generation failed:", err);
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  const downloadAllQrZip = async () => {
+    setDownloadingAll(true);
+    setDownloadProgress("Preparing...");
+    try {
+      const zip = new JSZip();
+      let generated = 0;
+      const total = invites.length;
+      for (const invite of invites) {
+        const link = buildInviteLink(invite);
+        const safeName = (invite.memberName || "unknown").replace(/[^a-zA-Z0-9]/g, "-");
+        try {
+          const dataUrl = await QRCode.toDataURL(link, { type: "image/png", width: 512, margin: 2 });
+          const res = await fetch(dataUrl);
+          const blob = await res.blob();
+          zip.file(`qr-${safeName}.png`, blob);
+        } catch (err) {
+          console.error(`Skipping QR for ${invite.memberName}:`, err);
+        }
+        generated++;
+        setDownloadProgress(`Generating QR ${generated}/${total}...`);
+        if (generated % 10 === 0) await new Promise((r) => setTimeout(r, 0));
+      }
+      setDownloadProgress("Compressing ZIP...");
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(zipBlob);
+      const link = document.createElement("a");
+      const safeEvent = (event?.title || "event").replace(/[^a-zA-Z0-9]/g, "-");
+      link.download = `${safeEvent}-invite-qr-codes.zip`;
+      link.href = url;
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 5000);
+      setDownloadProgress("");
+    } catch (err) {
+      console.error("Failed to generate ZIP:", err);
+      setDownloadProgress("Failed — see console");
+    } finally {
+      setDownloadingAll(false);
+    }
   };
 
   const filteredInvites = invites.filter((invite) => {
@@ -149,6 +240,12 @@ export default function EventInvitesPage({
             <p className="text-slate-500">{event?.title || "Loading..."}</p>
           </div>
         </div>
+        {isAdmin && invites.length > 0 && (
+          <Button size="sm" variant="outline" onClick={downloadAllQrZip} disabled={downloadingAll}>
+            {downloadingAll ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Archive className="w-4 h-4 mr-1" />}
+            {downloadingAll ? (downloadProgress || "Generating...") : "Download All QR (ZIP)"}
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -249,38 +346,77 @@ export default function EventInvitesPage({
                 </thead>
                 <tbody>
                   {filteredInvites.map((invite) => (
-                    <tr key={invite.id} className="border-b hover:bg-slate-50">
-                      <td className="py-3 px-4">
-                        <div>
-                          <p className="font-medium">{invite.memberName}</p>
-                          <p className="text-sm text-slate-500">
-                            {invite.memberPhone || invite.memberEmail || "No contact"}
-                          </p>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        {invite.church?.name || "Unassigned"}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <Badge variant="secondary">{invite.registrationCount}</Badge>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2 justify-center">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleCopyInviteLink(invite)}
-                            title="Copy Invite Link"
-                          >
-                            {copiedCode === invite.id ? (
-                              <Check className="w-4 h-4 text-green-500" />
-                            ) : (
-                              <Copy className="w-4 h-4" />
+                    <>
+                      <tr key={invite.id} className="border-b hover:bg-slate-50">
+                        <td className="py-3 px-4">
+                          <div>
+                            <p className="font-medium">{invite.memberName}</p>
+                            <p className="text-sm text-slate-500">
+                              {invite.memberPhone || invite.memberEmail || "No contact"}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          {invite.church?.name || "Unassigned"}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <Badge variant="secondary">{invite.registrationCount}</Badge>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2 justify-center">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleCopyInviteLink(invite)}
+                              title="Copy Invite Link"
+                            >
+                              {copiedCode === invite.id ? (
+                                <Check className="w-4 h-4 text-green-500" />
+                              ) : (
+                                <Copy className="w-4 h-4" />
+                              )}
+                            </Button>
+                            {isAdmin && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleQr(invite)}
+                                title="Show QR Code"
+                              >
+                                <QrCode className="w-4 h-4" />
+                              </Button>
                             )}
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
+                          </div>
+                        </td>
+                      </tr>
+                      {isAdmin && expandedInviteId === invite.id && (
+                        <tr key={`${invite.id}-qr`} className="border-b bg-slate-50">
+                          <td colSpan={4} className="py-4 px-4">
+                            <div className="flex flex-col items-center gap-3">
+                              <p className="text-xs text-slate-500 break-all">{buildInviteLink(invite)}</p>
+                              {qrLoading ? (
+                                <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                              ) : expandedQrDataUrl ? (
+                                <img src={expandedQrDataUrl} alt={`QR for ${invite.memberName}`} className="w-48 h-48" />
+                              ) : null}
+                              {expandedQrDataUrl && (
+                                <Button variant="outline" size="sm" onClick={() => {
+                                  const a = document.createElement("a");
+                                  const safeName = (invite.memberName || "invite").replace(/[^a-zA-Z0-9]/g, "-");
+                                  a.download = `qr-${safeName}.png`;
+                                  a.href = expandedQrDataUrl;
+                                  document.body.appendChild(a);
+                                  a.click();
+                                  setTimeout(() => document.body.removeChild(a), 1000);
+                                }}>
+                                  <Download className="w-4 h-4 mr-1" /> Download QR
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   ))}
                 </tbody>
               </table>
@@ -298,30 +434,62 @@ export default function EventInvitesPage({
                   </div>
                   <div className="space-y-2">
                     {churchInvites.map((invite) => (
-                      <div
-                        key={invite.id}
-                        className="flex items-center justify-between bg-white p-3 rounded-lg"
-                      >
-                        <div className="flex-1">
-                          <p className="font-medium">{invite.memberName}</p>
-                          <p className="text-sm text-slate-500">
-                            {invite.memberPhone || invite.memberEmail || "No contact"}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <Badge variant="secondary">{invite.registrationCount}</Badge>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleCopyInviteLink(invite)}
-                          >
-                            {copiedCode === invite.id ? (
-                              <Check className="w-4 h-4 text-green-500" />
-                            ) : (
-                              <Copy className="w-4 h-4" />
+                      <div key={invite.id} className="bg-white rounded-lg">
+                        <div className="flex items-center justify-between p-3">
+                          <div className="flex-1">
+                            <p className="font-medium">{invite.memberName}</p>
+                            <p className="text-sm text-slate-500">
+                              {invite.memberPhone || invite.memberEmail || "No contact"}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <Badge variant="secondary">{invite.registrationCount}</Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleCopyInviteLink(invite)}
+                            >
+                              {copiedCode === invite.id ? (
+                                <Check className="w-4 h-4 text-green-500" />
+                              ) : (
+                                <Copy className="w-4 h-4" />
+                              )}
+                            </Button>
+                            {isAdmin && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleQr(invite)}
+                                title="Show QR Code"
+                              >
+                                <QrCode className="w-4 h-4" />
+                              </Button>
                             )}
-                          </Button>
+                          </div>
                         </div>
+                        {isAdmin && expandedInviteId === invite.id && (
+                          <div className="flex flex-col items-center gap-3 py-4 border-t">
+                            <p className="text-xs text-slate-500 break-all px-4">{buildInviteLink(invite)}</p>
+                            {qrLoading ? (
+                              <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                            ) : expandedQrDataUrl ? (
+                              <img src={expandedQrDataUrl} alt={`QR for ${invite.memberName}`} className="w-48 h-48" />
+                            ) : null}
+                            {expandedQrDataUrl && (
+                              <Button variant="outline" size="sm" onClick={() => {
+                                const a = document.createElement("a");
+                                const safeName = (invite.memberName || "invite").replace(/[^a-zA-Z0-9]/g, "-");
+                                a.download = `qr-${safeName}.png`;
+                                a.href = expandedQrDataUrl;
+                                document.body.appendChild(a);
+                                a.click();
+                                setTimeout(() => document.body.removeChild(a), 1000);
+                              }}>
+                                <Download className="w-4 h-4 mr-1" /> Download QR
+                              </Button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

@@ -23,7 +23,9 @@ import {
   Plus,
   Sparkles,
   Megaphone,
+  Download,
 } from "lucide-react";
+import QRCode from "qrcode";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -71,6 +73,8 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [myInvite, setMyInvite] = useState<{ inviteCode: string; inviteLink: string } | null | undefined>(undefined);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
   const fetchEvent = useCallback(async () => {
     setLoading(true);
@@ -90,6 +94,17 @@ export default function EventDetailPage() {
         const statsData = await statsRes.json();
         setStats(statsData);
       }
+
+      // Fetch current user's personal invite for this event
+      try {
+        const inviteRes = await fetch(`/api/events/${eventId}/my-invite`);
+        if (inviteRes.ok) {
+          const inviteData = await inviteRes.json();
+          setMyInvite(inviteData.invite || null);
+        }
+      } catch {
+        setMyInvite(null);
+      }
     } catch (error) {
       console.error("Failed to fetch event:", error);
       router.push("/admin/events");
@@ -101,6 +116,13 @@ export default function EventDetailPage() {
   useEffect(() => {
     fetchEvent();
   }, [fetchEvent]);
+
+  useEffect(() => {
+    if (!myInvite?.inviteLink) { setQrDataUrl(null); return; }
+    QRCode.toDataURL(myInvite.inviteLink, { type: "image/png", width: 256, margin: 2 })
+      .then(setQrDataUrl)
+      .catch(() => setQrDataUrl(null));
+  }, [myInvite?.inviteLink]);
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this event? This action cannot be undone.")) {
@@ -123,11 +145,21 @@ export default function EventDetailPage() {
     }
   };
 
-  const copyRegistrationLink = () => {
-    const url = `${window.location.origin}/register/${event?.slug}`;
+  const copyInviteLink = () => {
+    const url = myInvite?.inviteLink || `${window.location.origin}/register/${event?.slug}`;
     navigator.clipboard.writeText(url);
     setCopySuccess(true);
     setTimeout(() => setCopySuccess(false), 2000);
+  };
+
+  const downloadQR = () => {
+    if (!qrDataUrl) return;
+    const link = document.createElement("a");
+    link.download = `${event?.slug || "invite"}-qr.png`;
+    link.href = qrDataUrl;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => document.body.removeChild(link), 1000);
   };
 
   const formatDate = (dateString?: string) => {
@@ -200,9 +232,9 @@ export default function EventDetailPage() {
                 <Edit className="w-4 h-4 mr-2" />
                 Edit Event
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={copyRegistrationLink}>
+              <DropdownMenuItem onClick={copyInviteLink}>
                 <Copy className="w-4 h-4 mr-2" />
-                {copySuccess ? "Copied!" : "Copy Registration Link"}
+                {copySuccess ? "Copied!" : "Copy My Invite Link"}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => router.push(`/admin/events/${event.id}/invites`)}
@@ -444,20 +476,44 @@ export default function EventDetailPage() {
         </div>
       </Card>
 
-      {/* Copy Registration Link */}
+      {/* My Invite Link + QR */}
       <Card className="bg-white p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-semibold mb-1">Registration Link</h3>
-            <p className="text-sm text-slate-500">
-              {window.location.origin}/register/{event.slug}
-            </p>
+        {myInvite === undefined ? (
+          <div className="flex items-center justify-center py-4">
+            <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
           </div>
-          <Button onClick={copyRegistrationLink} variant={copySuccess ? "secondary" : "default"}>
-            <Copy className="w-4 h-4 mr-2" />
-            {copySuccess ? "Copied!" : "Copy Link"}
-          </Button>
-        </div>
+        ) : myInvite ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold mb-1">My Invite Link</h3>
+                <p className="text-sm text-slate-500 break-all">{myInvite.inviteLink}</p>
+              </div>
+              <Button onClick={copyInviteLink} variant={copySuccess ? "secondary" : "default"}>
+                <Copy className="w-4 h-4 mr-2" />
+                {copySuccess ? "Copied!" : "Copy Link"}
+              </Button>
+            </div>
+            {qrDataUrl ? (
+              <div className="flex flex-col items-center gap-3">
+                <img src={qrDataUrl} alt="Your invite QR code" className="w-64 h-64" />
+                <Button variant="outline" size="sm" onClick={downloadQR}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Download QR
+                </Button>
+              </div>
+            ) : (
+              <div className="flex justify-center py-4">
+                <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>
+            <h3 className="font-semibold mb-1">My Invite Link</h3>
+            <p className="text-sm text-slate-500">No personal invite link found for this event.</p>
+          </div>
+        )}
       </Card>
     </div>
   );
