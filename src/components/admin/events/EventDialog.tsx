@@ -126,11 +126,20 @@ export function EventDialog({ open, onOpenChange, onSuccess }: EventDialogProps)
 
     setLoading(true);
     try {
+      const toISO = (val: string | undefined | null) => {
+        if (!val) return val === null ? null : undefined;
+        const d = new Date(val);
+        return isNaN(d.getTime()) ? val : d.toISOString();
+      };
+
       const res = await fetch("/api/managed-events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
+          startDate: toISO(formData.startDate),
+          endDate: toISO(formData.endDate),
+          registrationDeadline: toISO(formData.registrationDeadline),
           maxAttendees: formData.maxAttendees ? parseInt(formData.maxAttendees, 10) : null,
           heroImage: formData.heroImage || undefined,
         }),

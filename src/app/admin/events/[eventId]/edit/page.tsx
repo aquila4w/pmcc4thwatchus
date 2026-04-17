@@ -112,6 +112,14 @@ function toLocalDatetimeString(dateStr: string | undefined | null): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/** Convert a datetime-local string (browser local time) to an ISO UTC string for the API. */
+function toISOFromLocal(datetimeLocal: string | undefined | null): string | undefined | null {
+  if (!datetimeLocal) return datetimeLocal === null ? null : undefined;
+  const d = new Date(datetimeLocal);
+  if (isNaN(d.getTime())) return datetimeLocal;
+  return d.toISOString();
+}
+
 export default function EditEventPage() {
   const router = useRouter();
   const params = useParams();
@@ -214,12 +222,12 @@ export default function EditEventPage() {
         description: formData.description || undefined,
         status: formData.status,
         eventType: formData.eventType || undefined,
-        startDate: formData.startDate || undefined,
-        endDate: formData.endDate || null,
+        startDate: toISOFromLocal(formData.startDate),
+        endDate: toISOFromLocal(formData.endDate),
         location: formData.location,
         address: formData.address || undefined,
         registrationEnabled: formData.registrationEnabled,
-        registrationDeadline: formData.registrationDeadline || null,
+        registrationDeadline: toISOFromLocal(formData.registrationDeadline),
         maxAttendees: formData.maxAttendees ?? null,
         hasBaptism: formData.hasBaptism,
         requireApproval: formData.requireApproval,
