@@ -11,6 +11,10 @@ const ROLE_HIERARCHY = [
   "eventAdmin",
   "headMinister",
   "secretary",
+  "associateMinister",
+  "bibleStudent",
+  "elder",
+  "ampIntern",
   "member",
   "guest",
 ];
@@ -28,10 +32,10 @@ function getAssignableRoles(myRole: string): string[] {
     case "districtCoordinator":
       return ROLE_HIERARCHY.filter((r) => r !== "superAdmin");
     case "subDistrictCoordinator":
-      return ["headMinister", "secretary", "member", "guest"];
+      return ["headMinister", "secretary", "associateMinister", "bibleStudent", "elder", "ampIntern", "member", "guest"];
     case "headMinister":
     case "secretary":
-      return ["member", "guest"];
+      return ["associateMinister", "bibleStudent", "elder", "ampIntern", "member", "guest"];
     case "eventAdmin":
       return ["member", "guest"];
     default:
@@ -173,7 +177,7 @@ export async function PATCH(request: NextRequest) {
     const myChurch = (currentUser.church as { id?: string } | undefined)?.id || currentUser.church;
     const mySubDistrict = (currentUser.subDistrict as { id?: string } | undefined)?.id || currentUser.subDistrict;
 
-    const { userId, role, status, church } = await request.json();
+    const { userId, role, status, church, name, email, phone, subDistrict } = await request.json();
 
     if (!userId) {
       return NextResponse.json({ error: "User ID is required" }, { status: 400 });
@@ -219,6 +223,10 @@ export async function PATCH(request: NextRequest) {
     const updateData: Record<string, unknown> = {};
     if (role !== undefined) updateData.role = role;
     if (status !== undefined) updateData.status = status;
+    if (name !== undefined && myRole === "superAdmin") updateData.name = name;
+    if (email !== undefined && myRole === "superAdmin") updateData.email = email;
+    if (phone !== undefined && myRole === "superAdmin") updateData.phone = phone;
+    if (subDistrict !== undefined && myRole === "superAdmin") updateData.subDistrict = subDistrict || null;
     if (church !== undefined) {
       updateData.church = church || null;
       if (church) {
@@ -293,5 +301,36 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error("Failed to delete user:", error);
     return NextResponse.json({ error: "Failed to delete user" }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const payload = await getPayload({ config });
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const myRole = currentUser.role as string;
+    if (myRole !== "superAdmin") {
+      return NextResponse.json({ error: "Only super admins can reset passwords" }, { status: 403 });
+    }
+
+    const { userId, newPassword } = await request.json();
+    if (!userId || !newPassword || newPassword.length < 6) {
+      return NextResponse.json({ error: "User ID and a password (min 6 chars) are required" }, { status: 400 });
+    }
+
+    await payload.update({
+      collection: "users",
+      id: userId,
+      data: { password: newPassword },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Failed to reset password:", error);
+    return NextResponse.json({ error: "Failed to reset password" }, { status: 500 });
   }
 }

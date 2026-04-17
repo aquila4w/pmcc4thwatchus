@@ -29,6 +29,10 @@ import {
 
 const ROLES = [
   { value: "member", label: "Member" },
+  { value: "associateMinister", label: "Associate Minister" },
+  { value: "bibleStudent", label: "Bible Student" },
+  { value: "elder", label: "Elder" },
+  { value: "ampIntern", label: "AMP Intern" },
   { value: "secretary", label: "Secretary" },
   { value: "headMinister", label: "Head Minister" },
   { value: "eventAdmin", label: "Event Admin" },
@@ -80,10 +84,10 @@ export default function UsersPage() {
       case "districtCoordinator":
         return ROLES.filter((r) => r.value !== "superAdmin");
       case "subDistrictCoordinator":
-        return ROLES.filter((r) => ["headMinister", "secretary", "member"].includes(r.value));
+        return ROLES.filter((r) => ["headMinister", "secretary", "associateMinister", "bibleStudent", "elder", "ampIntern", "member"].includes(r.value));
       case "headMinister":
       case "secretary":
-        return ROLES.filter((r) => r.value === "member");
+        return ROLES.filter((r) => ["associateMinister", "bibleStudent", "elder", "ampIntern", "member"].includes(r.value));
       case "eventAdmin":
         return ROLES.filter((r) => ["member", "guest"].includes(r.value));
       default:
@@ -100,7 +104,21 @@ export default function UsersPage() {
     role: string;
     status: string;
     church: string;
-  }>({ open: false, user: null, role: "", status: "", church: "" });
+    name: string;
+    email: string;
+    phone: string;
+    subDistrict: string;
+  }>({ open: false, user: null, role: "", status: "", church: "", name: "", email: "", phone: "", subDistrict: "" });
+
+  // Password reset dialog
+  const [resetDialog, setResetDialog] = useState<{
+    open: boolean;
+    user: UserRecord | null;
+    newPassword: string;
+  }>({ open: false, user: null, newPassword: "" });
+
+  // Sub-district options
+  const [subDistricts, setSubDistricts] = useState<{ id: string; name: string }[]>([]);
 
   // Delete dialog
   const [deleteDialog, setDeleteDialog] = useState<{
@@ -148,7 +166,19 @@ export default function UsersPage() {
         // ignore
       }
     }
+    async function fetchSubDistricts() {
+      try {
+        const res = await fetch("/api/sub-districts");
+        if (res.ok) {
+          const data = await res.json();
+          setSubDistricts(data.docs || []);
+        }
+      } catch {
+        // ignore
+      }
+    }
     fetchChurches();
+    fetchSubDistricts();
   }, []);
 
   const handleUpdateUser = async () => {
@@ -156,19 +186,26 @@ export default function UsersPage() {
     setUpdatingUser(editDialog.user.id);
 
     try {
+      const body: Record<string, unknown> = {
+        userId: editDialog.user.id,
+        role: editDialog.role,
+        status: editDialog.status,
+        church: editDialog.church || undefined,
+      };
+      if (currentUserRole === "superAdmin") {
+        body.name = editDialog.name;
+        body.email = editDialog.email;
+        body.phone = editDialog.phone;
+        body.subDistrict = editDialog.subDistrict;
+      }
       const res = await fetch("/api/admin/users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: editDialog.user.id,
-          role: editDialog.role,
-          status: editDialog.status,
-          church: editDialog.church || undefined,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (res.ok) {
-        setEditDialog({ open: false, user: null, role: "", status: "", church: "" });
+        setEditDialog({ open: false, user: null, role: "", status: "", church: "", name: "", email: "", phone: "", subDistrict: "" });
         fetchUsers();
       }
     } catch (error) {
@@ -205,6 +242,10 @@ export default function UsersPage() {
       role: user.role,
       status: user.status,
       church: user.church?.id || "",
+      name: user.name,
+      email: user.email,
+      phone: user.phone || "",
+      subDistrict: user.subDistrict?.id || "",
     });
   };
 
@@ -224,6 +265,38 @@ export default function UsersPage() {
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!resetDialog.user || !resetDialog.newPassword) return;
+    setUpdatingUser(resetDialog.user.id);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: resetDialog.user.id,
+          newPassword: resetDialog.newPassword,
+        }),
+      });
+      if (res.ok) {
+        setResetDialog({ open: false, user: null, newPassword: "" });
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to reset password");
+      }
+    } catch (error) {
+      console.error("Failed to reset password:", error);
+    } finally {
+      setUpdatingUser(null);
+    }
+  };
+
+  // Member/guest guard
+  useEffect(() => {
+    if (currentUserRole && ["member", "guest", "associateMinister", "bibleStudent", "elder", "ampIntern"].includes(currentUserRole)) {
+      window.location.href = "/admin";
+    }
+  }, [currentUserRole]);
+
   const getRoleBadge = (role: string) => {
     const colors: Record<string, string> = {
       superAdmin: "bg-purple-100 text-purple-800",
@@ -232,6 +305,10 @@ export default function UsersPage() {
       eventAdmin: "bg-cyan-100 text-cyan-800",
       headMinister: "bg-emerald-100 text-emerald-800",
       secretary: "bg-teal-100 text-teal-800",
+      associateMinister: "bg-lime-100 text-lime-800",
+      bibleStudent: "bg-amber-100 text-amber-800",
+      elder: "bg-orange-100 text-orange-800",
+      ampIntern: "bg-pink-100 text-pink-800",
       member: "bg-slate-100 text-slate-700",
       guest: "bg-gray-100 text-gray-600",
     };
@@ -242,6 +319,10 @@ export default function UsersPage() {
       eventAdmin: "Event Admin",
       headMinister: "Head Minister",
       secretary: "Secretary",
+      associateMinister: "Assoc. Minister",
+      bibleStudent: "Bible Student",
+      elder: "Elder",
+      ampIntern: "AMP Intern",
       member: "Member",
       guest: "Guest",
     };
@@ -468,6 +549,18 @@ export default function UsersPage() {
                           <Trash2 className="w-4 h-4" />
                         </Button>
                         )}
+                        {currentUserRole === "superAdmin" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setResetDialog({ open: true, user, newPassword: "" })}
+                            disabled={updatingUser === user.id}
+                            className="text-amber-500 hover:text-amber-700 hover:bg-amber-50"
+                            title="Reset Password"
+                          >
+                            <Shield className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -480,16 +573,46 @@ export default function UsersPage() {
 
       {/* Edit Dialog */}
       <Dialog open={editDialog.open} onOpenChange={(open) => setEditDialog((prev) => ({ ...prev, open }))}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit User</DialogTitle>
           </DialogHeader>
           {editDialog.user && (
             <div className="space-y-4 py-4">
-              <div>
-                <p className="font-medium">{editDialog.user.name}</p>
-                <p className="text-sm text-slate-500">{editDialog.user.email}</p>
-              </div>
+              {currentUserRole !== "superAdmin" && (
+                <div>
+                  <p className="font-medium">{editDialog.user.name}</p>
+                  <p className="text-sm text-slate-500">{editDialog.user.email}</p>
+                </div>
+              )}
+
+              {currentUserRole === "superAdmin" && (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Name</label>
+                    <Input
+                      value={editDialog.name}
+                      onChange={(e) => setEditDialog((prev) => ({ ...prev, name: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Email</label>
+                    <Input
+                      type="email"
+                      value={editDialog.email}
+                      onChange={(e) => setEditDialog((prev) => ({ ...prev, email: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Phone</label>
+                    <Input
+                      value={editDialog.phone}
+                      onChange={(e) => setEditDialog((prev) => ({ ...prev, phone: e.target.value }))}
+                      placeholder="Phone number"
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Role</label>
@@ -535,10 +658,26 @@ export default function UsersPage() {
                   ))}
                 </select>
               </div>
+
+              {currentUserRole === "superAdmin" && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Sub-District</label>
+                  <select
+                    value={editDialog.subDistrict}
+                    onChange={(e) => setEditDialog((prev) => ({ ...prev, subDistrict: e.target.value }))}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="">Auto (from church)</option>
+                    {subDistricts.map((sd) => (
+                      <option key={sd.id} value={sd.id}>{sd.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialog({ open: false, user: null, role: "", status: "", church: "" })}>
+            <Button variant="outline" onClick={() => setEditDialog({ open: false, user: null, role: "", status: "", church: "", name: "", email: "", phone: "", subDistrict: "" })}>
               Cancel
             </Button>
             <Button onClick={handleUpdateUser} disabled={!!updatingUser}>
@@ -570,6 +709,43 @@ export default function UsersPage() {
             <Button variant="destructive" onClick={handleDeleteUser} disabled={!!updatingUser}>
               {updatingUser ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Password Reset Dialog */}
+      <Dialog open={resetDialog.open} onOpenChange={(open) => setResetDialog((prev) => ({ ...prev, open }))}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+          </DialogHeader>
+          {resetDialog.user && (
+            <div className="space-y-4 py-4">
+              <p className="text-sm text-slate-600">
+                Set a new password for <strong>{resetDialog.user.name}</strong> ({resetDialog.user.email})
+              </p>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">New Password</label>
+                <Input
+                  type="password"
+                  value={resetDialog.newPassword}
+                  onChange={(e) => setResetDialog((prev) => ({ ...prev, newPassword: e.target.value }))}
+                  placeholder="Min 6 characters"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetDialog({ open: false, user: null, newPassword: "" })}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleResetPassword}
+              disabled={!!updatingUser || resetDialog.newPassword.length < 6}
+            >
+              {updatingUser ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Reset Password
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -123,6 +123,10 @@ export const Users: CollectionConfig = {
         { label: "Event Admin", value: "eventAdmin" },
         { label: "Head Minister", value: "headMinister" },
         { label: "Secretary", value: "secretary" },
+        { label: "Associate Minister", value: "associateMinister" },
+        { label: "Bible Student", value: "bibleStudent" },
+        { label: "Elder", value: "elder" },
+        { label: "AMP Intern", value: "ampIntern" },
         { label: "Member", value: "member" },
         { label: "Guest", value: "guest" },
       ],
@@ -156,7 +160,7 @@ export const Users: CollectionConfig = {
       },
     },
 
-    // Sub-District (auto-populated based on church)
+    // Sub-District (auto-populated based on church, editable by superAdmin)
     {
       name: "subDistrict",
       type: "relationship",
@@ -164,7 +168,16 @@ export const Users: CollectionConfig = {
       admin: {
         position: "sidebar",
         description: "Auto-populated based on church assignment",
-        readOnly: true,
+        condition: (data, { user }) => {
+          if (user?.role === "superAdmin") return true;
+          return !!data?.subDistrict;
+        },
+      },
+      access: {
+        update: ({ req: { user } }) => {
+          if (!user) return false;
+          return user.role === "superAdmin";
+        },
       },
     },
 
@@ -366,7 +379,7 @@ export const Users: CollectionConfig = {
             });
 
             // Get roles eligible for invites (same filter as ManagedEvents hook)
-            const eligibleRoles = ["member", "eventAdmin", "headMinister", "secretary", "subDistrictCoordinator", "districtCoordinator", "superAdmin"];
+            const eligibleRoles = ["member", "eventAdmin", "headMinister", "secretary", "subDistrictCoordinator", "districtCoordinator", "superAdmin", "associateMinister", "bibleStudent", "elder", "ampIntern"];
 
             if (eligibleRoles.includes(doc.role)) {
               let createdCount = 0;
