@@ -57,6 +57,7 @@ export default function ChurchCodesPage() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [downloadingAll, setDownloadingAll] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState("");
   const [downloadingChurch, setDownloadingChurch] = useState<string | null>(null);
   const [editingContact, setEditingContact] = useState<string | null>(null);
   const [contactForm, setContactForm] = useState({ name: "", email: "", phone: "" });
@@ -211,18 +212,26 @@ export default function ChurchCodesPage() {
     return `qr-${sanitize(churchName)}-${sanitize(placementName)}.png`;
   }
 
+  /** Trigger a blob download and keep the object URL alive long enough for Chrome to finish. */
+  function triggerBlobDownload(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.download = filename;
+    link.href = url;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 5000);
+  }
+
   // --- Download single QR ---
   const downloadQR = async (invite: ChurchInvite, churchName: string, placementName: string) => {
     const url = `${baseUrl}/register/${eventSlug}?ad=${invite.code}`;
     try {
       const blob = await qrToBlob(url);
-      const link = document.createElement("a");
-      link.download = qrFilename(churchName, placementName);
-      link.href = URL.createObjectURL(blob);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(link.href);
+      triggerBlobDownload(blob, qrFilename(churchName, placementName));
     } catch (err) {
       console.error("Failed to generate QR code:", err);
     }
@@ -239,18 +248,16 @@ export default function ChurchCodesPage() {
 
       for (const { invite, placement } of churchInvites) {
         const url = `${baseUrl}/register/${eventSlug}?ad=${invite.code}`;
-        const blob = await qrToBlob(url);
-        zip.file(qrFilename(church.name, placement.name), blob);
+        try {
+          const blob = await qrToBlob(url);
+          zip.file(qrFilename(church.name, placement.name), blob);
+        } catch (err) {
+          console.error(`Skipping QR for ${church.name}/${placement.name}:`, err);
+        }
       }
 
       const zipBlob = await zip.generateAsync({ type: "blob" });
-      const link = document.createElement("a");
-      link.download = `${sanitize(church.name)}-qr-codes.zip`;
-      link.href = URL.createObjectURL(zipBlob);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(link.href);
+      triggerBlobDownload(zipBlob, `${sanitize(church.name)}-qr-codes.zip`);
     } catch (err) {
       console.error("Failed to generate church ZIP:", err);
     } finally {
@@ -261,8 +268,11 @@ export default function ChurchCodesPage() {
   // --- Download ALL QRs as ZIP (one ZIP with church folders) ---
   const downloadAllAsZip = async () => {
     setDownloadingAll(true);
+    setDownloadProgress("Preparing...");
     try {
       const zip = new JSZip();
+      let generated = 0;
+      const total = churches.length * placements.length;
 
       for (const church of churches) {
         const folder = zip.folder(sanitize(church.name));
@@ -270,25 +280,30 @@ export default function ChurchCodesPage() {
 
         for (const placement of placements) {
           const invite = getInvite(church.id, placement.id);
-          if (!invite) continue;
+          if (!invite) { generated++; continue; }
 
           const url = `${baseUrl}/register/${eventSlug}?ad=${invite.code}`;
-          const blob = await qrToBlob(url);
-          folder.file(qrFilename(church.name, placement.name), blob);
+          try {
+            const blob = await qrToBlob(url);
+            folder.file(qrFilename(church.name, placement.name), blob);
+          } catch (err) {
+            console.error(`Skipping QR for ${church.name}/${placement.name}:`, err);
+          }
+          generated++;
+          setDownloadProgress(`Generating QR ${generated}/${total}...`);
+          // Yield to the browser every 10 codes to keep UI responsive
+          if (generated % 10 === 0) await new Promise((r) => setTimeout(r, 0));
         }
       }
 
+      setDownloadProgress("Compressing ZIP...");
       const zipBlob = await zip.generateAsync({ type: "blob" });
-      const link = document.createElement("a");
       const safeEvent = sanitize(eventTitle || "event");
-      link.download = `${safeEvent}-all-qr-codes.zip`;
-      link.href = URL.createObjectURL(zipBlob);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(link.href);
+      triggerBlobDownload(zipBlob, `${safeEvent}-all-qr-codes.zip`);
+      setDownloadProgress("");
     } catch (err) {
       console.error("Failed to generate all QR ZIP:", err);
+      setDownloadProgress("Failed — see console");
     } finally {
       setDownloadingAll(false);
     }
@@ -329,7 +344,7 @@ export default function ChurchCodesPage() {
           {invites.length > 0 && (
             <Button size="sm" variant="outline" onClick={downloadAllAsZip} disabled={downloadingAll}>
               {downloadingAll ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Archive className="w-4 h-4 mr-1" />}
-              Download All (ZIP)
+              {downloadingAll ? (downloadProgress || "Generating...") : "Download All (ZIP)"}
             </Button>
           )}
           <Button size="sm" onClick={generateCodes} disabled={generating}>
