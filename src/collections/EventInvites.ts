@@ -47,7 +47,7 @@ export const EventInvites: CollectionConfig = {
     },
   },
   fields: [
-    // Invite Code (UUID, not guessable)
+    // Invite Code (short, not guessable)
     {
       name: "inviteCode",
       type: "text",
@@ -55,7 +55,7 @@ export const EventInvites: CollectionConfig = {
       unique: true,
       index: true,
       admin: {
-        description: "Unique UUID invite code (not guessable)",
+        description: "Unique invite code",
         position: "sidebar",
       },
     },
@@ -186,10 +186,30 @@ export const EventInvites: CollectionConfig = {
   ],
   hooks: {
     beforeChange: [
-      async ({ data, operation }) => {
-        // Generate UUID for invite code on create
+      async ({ data, operation, req }) => {
+        // Generate short invite code on create
         if (operation === "create" && !data.inviteCode) {
-          data.inviteCode = crypto.randomUUID();
+          const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+          let code = "";
+          for (let i = 0; i < 8; i++) {
+            code += CHARS[Math.floor(Math.random() * CHARS.length)];
+          }
+          // Ensure uniqueness
+          for (let attempt = 0; attempt < 10; attempt++) {
+            const existing = await req.payload.find({
+              collection: "event-invites",
+              where: { inviteCode: { equals: code } },
+              limit: 1,
+              depth: 0,
+              overrideAccess: true,
+            });
+            if (existing.totalDocs === 0) break;
+            code = "";
+            for (let i = 0; i < 8; i++) {
+              code += CHARS[Math.floor(Math.random() * CHARS.length)];
+            }
+          }
+          data.inviteCode = code;
         }
         return data;
       },

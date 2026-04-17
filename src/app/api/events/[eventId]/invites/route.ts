@@ -160,12 +160,17 @@ export async function POST(
           inviteCode: newInvite.inviteCode,
         });
       } else if (regenerate) {
-        // Regenerate invite code
+        // Regenerate invite code (short 8-char code)
+        const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        let newCode = "";
+        for (let i = 0; i < 8; i++) {
+          newCode += CHARS[Math.floor(Math.random() * CHARS.length)];
+        }
         const regeneratedInvite = await payload.update({
           collection: "event-invites",
           id: existingInviteId,
           data: {
-            inviteCode: crypto.randomUUID(),
+            inviteCode: newCode,
             status: "active",
           },
         });
