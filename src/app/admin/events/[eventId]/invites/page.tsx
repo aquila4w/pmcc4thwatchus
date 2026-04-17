@@ -13,6 +13,7 @@ import {
   ArrowLeft,
   QrCode,
   Archive,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -70,6 +71,7 @@ export default function EventInvitesPage({
   const [downloadingAll, setDownloadingAll] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [migrating, setMigrating] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -136,6 +138,22 @@ export default function EventInvitesPage({
     }
   };
 
+  const migrateCodes = async () => {
+    if (!confirm("Convert all existing UUID invite codes to short 8-char codes? This cannot be undone.")) return;
+    setMigrating(true);
+    try {
+      const res = await fetch("/api/admin/migrate-invite-codes", { method: "POST" });
+      const result = await res.json();
+      await fetchData();
+      alert(result.message || `Migrated ${result.migrated} codes`);
+    } catch (err) {
+      console.error("Migration failed:", err);
+      alert("Migration failed — check console");
+    } finally {
+      setMigrating(false);
+    }
+  };
+
   const handleCopyInviteLink = (invite: EventInvite) => {
     const baseUrl = window.location.origin;
     const inviteLink = event?.slug
@@ -147,6 +165,7 @@ export default function EventInvitesPage({
   };
 
   const isAdmin = currentUserRole === "superAdmin" || currentUserRole === "eventAdmin";
+  const isSuperAdmin = currentUserRole === "superAdmin";
 
   const buildInviteLink = (invite: EventInvite) => {
     const baseUrl = window.location.origin;
@@ -271,6 +290,12 @@ export default function EventInvitesPage({
           <Button size="sm" onClick={generateInvites} disabled={generating}>
             {generating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Users className="w-4 h-4 mr-1" />}
             {generating ? "Generating..." : "Generate Invites"}
+          </Button>
+        )}
+        {isSuperAdmin && (
+          <Button size="sm" variant="outline" onClick={migrateCodes} disabled={migrating}>
+            {migrating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RefreshCw className="w-4 h-4 mr-1" />}
+            {migrating ? "Migrating..." : "Migrate UUID → Short Codes"}
           </Button>
         )}
       </div>
