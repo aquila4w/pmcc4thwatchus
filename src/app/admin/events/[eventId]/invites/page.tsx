@@ -69,6 +69,7 @@ export default function EventInvitesPage({
   const [qrLoading, setQrLoading] = useState(false);
   const [downloadingAll, setDownloadingAll] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState("");
+  const [generating, setGenerating] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -114,6 +115,26 @@ export default function EventInvitesPage({
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const generateInvites = async () => {
+    setGenerating(true);
+    try {
+      const res = await fetch(`/api/events/${resolvedParams.eventId}/invites`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const result = await res.json();
+      if (result.created > 0) await fetchData();
+      alert(result.created > 0
+        ? `Generated ${result.created} new invite${result.created > 1 ? "s" : ""}`
+        : "All members already have invites");
+    } catch (err) {
+      console.error("Failed to generate invites:", err);
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const handleCopyInviteLink = (invite: EventInvite) => {
     const baseUrl = window.location.origin;
@@ -244,6 +265,12 @@ export default function EventInvitesPage({
           <Button size="sm" variant="outline" onClick={downloadAllQrZip} disabled={downloadingAll}>
             {downloadingAll ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Archive className="w-4 h-4 mr-1" />}
             {downloadingAll ? (downloadProgress || "Generating...") : "Download All QR (ZIP)"}
+          </Button>
+        )}
+        {isAdmin && (
+          <Button size="sm" onClick={generateInvites} disabled={generating}>
+            {generating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Users className="w-4 h-4 mr-1" />}
+            {generating ? "Generating..." : "Generate Invites"}
           </Button>
         )}
       </div>

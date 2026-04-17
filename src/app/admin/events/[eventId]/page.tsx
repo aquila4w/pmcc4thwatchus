@@ -339,7 +339,7 @@ export default function EventDetailPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-4">
         <Link href={`/admin/events/${eventId}/registrations`}>
           <Card className="bg-white p-4 hover:bg-slate-50 transition-colors cursor-pointer">
             <Users className="w-5 h-5 text-slate-600 mb-2" />
@@ -385,6 +385,14 @@ export default function EventDetailPage() {
             <Edit className="w-5 h-5 text-slate-600 mb-2" />
             <p className="font-medium">Edit Event</p>
             <p className="text-xs text-slate-500">Update details</p>
+          </Card>
+        </Link>
+
+        <Link href={`/admin/events/${eventId}/invites`}>
+          <Card className="bg-white p-4 hover:bg-slate-50 transition-colors cursor-pointer">
+            <Users className="w-5 h-5 text-blue-600 mb-2" />
+            <p className="font-medium">Member Invites</p>
+            <p className="text-xs text-slate-500">Invite links & QR</p>
           </Card>
         </Link>
 
