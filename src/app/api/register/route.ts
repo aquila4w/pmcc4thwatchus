@@ -417,11 +417,16 @@ export async function POST(request: NextRequest) {
 
     // Send SMS
     if (phoneToUse) {
+      const smsInvitedBy = sourceType === "church" && churchContact
+        ? { name: churchContact.name, phone: churchContact.phone }
+        : { name: invitingMember?.name as string | undefined, phone: invitingMember?.phone as string | undefined };
       sendRegistrationSMS({
         to: phoneToUse,
         guestName: fullName,
         eventTitle: fullEvent.title || "Upcoming Event",
         ticketUrl: shortUrl,
+        invitedByName: smsInvitedBy.name,
+        invitedByPhone: smsInvitedBy.phone,
       }).catch((err) => console.error("SMS send failed:", err));
     }
 

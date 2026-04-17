@@ -150,14 +150,14 @@ function generateEmailHtml({
                 <tr>
                   <td>
                     <p style="margin: 0 0 8px; color: #1e3a5f; font-size: 14px; font-weight: 600;">
-                      Invited By
+                      For any questions, please contact
                     </p>
                     <p style="margin: 0; color: #374151; font-size: 16px; font-weight: 600;">
                       ${invitedByName}
                     </p>
                     ${invitedByChurch ? `<p style="margin: 4px 0 0; color: #6b7280; font-size: 13px;">${invitedByChurch}</p>` : ""}
-                    ${invitedByPhone ? `<p style="margin: 4px 0 0; color: #6b7280; font-size: 13px;">${invitedByPhone}</p>` : ""}
-                    ${invitedByEmail ? `<p style="margin: 4px 0 0; color: #6b7280; font-size: 13px;">${invitedByEmail}</p>` : ""}
+                    ${invitedByPhone ? `<p style="margin: 4px 0 0; color: #6b7280; font-size: 13px;"><a href="tel:${invitedByPhone}" style="color: #c9a227; text-decoration: none;">${invitedByPhone}</a></p>` : ""}
+                    ${invitedByEmail ? `<p style="margin: 4px 0 0; color: #6b7280; font-size: 13px;"><a href="mailto:${invitedByEmail}" style="color: #c9a227; text-decoration: none;">${invitedByEmail}</a></p>` : ""}
                   </td>
                 </tr>
               </table>

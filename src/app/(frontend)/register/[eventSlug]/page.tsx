@@ -20,7 +20,6 @@ import {
   Home,
   AlertCircle,
   Users,
-  Heart,
   Church,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -484,47 +483,33 @@ export default function RegisterPage({
                 </div>
               </Card>
 
-              {/* Invited By / Sponsored By Card */}
+              {/* Invited By / Contact Card */}
               {eventData.invitedBy && eventData.event.landingPage.showInviter && (
                 <Card className="bg-secondary/10 border-secondary/20 p-6">
                   <h2 className="font-serif text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    {adCode ? (
-                      <>
-                        <Phone className="w-5 h-5 text-secondary" />
-                        For any questions, please contact
-                      </>
-                    ) : (
-                      <>
-                        <Heart className="w-5 h-5 text-secondary" />
-                        You&apos;ve Been Invited By
-                      </>
-                    )}
+                    <Phone className="w-5 h-5 text-secondary" />
+                    For any questions, please contact
                   </h2>
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-full bg-secondary/20 flex items-center justify-center">
                       <User className="w-7 h-7 text-secondary" />
                     </div>
                     <div className="flex-1">
-                      {!adCode && (
-                        <p className="text-white text-lg font-semibold">{eventData.invitedBy.name}</p>
-                      )}
-                      {!adCode && eventData.invitedBy.church && (
+                      <p className="text-white text-lg font-semibold">{eventData.invitedBy.name}</p>
+                      {eventData.invitedBy.church && (
                         <p className="text-white/60 text-sm flex items-center gap-1">
                           <Church className="w-4 h-4" />{eventData.invitedBy.church}
                         </p>
                       )}
-                      {eventData.invitedBy.name && adCode && (
-                        <p className="text-white text-lg font-semibold">{eventData.invitedBy.name}</p>
-                      )}
                       {eventData.invitedBy.phone && (
-                        <p className="text-secondary text-sm flex items-center gap-1 mt-1">
+                        <a href={`tel:${eventData.invitedBy.phone}`} className="text-secondary text-sm flex items-center gap-1 mt-1 hover:underline">
                           <Phone className="w-4 h-4" />{eventData.invitedBy.phone}
-                        </p>
+                        </a>
                       )}
                       {eventData.invitedBy.email && (
-                        <p className="text-secondary text-sm flex items-center gap-1">
+                        <a href={`mailto:${eventData.invitedBy.email}`} className="text-secondary text-sm flex items-center gap-1 hover:underline">
                           <Mail className="w-4 h-4" />{eventData.invitedBy.email}
-                        </p>
+                        </a>
                       )}
                     </div>
                   </div>
@@ -676,13 +661,36 @@ export default function RegisterPage({
                         </div>
 
                         {/* Notification info */}
-                        <div className="bg-white/5 border border-white/10 rounded-lg p-4 mb-6">
+                        <div className="bg-white/5 border border-white/10 rounded-lg p-4 mb-4">
                           <p className="text-white/70 text-sm">
                             <strong className="text-white">Save this QR code!</strong> Present it at the event check-in.
                             {formData.phone && (<> We&apos;ve sent an SMS to <strong className="text-white">{formData.phone}</strong>.</>)}
                             {formData.email && (<> We&apos;ve also sent a confirmation email to <strong className="text-white">{formData.email}</strong>.</>)}
                           </p>
                         </div>
+
+                        {/* Contact info after registration */}
+                        {eventData.invitedBy && (eventData.invitedBy.phone || eventData.invitedBy.email) && (
+                          <div className="bg-secondary/10 border border-secondary/20 rounded-lg p-4 mb-6 text-left">
+                            <p className="text-white/70 text-sm mb-2">For any questions, please contact</p>
+                            <p className="text-white font-semibold">{eventData.invitedBy.name}</p>
+                            {eventData.invitedBy.church && (
+                              <p className="text-white/50 text-xs">{eventData.invitedBy.church}</p>
+                            )}
+                            <div className="mt-2 space-y-1">
+                              {eventData.invitedBy.phone && (
+                                <a href={`tel:${eventData.invitedBy.phone}`} className="text-secondary text-sm flex items-center gap-1 hover:underline">
+                                  <Phone className="w-4 h-4" />{eventData.invitedBy.phone}
+                                </a>
+                              )}
+                              {eventData.invitedBy.email && (
+                                <a href={`mailto:${eventData.invitedBy.email}`} className="text-secondary text-sm flex items-center gap-1 hover:underline">
+                                  <Mail className="w-4 h-4" />{eventData.invitedBy.email}
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </>
                     )}
 

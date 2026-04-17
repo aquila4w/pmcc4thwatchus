@@ -280,10 +280,10 @@ export default function TicketPage({ params }: { params: Promise<{ code: string 
             </div>
           </div>
 
-          {/* Invited By */}
+          {/* Invited By / Contact */}
           {ticketData.invitedBy && (
             <div className="p-6 border-b border-white/10 bg-secondary/5">
-              <h2 className="text-white/50 text-xs uppercase tracking-wider mb-4">Invited By</h2>
+              <h2 className="text-white/50 text-xs uppercase tracking-wider mb-4">For any questions, please contact</h2>
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-secondary/20 flex items-center justify-center">
                   <User className="w-6 h-6 text-secondary" />
@@ -294,16 +294,16 @@ export default function TicketPage({ params }: { params: Promise<{ code: string 
                     <p className="text-white/60 text-sm">{ticketData.invitedBy.church}</p>
                   )}
                   {ticketData.invitedBy.phone && (
-                    <p className="text-white/60 text-sm flex items-center gap-1 mt-1">
+                    <a href={`tel:${ticketData.invitedBy.phone}`} className="text-secondary text-sm flex items-center gap-1 mt-1 hover:underline">
                       <Phone className="w-4 h-4" />
                       {ticketData.invitedBy.phone}
-                    </p>
+                    </a>
                   )}
                   {ticketData.invitedBy.email && (
-                    <p className="text-white/60 text-sm flex items-center gap-1">
+                    <a href={`mailto:${ticketData.invitedBy.email}`} className="text-secondary text-sm flex items-center gap-1 hover:underline">
                       <Mail className="w-4 h-4" />
                       {ticketData.invitedBy.email}
-                    </p>
+                    </a>
                   )}
                 </div>
               </div>
