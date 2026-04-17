@@ -428,13 +428,20 @@ export async function POST(request: NextRequest) {
     // Update invite scan record if scanId provided
     if (scanId) {
       try {
+        const scanUpdate: Record<string, unknown> = {
+          registered: true,
+          registration: registration.id,
+          registeredAt: new Date().toISOString(),
+        };
+        if (body.timeOnPage !== undefined) scanUpdate.timeOnPage = body.timeOnPage;
+        if (body.formStartDelay !== undefined) scanUpdate.formStartDelay = body.formStartDelay;
+        if (body.scrollDepth !== undefined) scanUpdate.scrollDepth = body.scrollDepth;
+        if (body.rageClickDetected !== undefined) scanUpdate.rageClickDetected = body.rageClickDetected;
+
         await payload.update({
           collection: "invite-scans",
           id: scanId,
-          data: {
-            registered: true,
-            registration: registration.id,
-          },
+          data: scanUpdate,
           depth: 0,
           overrideAccess: true,
         });

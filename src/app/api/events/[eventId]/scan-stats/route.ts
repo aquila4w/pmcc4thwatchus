@@ -200,6 +200,58 @@ export async function GET(
       }
     }
 
+    // --- New breakdowns ---
+
+    // Helper: group scans by a string field
+    const groupBy = (field: string): Record<string, { scans: number; registered: number }> => {
+      const map: Record<string, { scans: number; registered: number }> = {};
+      for (const scan of scans.docs) {
+        const val = (scan[field as keyof typeof scan] as string) || "unknown";
+        if (!map[val]) map[val] = { scans: 0, registered: 0 };
+        map[val].scans++;
+        if (scan.registered) map[val].registered++;
+      }
+      return map;
+    };
+
+    const toBreakdown = (map: Record<string, { scans: number; registered: number }>) =>
+      Object.entries(map).map(([key, stats]) => ({
+        name: key,
+        scans: stats.scans,
+        registered: stats.registered,
+        conversionRate: stats.scans > 0 ? Math.round((stats.registered / stats.scans) * 100) : 0,
+      }));
+
+    const languageBreakdown = toBreakdown(groupBy("language"));
+    const referrerBreakdown = toBreakdown(groupBy("referrer"));
+    const utmSourceBreakdown = toBreakdown(groupBy("utmSource"));
+    const utmCampaignBreakdown = toBreakdown(groupBy("utmCampaign"));
+    const connectionTypeBreakdown = toBreakdown(groupBy("connectionType"));
+    const gpuVendorBreakdown = toBreakdown(groupBy("gpuVendor"));
+    const timezoneBreakdown = toBreakdown(groupBy("timezone"));
+
+    // Behavioral metrics (only for registered scans with behavioral data)
+    const registeredScans = scans.docs.filter((s) => s.registered);
+    const timeOnPageValues = registeredScans
+      .map((s) => s.timeOnPage as number)
+      .filter((v): v is number => typeof v === "number" && v > 0);
+    const scrollDepthValues = registeredScans
+      .map((s) => s.scrollDepth as number)
+      .filter((v): v is number => typeof v === "number" && v > 0);
+    const formStartValues = registeredScans
+      .map((s) => s.formStartDelay as number)
+      .filter((v): v is number => typeof v === "number" && v >= 0);
+    const avg = (arr: number[]) => arr.length > 0 ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null;
+
+    const behavioralMetrics = {
+      avgTimeOnPage: avg(timeOnPageValues),
+      avgScrollDepth: avg(scrollDepthValues),
+      avgFormStartDelay: avg(formStartValues),
+      rageClickCount: scans.docs.filter((s) => s.rageClickDetected).length,
+      adBlockerDetectedCount: scans.docs.filter((s) => s.adBlockerDetected).length,
+      sampleSize: timeOnPageValues.length,
+    };
+
     return NextResponse.json({
       totalScans: scans.totalDocs,
       memberScans: memberScans.length,
@@ -244,6 +296,15 @@ export async function GET(
       byChurch,
       byPlacement: Object.values(byPlacement),
       churchInviteCount: churchInvites.totalDocs,
+      // New breakdowns
+      languageBreakdown,
+      referrerBreakdown,
+      utmSourceBreakdown,
+      utmCampaignBreakdown,
+      connectionTypeBreakdown,
+      gpuVendorBreakdown,
+      timezoneBreakdown,
+      behavioralMetrics,
     });
   } catch (error) {
     console.error("Scan stats error:", error);

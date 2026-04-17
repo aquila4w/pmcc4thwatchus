@@ -28,6 +28,10 @@ export async function POST(request: NextRequest) {
     // Look up geolocation from IP
     const geo = ip !== "unknown" ? await lookupIp(ip).catch(() => null) : null;
 
+    // Server-side metadata
+    const referrerHeader = request.headers.get("referer") || body.referrer || "";
+    const language = request.headers.get("accept-language") || body.language || "";
+
     // Look up church/adPlacement for denormalization
     let church: string | undefined;
     let adPlacement: string | undefined;
@@ -78,6 +82,40 @@ export async function POST(request: NextRequest) {
         device,
         os,
         browser,
+        // Attribution
+        referrer: referrerHeader || undefined,
+        utmSource: body.utmSource || undefined,
+        utmMedium: body.utmMedium || undefined,
+        utmCampaign: body.utmCampaign || undefined,
+        utmContent: body.utmContent || undefined,
+        utmTerm: body.utmTerm || undefined,
+        pageUrl: body.pageUrl || undefined,
+        // Display & locale
+        language: language || undefined,
+        timezone: body.timezone || undefined,
+        screenWidth: body.screenWidth || undefined,
+        screenHeight: body.screenHeight || undefined,
+        colorDepth: body.colorDepth || undefined,
+        pixelRatio: body.pixelRatio || undefined,
+        // Hardware fingerprint
+        gpuVendor: body.gpuVendor || undefined,
+        gpuRenderer: body.gpuRenderer || undefined,
+        cpuCores: body.cpuCores || undefined,
+        deviceMemory: body.deviceMemory || undefined,
+        touchSupport: body.touchSupport || undefined,
+        canvasHash: body.canvasHash || undefined,
+        audioHash: body.audioHash || undefined,
+        // Network
+        connectionType: body.connectionType || undefined,
+        connectionDownlink: body.connectionDownlink || undefined,
+        connectionRtt: body.connectionRtt || undefined,
+        // Browser environment
+        doNotTrack: body.doNotTrack || undefined,
+        cookiesEnabled: body.cookiesEnabled || undefined,
+        adBlockerDetected: body.adBlockerDetected || undefined,
+        localStorageAvailable: body.localStorageAvailable || undefined,
+        platform: body.platform || undefined,
+        // Timing
         scannedAt: new Date().toISOString(),
         registered: false,
       },
@@ -129,6 +167,12 @@ export async function PATCH(request: NextRequest) {
     const updateData: Record<string, unknown> = {};
     if (registered !== undefined) updateData.registered = registered;
     if (registrationId) updateData.registration = registrationId;
+    if (registered) updateData.registeredAt = new Date().toISOString();
+    // Behavioral data from registration page
+    if (body.timeOnPage !== undefined) updateData.timeOnPage = body.timeOnPage;
+    if (body.formStartDelay !== undefined) updateData.formStartDelay = body.formStartDelay;
+    if (body.scrollDepth !== undefined) updateData.scrollDepth = body.scrollDepth;
+    if (body.rageClickDetected !== undefined) updateData.rageClickDetected = body.rageClickDetected;
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: "No update fields provided" }, { status: 400 });

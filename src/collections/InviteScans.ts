@@ -146,6 +146,184 @@ export const InviteScans: CollectionConfig = {
         description: "Parsed browser name",
       },
     },
+
+    // === Attribution ===
+    {
+      name: "referrer",
+      type: "text",
+      admin: { description: "HTTP Referer header — where the visitor came from" },
+    },
+    {
+      name: "utmSource",
+      type: "text",
+      index: true,
+      admin: { description: "utm_source query parameter" },
+    },
+    {
+      name: "utmMedium",
+      type: "text",
+      admin: { description: "utm_medium query parameter" },
+    },
+    {
+      name: "utmCampaign",
+      type: "text",
+      index: true,
+      admin: { description: "utm_campaign query parameter" },
+    },
+    {
+      name: "utmContent",
+      type: "text",
+      admin: { description: "utm_content query parameter" },
+    },
+    {
+      name: "utmTerm",
+      type: "text",
+      admin: { description: "utm_term query parameter" },
+    },
+    {
+      name: "pageUrl",
+      type: "text",
+      admin: { description: "Full URL the visitor arrived at" },
+    },
+
+    // === Display & Locale ===
+    {
+      name: "language",
+      type: "text",
+      index: true,
+      admin: { description: "Browser language (Accept-Language)" },
+    },
+    {
+      name: "timezone",
+      type: "text",
+      admin: { description: "Browser timezone (e.g. America/Los_Angeles)" },
+    },
+    {
+      name: "screenWidth",
+      type: "number",
+      admin: { description: "Screen width in pixels" },
+    },
+    {
+      name: "screenHeight",
+      type: "number",
+      admin: { description: "Screen height in pixels" },
+    },
+    {
+      name: "colorDepth",
+      type: "number",
+      admin: { description: "Screen color depth (bits)" },
+    },
+    {
+      name: "pixelRatio",
+      type: "number",
+      admin: { description: "Device pixel ratio" },
+    },
+
+    // === Hardware Fingerprinting ===
+    {
+      name: "gpuVendor",
+      type: "text",
+      admin: { description: "WebGL GPU vendor" },
+    },
+    {
+      name: "gpuRenderer",
+      type: "text",
+      admin: { description: "WebGL GPU renderer" },
+    },
+    {
+      name: "cpuCores",
+      type: "number",
+      admin: { description: "navigator.hardwareConcurrency" },
+    },
+    {
+      name: "deviceMemory",
+      type: "number",
+      admin: { description: "navigator.deviceMemory (GB, Chrome only)" },
+    },
+    {
+      name: "touchSupport",
+      type: "text",
+      admin: { description: "Touch capability (maxTouchPoints + touch events)" },
+    },
+    {
+      name: "canvasHash",
+      type: "text",
+      index: true,
+      admin: { description: "Hash of canvas-rendered fingerprint" },
+    },
+    {
+      name: "audioHash",
+      type: "text",
+      index: true,
+      admin: { description: "Hash of AudioContext fingerprint" },
+    },
+
+    // === Network Intelligence ===
+    {
+      name: "connectionType",
+      type: "text",
+      admin: { description: "Connection type (4g/3g/2g/slow-2g)" },
+    },
+    {
+      name: "connectionDownlink",
+      type: "number",
+      admin: { description: "Downlink speed in Mbps" },
+    },
+    {
+      name: "connectionRtt",
+      type: "number",
+      admin: { description: "Round-trip time in ms" },
+    },
+
+    // === Browser Environment ===
+    {
+      name: "doNotTrack",
+      type: "text",
+      admin: { description: "navigator.doNotTrack value" },
+    },
+    {
+      name: "cookiesEnabled",
+      type: "checkbox",
+      admin: { description: "Whether cookies are enabled" },
+    },
+    {
+      name: "adBlockerDetected",
+      type: "checkbox",
+      admin: { description: "Whether an ad blocker was detected" },
+    },
+    {
+      name: "localStorageAvailable",
+      type: "checkbox",
+      admin: { description: "Whether localStorage is available" },
+    },
+    {
+      name: "platform",
+      type: "text",
+      admin: { description: "navigator.platform" },
+    },
+
+    // === Behavioral Analytics ===
+    {
+      name: "timeOnPage",
+      type: "number",
+      admin: { description: "Seconds from page load to registration submit" },
+    },
+    {
+      name: "formStartDelay",
+      type: "number",
+      admin: { description: "Seconds until first form field focused" },
+    },
+    {
+      name: "scrollDepth",
+      type: "number",
+      admin: { description: "Max scroll percentage reached (0-100)" },
+    },
+    {
+      name: "rageClickDetected",
+      type: "checkbox",
+      admin: { description: "3+ clicks within 500ms on same element" },
+    },
+
     // Timing
     {
       name: "scannedAt",
@@ -166,6 +344,15 @@ export const InviteScans: CollectionConfig = {
       defaultValue: false,
       admin: {
         description: "Whether this scan resulted in a registration",
+        position: "sidebar",
+      },
+    },
+    {
+      name: "registeredAt",
+      type: "date",
+      admin: {
+        date: { pickerAppearance: "dayAndTime" },
+        description: "When the registration was completed",
         position: "sidebar",
       },
     },

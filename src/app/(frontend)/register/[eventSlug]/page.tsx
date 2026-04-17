@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { collectFingerprint, type FingerprintData } from "@/lib/fingerprint";
 
 interface EventData {
   invite: {
@@ -114,6 +115,12 @@ export default function RegisterPage({
   const [scanId, setScanId] = useState<string | null>(null);
   const [inviteType, setInviteType] = useState<"member" | "church">("member");
   const captchaRef = useRef<ReCAPTCHA>(null);
+  const pageLoadTime = useRef(Date.now());
+  const firstFieldFocusedAt = useRef<number | null>(null);
+  const fieldsInteracted = useRef(new Set<string>());
+  const maxScrollDepth = useRef(0);
+  const rageClickCount = useRef<{ time: number; x: number; y: number }[]>([]);
+  const [rageClickDetected, setRageClickDetected] = useState(false);
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -160,17 +167,21 @@ export default function RegisterPage({
 
         setEventData(data);
 
-        // Record scan (fire-and-forget)
+        // Collect fingerprint + record scan (fire-and-forget)
+        const fp = await collectFingerprint().catch(() => null as FingerprintData | null);
+        const scanBody: Record<string, unknown> = {
+          inviteType,
+          inviteCode: adCode || code,
+          event: data.event.id,
+          eventInvite: !adCode ? data.invite?.id || undefined : undefined,
+          churchEventInvite: adCode ? data.invite?.id : undefined,
+          ...(fp || {}),
+        };
+
         fetch("/api/invite-scan", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            inviteType,
-            inviteCode: adCode || code,
-            event: data.event.id,
-            eventInvite: !adCode ? data.invite?.id || undefined : undefined,
-            churchEventInvite: adCode ? data.invite?.id : undefined,
-          }),
+          body: JSON.stringify(scanBody),
         })
           .then((res) => res.json())
           .then((scanResult) => {
@@ -193,6 +204,34 @@ export default function RegisterPage({
 
     fetchEvent();
   }, [code, refCode, inviteCode, adCode, inviteType, resolvedParams.eventSlug]);
+
+  // Behavioral tracking: scroll depth, rage clicks
+  useEffect(() => {
+    if (step !== "form") return;
+
+    const handleScroll = () => {
+      const scrolled = window.scrollY;
+      const total = document.documentElement.scrollHeight - window.innerHeight;
+      if (total > 0) {
+        const pct = Math.min(100, Math.round((scrolled / total) * 100));
+        if (pct > maxScrollDepth.current) maxScrollDepth.current = pct;
+      }
+    };
+
+    const handleClick = (e: MouseEvent) => {
+      const now = Date.now();
+      rageClickCount.current.push({ time: now, x: e.clientX, y: e.clientY });
+      rageClickCount.current = rageClickCount.current.filter((c) => now - c.time < 500);
+      if (rageClickCount.current.length >= 3) setRageClickDetected(true);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("click", handleClick, true);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("click", handleClick, true);
+    };
+  }, [step]);
 
   const validateForm = () => {
     const newErrors: Partial<Record<keyof FormData, string>> = {};
@@ -223,6 +262,12 @@ export default function RegisterPage({
 
     setStep("submitting");
 
+    // Calculate behavioral metrics
+    const timeOnPage = Math.round((Date.now() - pageLoadTime.current) / 1000);
+    const formStartDelay = firstFieldFocusedAt.current
+      ? Math.round((firstFieldFocusedAt.current - pageLoadTime.current) / 1000)
+      : null;
+
     try {
       const response = await fetch("/api/register", {
         method: "POST",
@@ -239,6 +284,11 @@ export default function RegisterPage({
           email: formData.email.trim() || undefined,
           recaptchaToken: captchaToken,
           joinWaitlist,
+          // Behavioral data
+          timeOnPage,
+          formStartDelay,
+          scrollDepth: maxScrollDepth.current,
+          rageClickDetected,
         }),
       });
 
@@ -276,6 +326,13 @@ export default function RegisterPage({
     if (errors[name as keyof FormData]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
+  };
+
+  const handleFieldFocus = (fieldName: string) => {
+    if (!firstFieldFocusedAt.current) {
+      firstFieldFocusedAt.current = Date.now();
+    }
+    fieldsInteracted.current.add(fieldName);
   };
 
   const formatDate = (dateString: string) =>
@@ -489,7 +546,7 @@ export default function RegisterPage({
                           <Label htmlFor="firstName" className="text-white mb-2 block">First Name *</Label>
                           <div className="relative">
                             <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
-                            <Input id="firstName" name="firstName" value={formData.firstName} onChange={handleInputChange}
+                            <Input id="firstName" name="firstName" value={formData.firstName} onChange={handleInputChange} onFocus={() => handleFieldFocus("firstName")}
                               placeholder="First name"
                               className={`pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/30 ${errors.firstName ? "border-red-500" : ""}`} />
                           </div>
@@ -497,7 +554,7 @@ export default function RegisterPage({
                         </div>
                         <div>
                           <Label htmlFor="lastName" className="text-white mb-2 block">Last Name *</Label>
-                          <Input id="lastName" name="lastName" value={formData.lastName} onChange={handleInputChange}
+                          <Input id="lastName" name="lastName" value={formData.lastName} onChange={handleInputChange} onFocus={() => handleFieldFocus("lastName")}
                             placeholder="Last name"
                             className={`bg-white/5 border-white/10 text-white placeholder:text-white/30 ${errors.lastName ? "border-red-500" : ""}`} />
                           {errors.lastName && <p className="text-red-400 text-sm mt-1">{errors.lastName}</p>}
@@ -508,7 +565,7 @@ export default function RegisterPage({
                         <Label htmlFor="phone" className="text-white mb-2 block">Mobile Number *</Label>
                         <div className="relative">
                           <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
-                          <Input id="phone" name="phone" type="tel" value={formData.phone} onChange={handleInputChange}
+                          <Input id="phone" name="phone" type="tel" value={formData.phone} onChange={handleInputChange} onFocus={() => handleFieldFocus("phone")}
                             placeholder="+1 (555) 000-0000"
                             className={`pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/30 ${errors.phone ? "border-red-500" : ""}`} />
                         </div>
@@ -521,7 +578,7 @@ export default function RegisterPage({
                         </Label>
                         <div className="relative">
                           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
-                          <Input id="email" name="email" type="email" value={formData.email} onChange={handleInputChange}
+                          <Input id="email" name="email" type="email" value={formData.email} onChange={handleInputChange} onFocus={() => handleFieldFocus("email")}
                             placeholder="you@example.com"
                             className={`pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/30 ${errors.email ? "border-red-500" : ""}`} />
                         </div>
