@@ -53,8 +53,6 @@ export async function GET() {
       const lat = parseFloat(row[7]) || 0;
       const lng = parseFloat(row[8]) || 0;
 
-      if (lat === 0 || lng === 0) return;
-
       places.push({
         localeName,
         name: row[5]?.trim() || localeName,
