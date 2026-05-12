@@ -17,6 +17,8 @@ import { EventInvites } from "./collections/EventInvites";
 import { AdPlacements } from "./collections/AdPlacements";
 import { ChurchEventInvites } from "./collections/ChurchEventInvites";
 import { InviteScans } from "./collections/InviteScans";
+import { OnlinePlatforms } from "./collections/OnlinePlatforms";
+import { PlatformEventLinks } from "./collections/PlatformEventLinks";
 import { Campaigns } from "./collections/Campaigns";
 import { Posts } from "./collections/Posts";
 import { Pages } from "./collections/Pages";
@@ -80,6 +82,8 @@ export default buildConfig({
     AdPlacements,
     ChurchEventInvites,
     InviteScans,
+    OnlinePlatforms,
+    PlatformEventLinks,
     Campaigns,
   ],
   globals: [Header, Footer, ThemeSettings],

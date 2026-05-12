@@ -24,6 +24,7 @@ import {
   Sparkles,
   Megaphone,
   Download,
+  Globe,
 } from "lucide-react";
 import QRCode from "qrcode";
 import { Button } from "@/components/ui/button";
@@ -249,6 +250,12 @@ export default function EventDetailPage() {
                 Church QR Codes
               </DropdownMenuItem>
               <DropdownMenuItem
+                onClick={() => router.push(`/admin/events/${event.id}/platform-codes`)}
+              >
+                <Globe className="w-4 h-4 mr-2" />
+                Platform QR Codes
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 className="text-red-600"
                 onClick={handleDelete}
                 disabled={deleting}
@@ -401,6 +408,14 @@ export default function EventDetailPage() {
             <Megaphone className="w-5 h-5 text-slate-600 mb-2" />
             <p className="font-medium">Church QR Codes</p>
             <p className="text-xs text-slate-500">Ad invite codes</p>
+          </Card>
+        </Link>
+
+        <Link href={`/admin/events/${eventId}/platform-codes`}>
+          <Card className="bg-white p-4 hover:bg-slate-50 transition-colors cursor-pointer">
+            <Globe className="w-5 h-5 text-slate-600 mb-2" />
+            <p className="font-medium">Platform QR Codes</p>
+            <p className="text-xs text-slate-500">Social media & online</p>
           </Card>
         </Link>
       </div>

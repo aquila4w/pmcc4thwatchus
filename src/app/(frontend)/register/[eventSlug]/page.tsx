@@ -95,9 +95,10 @@ export default function RegisterPage({
   const refCode = searchParams.get("ref");
   const inviteCode = searchParams.get("invite");
   const adCode = searchParams.get("ad");
+  const platformCode = searchParams.get("platform");
 
-  // Support ?ref=, ?invite=, and ?ad= params
-  const code = refCode || inviteCode || adCode;
+  // Support ?ref=, ?invite=, ?ad=, and ?platform= params
+  const code = refCode || inviteCode || adCode || platformCode;
 
   const [step, setStep] = useState<Step>("loading");
   const [eventData, setEventData] = useState<EventData | null>(null);
@@ -112,7 +113,7 @@ export default function RegisterPage({
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [scanId, setScanId] = useState<string | null>(null);
-  const [inviteType, setInviteType] = useState<"member" | "church">("member");
+  const [inviteType, setInviteType] = useState<"member" | "church" | "platform">("member");
   const captchaRef = useRef<ReCAPTCHA>(null);
   const pageLoadTime = useRef(Date.now());
   const firstFieldFocusedAt = useRef<number | null>(null);
@@ -152,6 +153,22 @@ export default function RegisterPage({
             },
             registrationCount: churchData.registrationCount || 0,
           };
+        } else if (platformCode) {
+          // Online platform QR code — event slug is already in the URL
+          setInviteType("platform");
+          const response = await fetch(`/api/platform-link/${encodeURIComponent(platformCode)}?eventSlug=${encodeURIComponent(resolvedParams.eventSlug)}`);
+          if (!response.ok) throw new Error("Invalid or disabled platform link");
+          const platformData = await response.json();
+
+          data = {
+            invite: { id: platformData.link.id, inviteCode: platformData.link.code },
+            event: platformData.event,
+            invitedBy: {
+              id: "",
+              name: platformData.platform?.name || "Online Platform",
+            },
+            registrationCount: platformData.registrationCount || 0,
+          };
         } else if (refCode) {
           // Look up by member code + event slug
           const response = await fetch(`/api/event-invite/by-ref?code=${encodeURIComponent(refCode)}&eventSlug=${encodeURIComponent(resolvedParams.eventSlug)}`);
@@ -170,10 +187,11 @@ export default function RegisterPage({
         const fp = await collectFingerprint().catch(() => null as FingerprintData | null);
         const scanBody: Record<string, unknown> = {
           inviteType,
-          inviteCode: adCode || code,
+          inviteCode: adCode || platformCode || code,
           event: data.event.id,
-          eventInvite: !adCode ? data.invite?.id || undefined : undefined,
+          eventInvite: !adCode && !platformCode ? data.invite?.id || undefined : undefined,
           churchEventInvite: adCode ? data.invite?.id : undefined,
+          platformEventLink: platformCode ? data.invite?.id : undefined,
           ...(fp || {}),
         };
 
@@ -272,10 +290,11 @@ export default function RegisterPage({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          eventInviteCode: !adCode ? (eventData?.invite?.inviteCode || code) : undefined,
+          eventInviteCode: !adCode && !platformCode ? (eventData?.invite?.inviteCode || code) : undefined,
           eventSlug: resolvedParams.eventSlug,
           refCode: refCode || undefined,
           adCode: adCode || undefined,
+          platformCode: platformCode || undefined,
           scanId: scanId || undefined,
           firstName: formData.firstName.trim(),
           lastName: formData.lastName.trim(),

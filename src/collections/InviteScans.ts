@@ -31,6 +31,7 @@ export const InviteScans: CollectionConfig = {
       options: [
         { label: "Member Invite", value: "member" },
         { label: "Church Ad", value: "church" },
+        { label: "Online Platform", value: "platform" },
       ],
       admin: {
         description: "Whether the scan came from a member invite or church ad QR",
@@ -60,6 +61,14 @@ export const InviteScans: CollectionConfig = {
       relationTo: "church-event-invites",
       admin: {
         description: "Linked church event invite (for church ad scans)",
+      },
+    },
+    {
+      name: "platformEventLink",
+      type: "relationship",
+      relationTo: "platform-event-links",
+      admin: {
+        description: "Linked platform event link (for online platform scans)",
       },
     },
     {

@@ -18,6 +18,7 @@ import {
   ChevronLeft,
   LayoutDashboard,
   Megaphone,
+  Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -137,6 +138,12 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
       label: "Ad Placements",
       icon: Megaphone,
       href: "/admin/ad-placements",
+      roles: ["superAdmin", "districtCoordinator", "eventAdmin"],
+    },
+    {
+      label: "Online Platforms",
+      icon: Globe,
+      href: "/admin/platforms",
       roles: ["superAdmin", "districtCoordinator", "eventAdmin"],
     },
     {

@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
       eventSlug,
       refCode,
       adCode,
+      platformCode,
       scanId,
       firstName,
       lastName,
@@ -96,10 +97,11 @@ export async function POST(request: NextRequest) {
     // Find the event invite — support UUID code, ref-based lookup, or church ad code
     let eventInvite: Record<string, unknown> | null = null;
     let churchInvite: Record<string, unknown> | null = null;
+    let platformLink: Record<string, unknown> | null = null;
     let event: Record<string, unknown> | null = null;
     let invitingMember: Record<string, unknown> | null = null;
     let churchContact: { name?: string; email?: string; phone?: string } | null = null;
-    let sourceType: "member" | "church" = "member";
+    let sourceType: "member" | "church" | "platform" = "member";
 
     if (refCode && eventSlug) {
       // Look up by member code + event slug
@@ -208,6 +210,48 @@ export async function POST(request: NextRequest) {
         email: (churchInvite.contactEmail as string) || undefined,
         phone: (churchInvite.contactPhone as string) || undefined,
       };
+    } else if (platformCode && eventSlug) {
+      // Online platform QR code lookup
+      sourceType = "platform";
+      const plResult = await payload.find({
+        collection: "platform-event-links",
+        where: {
+          and: [
+            { code: { equals: platformCode } },
+            { status: { equals: "active" } },
+          ],
+        },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      });
+
+      if (plResult.docs.length === 0) {
+        return NextResponse.json(
+          { error: "Invalid or disabled platform link" },
+          { status: 404 }
+        );
+      }
+
+      platformLink = plResult.docs[0] as Record<string, unknown>;
+      const linkedEventId = String(platformLink.event);
+
+      // Resolve event from platform link or slug
+      const events = await payload.find({
+        collection: "managed-events",
+        where: { slug: { equals: eventSlug } },
+        limit: 1,
+        depth: 0,
+      });
+
+      if (events.docs.length === 0) {
+        return NextResponse.json(
+          { error: "Event not found" },
+          { status: 404 }
+        );
+      }
+
+      event = events.docs[0];
     } else {
       return NextResponse.json(
         { error: "Missing invite reference" },
@@ -369,6 +413,7 @@ export async function POST(request: NextRequest) {
         event: fullEvent.id,
         eventInvite: eventInvite?.id || undefined,
         churchEventInvite: churchInvite?.id || undefined,
+        platformEventLink: platformLink?.id || undefined,
         sourceType,
         invitedBy: invitingMember?.id,
         invitedByChurch: inviterChurchId || undefined,

@@ -76,12 +76,21 @@ export const EventRegistrations: CollectionConfig = {
       },
     },
     {
+      name: "platformEventLink",
+      type: "relationship",
+      relationTo: "platform-event-links",
+      admin: {
+        description: "The PlatformEventLink used (if from an online platform QR code)",
+      },
+    },
+    {
       name: "sourceType",
       type: "select",
       defaultValue: "member",
       options: [
         { label: "Member Invite", value: "member" },
         { label: "Church Ad", value: "church" },
+        { label: "Online Platform", value: "platform" },
       ],
       admin: {
         position: "sidebar",
