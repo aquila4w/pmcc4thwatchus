@@ -76,6 +76,27 @@ export const PlatformEventLinks: CollectionConfig = {
       },
     },
     {
+      name: "contactName",
+      type: "text",
+      admin: {
+        description: "Contact person name shown on the registration page",
+      },
+    },
+    {
+      name: "contactEmail",
+      type: "email",
+      admin: {
+        description: "Contact email shown on the registration page",
+      },
+    },
+    {
+      name: "contactPhone",
+      type: "text",
+      admin: {
+        description: "Contact phone shown on the registration page",
+      },
+    },
+    {
       name: "status",
       type: "select",
       defaultValue: "active",

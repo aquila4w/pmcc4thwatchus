@@ -75,6 +75,9 @@ export async function GET(
       link: {
         id: link.id,
         code: link.code,
+        contactName: link.contactName || null,
+        contactEmail: link.contactEmail || null,
+        contactPhone: link.contactPhone || null,
       },
       event: {
         id: event.id,

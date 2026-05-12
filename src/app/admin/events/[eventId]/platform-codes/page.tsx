@@ -14,6 +14,7 @@ import {
   Download,
   Globe,
   BarChart3,
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -26,6 +27,9 @@ interface PlatformLink {
   code: string;
   platform: string;
   customUrl: string | null;
+  contactName: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
   status: "active" | "disabled";
   scanCount: number;
   registrationCount: number;
@@ -81,6 +85,8 @@ export default function PlatformCodesPage() {
   const [generating, setGenerating] = useState(false);
   const [editingUrl, setEditingUrl] = useState<string | null>(null);
   const [urlForm, setUrlForm] = useState("");
+  const [editingContact, setEditingContact] = useState<string | null>(null);
+  const [contactForm, setContactForm] = useState({ name: "", email: "", phone: "" });
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -164,6 +170,42 @@ export default function PlatformCodesPage() {
       }
     } catch (err) {
       console.error("Failed to save URL:", err);
+    }
+  };
+
+  const startEditContact = (link: PlatformLink) => {
+    setContactForm({
+      name: link.contactName || "",
+      email: link.contactEmail || "",
+      phone: link.contactPhone || "",
+    });
+    setEditingContact(link.id);
+  };
+
+  const saveContact = async (linkId: string) => {
+    try {
+      const res = await fetch("/api/admin/platform-event-links", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: linkId,
+          contactName: contactForm.name || null,
+          contactEmail: contactForm.email || null,
+          contactPhone: contactForm.phone || null,
+        }),
+      });
+      if (res.ok) {
+        setLinks((prev) =>
+          prev.map((l) =>
+            l.id === linkId
+              ? { ...l, contactName: contactForm.name, contactEmail: contactForm.email, contactPhone: contactForm.phone }
+              : l
+          )
+        );
+        setEditingContact(null);
+      }
+    } catch (err) {
+      console.error("Failed to save contact:", err);
     }
   };
 
@@ -341,6 +383,14 @@ export default function PlatformCodesPage() {
                       >
                         Edit URL
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => startEditContact(link)}
+                        title="Edit contact"
+                      >
+                        <User className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
 
                     {/* Custom URL indicator */}
@@ -348,6 +398,14 @@ export default function PlatformCodesPage() {
                       <p className="text-xs text-slate-400 truncate text-center" title={link.customUrl}>
                         Redirects to: {link.customUrl}
                       </p>
+                    )}
+
+                    {/* Contact info */}
+                    {link.contactName && (
+                      <div className="text-xs text-slate-400 text-center">
+                        Contact: {link.contactName}
+                        {link.contactPhone && <> &middot; {link.contactPhone}</>}
+                      </div>
                     )}
                   </div>
                 ) : (
@@ -380,6 +438,34 @@ export default function PlatformCodesPage() {
             <div className="flex gap-2">
               <Button size="sm" onClick={() => saveCustomUrl(editingUrl)}>Save</Button>
               <Button size="sm" variant="outline" onClick={() => setEditingUrl(null)}>Cancel</Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Edit Contact Modal */}
+      {editingContact && (
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4" onClick={() => setEditingContact(null)}>
+          <Card className="w-full max-w-md p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold">Edit Contact</h3>
+            <p className="text-sm text-slate-500">
+              Contact details shown on the registration page for this platform link.
+            </p>
+            <div>
+              <label className="text-sm text-slate-500 mb-1 block">Name</label>
+              <Input value={contactForm.name} onChange={(e) => setContactForm((f) => ({ ...f, name: e.target.value }))} placeholder="Contact person name" />
+            </div>
+            <div>
+              <label className="text-sm text-slate-500 mb-1 block">Email</label>
+              <Input value={contactForm.email} onChange={(e) => setContactForm((f) => ({ ...f, email: e.target.value }))} placeholder="contact@email.com" />
+            </div>
+            <div>
+              <label className="text-sm text-slate-500 mb-1 block">Phone</label>
+              <Input value={contactForm.phone} onChange={(e) => setContactForm((f) => ({ ...f, phone: e.target.value }))} placeholder="+1 555-000-0000" />
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={() => saveContact(editingContact)}>Save</Button>
+              <Button size="sm" variant="outline" onClick={() => setEditingContact(null)}>Cancel</Button>
             </div>
           </Card>
         </div>

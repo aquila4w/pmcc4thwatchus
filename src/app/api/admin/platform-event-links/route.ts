@@ -65,6 +65,9 @@ export async function GET(request: NextRequest) {
       event: link.event as string,
       platform: link.platform as string,
       customUrl: link.customUrl || null,
+      contactName: link.contactName || null,
+      contactEmail: link.contactEmail || null,
+      contactPhone: link.contactPhone || null,
       status: link.status,
       scanCount: link.scanCount || 0,
       registrationCount: link.registrationCount || 0,
@@ -99,7 +102,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const payload = await getPayload({ config });
-    const { id, status, customUrl } = await request.json();
+    const { id, status, customUrl, contactName, contactEmail, contactPhone } = await request.json();
 
     if (!id) {
       return NextResponse.json({ error: "ID is required" }, { status: 400 });
@@ -137,6 +140,9 @@ export async function PATCH(request: NextRequest) {
     const updateData: Record<string, unknown> = {};
     if (status !== undefined) updateData.status = status;
     if (customUrl !== undefined) updateData.customUrl = customUrl || null;
+    if (contactName !== undefined) updateData.contactName = contactName || null;
+    if (contactEmail !== undefined) updateData.contactEmail = contactEmail || null;
+    if (contactPhone !== undefined) updateData.contactPhone = contactPhone || null;
 
     await payload.update({
       collection: "platform-event-links",

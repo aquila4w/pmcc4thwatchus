@@ -165,7 +165,9 @@ export default function RegisterPage({
             event: platformData.event,
             invitedBy: {
               id: "",
-              name: platformData.platform?.name || "Online Platform",
+              name: platformData.link.contactName || platformData.platform?.name || "Online Platform",
+              phone: platformData.link.contactPhone || undefined,
+              email: platformData.link.contactEmail || undefined,
             },
             registrationCount: platformData.registrationCount || 0,
           };
@@ -220,7 +222,7 @@ export default function RegisterPage({
     };
 
     fetchEvent();
-  }, [code, refCode, inviteCode, adCode, inviteType, resolvedParams.eventSlug]);
+  }, [code, refCode, inviteCode, adCode, platformCode, inviteType, resolvedParams.eventSlug]);
 
   // Behavioral tracking: scroll depth, rage clicks
   useEffect(() => {
