@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
+import { getCurrentUser, isAdmin } from "@/lib/auth-helpers";
 import { sendReminderEmail } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   try {
     const payload = await getPayload({ config });
+
+    const authUser = await getCurrentUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (!isAdmin(authUser.role)) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
+
     const now = new Date();
 
     // Find events in reminder windows

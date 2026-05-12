@@ -4,15 +4,14 @@ import config from "@payload-config";
 
 // Verify cron authorization
 function verifyCronAuth(request: NextRequest): boolean {
-  const authHeader = request.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET || "dev-cron-secret";
-
-  if (authHeader === `Bearer ${cronSecret}`) {
-    return true;
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    console.error("CRON_SECRET environment variable is not set");
+    return false;
   }
 
-  // For Vercel Cron, you might use a different method
-  if (process.env.NODE_ENV === "development") {
+  const authHeader = request.headers.get("authorization");
+  if (authHeader === `Bearer ${cronSecret}`) {
     return true;
   }
 
@@ -30,8 +29,8 @@ export async function POST(request: NextRequest) {
 
 async function processScheduledCampaigns(request: NextRequest) {
   try {
-    // Verify authorization in production
-    if (process.env.NODE_ENV === "production" && !verifyCronAuth(request)) {
+    // Verify authorization
+    if (!verifyCronAuth(request)) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }

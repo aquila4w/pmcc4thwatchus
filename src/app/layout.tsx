@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 
-console.log("🏠 [app/layout.tsx] Root layout module loaded");
-
 // Force all routes to be dynamically rendered at runtime (not at build time)
 // This prevents build timeouts from Payload CMS/MongoDB connections
 export const dynamic = "force-dynamic";

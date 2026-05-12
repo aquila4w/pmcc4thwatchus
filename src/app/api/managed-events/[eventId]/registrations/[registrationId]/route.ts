@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
+import { getCurrentUser, isAdmin } from "@/lib/auth-helpers";
 
 // GET - Get single registration details
 export async function GET(
@@ -9,6 +10,15 @@ export async function GET(
 ) {
   try {
     const payload = await getPayload({ config });
+
+    const authUser = await getCurrentUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (!isAdmin(authUser.role)) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
+
     const { registrationId } = await params;
 
     const registration = await payload.findByID({
@@ -41,17 +51,33 @@ export async function PATCH(
 ) {
   try {
     const payload = await getPayload({ config });
+
+    const authUser = await getCurrentUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (!isAdmin(authUser.role)) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
+
     const { registrationId } = await params;
     const body = await request.json();
 
-    // Handle special status changes that need timestamps
-    const updateData: Record<string, unknown> = { ...body };
+    // Only allow updating specific fields (prevent mass assignment)
+    const allowedFields = ["status", "attendedAt", "baptizedAt", "notes", "guestInfo", "checkedInBy", "waitlistPosition", "promotedFromWaitlistAt", "reminderDayBeforeSent", "reminderHourBeforeSent"] as const;
+    const updateData: Record<string, unknown> = {};
+    for (const field of allowedFields) {
+      if (field in body) {
+        updateData[field] = body[field];
+      }
+    }
 
-    if (body.status === "attended" && !body.attendedAt) {
+    // Handle special status changes that need timestamps
+    if (updateData.status === "attended" && !updateData.attendedAt) {
       updateData.attendedAt = new Date().toISOString();
     }
 
-    if (body.status === "baptized" && !body.baptizedAt) {
+    if (updateData.status === "baptized" && !updateData.baptizedAt) {
       updateData.baptizedAt = new Date().toISOString();
     }
 
@@ -80,6 +106,15 @@ export async function DELETE(
 ) {
   try {
     const payload = await getPayload({ config });
+
+    const authUser = await getCurrentUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (!isAdmin(authUser.role)) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
+
     const { registrationId } = await params;
 
     await payload.delete({

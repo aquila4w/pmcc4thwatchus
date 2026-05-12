@@ -12,18 +12,16 @@ interface Event {
   address?: string;
 }
 
-// Verify cron authorization (optional but recommended)
+// Verify cron authorization
 function verifyCronAuth(request: NextRequest): boolean {
-  const authHeader = request.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET || "dev-cron-secret";
-
-  if (authHeader === `Bearer ${cronSecret}`) {
-    return true;
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    console.error("CRON_SECRET environment variable is not set");
+    return false;
   }
 
-  // For Vercel Cron, you might use a different method
-  // For now, we'll allow in development
-  if (process.env.NODE_ENV === "development") {
+  const authHeader = request.headers.get("authorization");
+  if (authHeader === `Bearer ${cronSecret}`) {
     return true;
   }
 
@@ -41,8 +39,8 @@ export async function POST(request: NextRequest) {
 
 async function processReminders(request: NextRequest) {
   try {
-    // Verify authorization in production
-    if (process.env.NODE_ENV === "production" && !verifyCronAuth(request)) {
+    // Verify authorization
+    if (!verifyCronAuth(request)) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -182,7 +180,7 @@ async function sendEventReminders(
           reminderType: reminderType,
         });
       } catch (error) {
-        console.error(`Reminder email failed for ${guestInfo.email}:`, error);
+        console.error("Reminder email send failed");
       }
     }
 
@@ -197,7 +195,7 @@ async function sendEventReminders(
           ticketUrl: shortUrl,
         });
       } catch (error) {
-        console.error(`Reminder SMS failed for ${guestInfo.phone}:`, error);
+        console.error("Reminder SMS send failed");
       }
     }
 

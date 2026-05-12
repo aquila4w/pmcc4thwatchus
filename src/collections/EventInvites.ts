@@ -1,4 +1,5 @@
 import type { CollectionConfig, Where } from "payload";
+import { randomInt } from "crypto";
 
 export const EventInvites: CollectionConfig = {
   slug: "event-invites",
@@ -192,7 +193,7 @@ export const EventInvites: CollectionConfig = {
           const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
           let code = "";
           for (let i = 0; i < 8; i++) {
-            code += CHARS[Math.floor(Math.random() * CHARS.length)];
+            code += CHARS[randomInt(CHARS.length)];
           }
           // Ensure uniqueness
           for (let attempt = 0; attempt < 10; attempt++) {
@@ -206,7 +207,7 @@ export const EventInvites: CollectionConfig = {
             if (existing.totalDocs === 0) break;
             code = "";
             for (let i = 0; i < 8; i++) {
-              code += CHARS[Math.floor(Math.random() * CHARS.length)];
+              code += CHARS[randomInt(CHARS.length)];
             }
           }
           data.inviteCode = code;

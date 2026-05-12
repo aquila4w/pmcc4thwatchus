@@ -48,7 +48,7 @@ export async function sendRegistrationSMS({
     : "";
   const message = customMessage || `Hi ${guestName}! You're registered for ${eventTitle}. View your ticket & QR code: ${ticketUrl}${contactSuffix}`;
 
-  console.log(`[SMS] Sending to ${phoneNumber} from ${fromNumber}: ${message.substring(0, 50)}...`);
+  console.log("[SMS] Sending message");
 
   try {
     const response = await fetch(
@@ -69,15 +69,15 @@ export async function sendRegistrationSMS({
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error("Twilio error:", errorData);
+      console.error("[SMS] Send failed");
       return { success: false, error: errorData.message || "Failed to send SMS" };
     }
 
     const data = await response.json();
-    console.log("SMS sent successfully:", data.sid);
+    console.log("[SMS] Message sent successfully");
     return { success: true };
   } catch (error) {
-    console.error("SMS service error:", error);
+    console.error("[SMS] Send failed");
     return { success: false, error: "Failed to send SMS" };
   }
 }

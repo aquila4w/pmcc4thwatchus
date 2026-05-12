@@ -472,6 +472,7 @@ export default function RegisterPage({
                     <div className="mt-2">
                       <div className="rounded-lg overflow-hidden border border-white/10">
                         <iframe
+                          sandbox="allow-scripts allow-same-origin"
                           src={`https://maps.google.com/maps?q=${encodeURIComponent(eventData.event.address || eventData.event.location)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
                           width="100%"
                           height="200"

@@ -348,8 +348,18 @@ export function generateInviteLink(eventSlug: string, inviteCode: string): strin
 export function generateInviteCode(length: number = 6): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "";
+  // Use cryptographically secure random values (works in browser and server)
+  const randomValues = new Uint32Array(length);
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    crypto.getRandomValues(randomValues);
+  } else {
+    // Fallback for environments without crypto.getRandomValues (should not occur in modern runtimes)
+    for (let i = 0; i < length; i++) {
+      randomValues[i] = Math.floor(Math.random() * 0xFFFFFFFF);
+    }
+  }
   for (let i = 0; i < length; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
+    code += chars[randomValues[i] % chars.length];
   }
   return code;
 }

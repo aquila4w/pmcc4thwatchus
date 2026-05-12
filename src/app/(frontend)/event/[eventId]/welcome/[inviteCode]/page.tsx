@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useMemo } from "react";
 import Link from "next/link";
+import DOMPurify from "isomorphic-dompurify";
 import {
   Calendar,
   MapPin,
@@ -267,6 +268,7 @@ export default function WelcomePage({
               <div className="mb-6">
                 <div className="rounded-xl overflow-hidden border border-white/10">
                   <iframe
+                    sandbox="allow-scripts allow-same-origin"
                     src={`https://maps.google.com/maps?q=${encodeURIComponent(data.event.address || data.event.location)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
                     width="100%"
                     height="250"
@@ -375,7 +377,11 @@ export default function WelcomePage({
             <div
               className="prose prose-invert prose-lg max-w-none"
               dangerouslySetInnerHTML={{
-                __html: data.event.landingPage.content,
+                __html: DOMPurify.sanitize(data.event.landingPage.content, {
+                  ALLOWED_TAGS: ['h1','h2','h3','h4','h5','h6','p','br','strong','em','b','i','u','a','ul','ol','li','blockquote','hr','span','div','img','table','thead','tbody','tr','th','td','sup','sub'],
+                  ALLOWED_ATTR: ['href','target','rel','src','alt','class','style','colspan','rowspan'],
+                  ALLOW_DATA_ATTR: false,
+                }),
               }}
             />
           </Card>

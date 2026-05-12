@@ -6,15 +6,17 @@ import type { Where } from "payload";
 import { headers } from "next/headers";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getCurrentUser, isAdmin } from "@/lib/auth-helpers";
+import { randomInt, randomBytes } from "crypto";
 
 // Generate a readable invite code (same as in Users collection)
 const generateInviteCode = (): string => {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let readable = "";
   for (let i = 0; i < 6; i++) {
-    readable += chars[Math.floor(Math.random() * chars.length)];
+    readable += chars[randomInt(chars.length)];
   }
-  const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const suffix = randomBytes(3).toString("hex").toUpperCase();
   return `${readable}-${suffix}`;
 };
 
@@ -159,7 +161,7 @@ export async function POST(
 
     // Send welcome email to new member
     if (guest.email) {
-      const baseUrl = request.headers.get("origin") || "https://pmcc4thwatch.us";
+      const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || "https://pmcc4thwatch.us";
       const inviteLink = `${baseUrl}/invite/${promotedUser.inviteCode}`;
 
       try {
@@ -214,6 +216,15 @@ export async function GET(
 ) {
   try {
     const payload = await getPayload({ config });
+
+    const authUser = await getCurrentUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (!isAdmin(authUser.role)) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const church = searchParams.get("church");
     const subDistrict = searchParams.get("subDistrict");

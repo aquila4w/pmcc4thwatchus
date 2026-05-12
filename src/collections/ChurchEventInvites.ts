@@ -1,11 +1,12 @@
 import type { CollectionConfig, Where } from "payload";
+import { randomInt } from "crypto";
 
 const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 function generateChurchInviteCode(): string {
   let code = "";
   for (let i = 0; i < 8; i++) {
-    code += CHARS[Math.floor(Math.random() * CHARS.length)];
+    code += CHARS[randomInt(CHARS.length)];
   }
   return code;
 }

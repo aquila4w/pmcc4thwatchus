@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/admin/", "/api/", "/register/"],
+      disallow: ["/admin/", "/api/", "/register/", "/ticket/", "/t/"],
     },
     sitemap: "https://pmcc4thwatch.us/sitemap.xml",
   };

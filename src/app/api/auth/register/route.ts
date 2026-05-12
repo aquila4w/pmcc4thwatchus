@@ -1,8 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
+  // Rate limit by IP: 3 requests per hour
+  const clientIp = getClientIp(request);
+  const { allowed, resetIn } = rateLimit(clientIp, { windowMs: 60 * 60 * 1000, maxRequests: 3 });
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil(resetIn / 1000)) },
+      }
+    );
+  }
+
   try {
     const payload = await getPayload({ config });
     const { name, email, password, phone, church } = await request.json();
@@ -28,6 +42,30 @@ export async function POST(request: NextRequest) {
     if (password.length < 8) {
       return NextResponse.json(
         { error: "Password must be at least 8 characters" },
+        { status: 400 }
+      );
+    }
+    if (!/[A-Z]/.test(password)) {
+      return NextResponse.json(
+        { error: "Password must contain at least one uppercase letter" },
+        { status: 400 }
+      );
+    }
+    if (!/[a-z]/.test(password)) {
+      return NextResponse.json(
+        { error: "Password must contain at least one lowercase letter" },
+        { status: 400 }
+      );
+    }
+    if (!/[0-9]/.test(password)) {
+      return NextResponse.json(
+        { error: "Password must contain at least one number" },
+        { status: 400 }
+      );
+    }
+    if (!/[!@#$%^&*()_+\-=\[\]{}|;:'",.<>?\/]/.test(password)) {
+      return NextResponse.json(
+        { error: "Password must contain at least one special character" },
         { status: 400 }
       );
     }

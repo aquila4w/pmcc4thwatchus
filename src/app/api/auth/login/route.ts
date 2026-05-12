@@ -1,13 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
+
+  // Rate limit by IP: 20 requests per 15 minutes
+  const clientIp = getClientIp(request);
+  const ipRateLimit = rateLimit(clientIp, { windowMs: 15 * 60 * 1000, maxRequests: 20 });
+  if (!ipRateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil(ipRateLimit.resetIn / 1000)) },
+      }
+    );
+  }
+
   try {
-    console.log(`[LOGIN] Starting login at ${new Date().toISOString()}`);
     const payload = await getPayload({ config });
-    console.log(`[LOGIN] Payload initialized in ${Date.now() - startTime}ms`);
     const { email, password } = await request.json();
 
     if (!email || !password) {
@@ -17,8 +30,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Rate limit by email: 5 attempts per 15 minutes
+    const emailRateLimit = rateLimit(`login:${email.toLowerCase()}`, { windowMs: 15 * 60 * 1000, maxRequests: 5 });
+    if (!emailRateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many login attempts for this account" },
+        {
+          status: 429,
+          headers: { "Retry-After": String(Math.ceil(emailRateLimit.resetIn / 1000)) },
+        }
+      );
+    }
+
     // Authenticate with Payload
-    console.log(`[LOGIN] Attempting login for: ${email}`);
     const result = await payload.login({
       collection: "users",
       data: {
@@ -26,7 +50,6 @@ export async function POST(request: NextRequest) {
         password,
       },
     });
-    console.log(`[LOGIN] Login result received at ${Date.now() - startTime}ms`);
 
     if (!result.token || !result.user) {
       return NextResponse.json(
@@ -74,7 +97,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error("Login error:", error);
+    console.error("Login error");
 
     const errorMessage = error instanceof Error ? error.message : "";
     if (errorMessage.includes("credentials")) {

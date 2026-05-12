@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPayload, Where } from "payload";
 import config from "@/payload.config";
+import { getCurrentUser, isAdmin } from "@/lib/auth-helpers";
 
 export async function GET(request: NextRequest) {
   try {
@@ -166,6 +167,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const payload = await getPayload({ config });
+
+    const authUser = await getCurrentUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (!isAdmin(authUser.role)) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
+
     const body = await request.json();
 
     // Validate required fields
@@ -204,12 +214,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create the news-event
+    // Create the news-event with only allowed fields
+    const {
+      title,
+      description,
+      summary,
+      slug: bodySlug,
+      type,
+      category,
+      tags,
+      status,
+      startDate,
+      endDate,
+      location,
+      address,
+      featured,
+      coverImage,
+      content,
+    } = body;
+
     const result = await payload.create({
       collection: "news-events",
       data: {
-        ...body,
+        title,
+        description,
+        summary,
         slug,
+        type,
+        category,
+        tags,
+        status,
+        startDate,
+        endDate,
+        location,
+        address,
+        featured,
+        coverImage,
+        content,
         isPublished: body.isPublished ?? true, // Default to published
       },
     });

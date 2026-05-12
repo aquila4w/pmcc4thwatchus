@@ -1,10 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
+import { getCurrentUser, isAdmin } from "@/lib/auth-helpers";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
+  // Rate limit by IP: 20 requests per minute
+  const clientIp = getClientIp(request);
+  const { allowed, resetIn } = rateLimit(`baptism:${clientIp}`, { windowMs: 60 * 1000, maxRequests: 20 });
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil(resetIn / 1000)) },
+      }
+    );
+  }
+
   try {
     const payload = await getPayload({ config });
+
+    const authUser = await getCurrentUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (!isAdmin(authUser.role)) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
+
     const body = await request.json();
 
     const { registrationCode, eventId } = body;
@@ -97,12 +121,9 @@ export async function POST(request: NextRequest) {
       registration: {
         id: updated.id,
         guestName: registration.guestInfo?.name,
-        guestEmail: registration.guestInfo?.email,
-        guestPhone: registration.guestInfo?.phone,
         status: updated.status,
         attendedAt: updated.attendedAt,
         baptizedAt: updated.baptizedAt,
-        invitedBy: registration.invitedBy,
       },
       event: {
         id: event?.id,

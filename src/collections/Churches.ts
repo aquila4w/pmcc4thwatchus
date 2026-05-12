@@ -58,10 +58,24 @@ export const Churches: CollectionConfig = {
     {
       name: "phone",
       type: "text",
+      access: {
+        read: ({ req: { user } }) => {
+          if (!user) return false;
+          const adminRoles = ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "eventAdmin", "headMinister", "secretary"];
+          return adminRoles.includes(user.role);
+        },
+      },
     },
     {
       name: "email",
       type: "email",
+      access: {
+        read: ({ req: { user } }) => {
+          if (!user) return false;
+          const adminRoles = ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "eventAdmin", "headMinister", "secretary"];
+          return adminRoles.includes(user.role);
+        },
+      },
     },
     {
       name: "subDistrict",
@@ -79,6 +93,13 @@ export const Churches: CollectionConfig = {
       filterOptions: {
         role: { equals: "headMinister" },
       },
+      access: {
+        read: ({ req: { user } }) => {
+          if (!user) return false;
+          const adminRoles = ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "eventAdmin", "headMinister", "secretary"];
+          return adminRoles.includes(user.role);
+        },
+      },
       admin: {
         position: "sidebar",
       },
@@ -89,6 +110,13 @@ export const Churches: CollectionConfig = {
       relationTo: "users",
       filterOptions: {
         role: { equals: "secretary" },
+      },
+      access: {
+        read: ({ req: { user } }) => {
+          if (!user) return false;
+          const adminRoles = ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "eventAdmin", "headMinister", "secretary"];
+          return adminRoles.includes(user.role);
+        },
       },
       admin: {
         position: "sidebar",

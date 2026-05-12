@@ -4,6 +4,7 @@ import config from "@payload-config";
 import { replacePlaceholders, getRecipients, formatCampaignEventDate, updateCampaignStatus, batchSend } from "@/lib/campaigns";
 import { sendRegistrationEmail } from "@/lib/email";
 import { sendRegistrationSMS } from "@/lib/sms";
+import { getCurrentUser, isAdmin } from "@/lib/auth-helpers";
 
 // POST - Execute/send a campaign
 export async function POST(
@@ -12,6 +13,15 @@ export async function POST(
 ) {
   try {
     const payload = await getPayload({ config });
+
+    const authUser = await getCurrentUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (!isAdmin(authUser.role)) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
+
     const { id: campaignId } = await params;
 
     // Get the campaign
@@ -67,7 +77,7 @@ export async function POST(
     );
 
     // Generate QR link base URL
-    const baseUrl = request.headers.get("origin") || "https://pmcc4thwatch.us";
+    const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || "https://pmcc4thwatch.us";
 
     // Track sent count
     let sentCount = 0;
@@ -184,6 +194,15 @@ export async function GET(
 ) {
   try {
     const payload = await getPayload({ config });
+
+    const authUser = await getCurrentUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (!isAdmin(authUser.role)) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
+
     const { id: campaignId } = await params;
 
     // Get the campaign
@@ -228,7 +247,9 @@ export async function GET(
       totalRecipients: recipients.length,
       withEmail,
       withPhone,
-      recipients: recipients.slice(0, 10), // Return first 10 for preview
+      recipients: recipients.slice(0, 10).map((r) => ({
+        guestName: r.guestName,
+      })),
     });
   } catch (error) {
     console.error("Campaign preview error:", error);

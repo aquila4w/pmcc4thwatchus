@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
 import type { Where } from "payload";
+import { getCurrentUser, isAdmin } from "@/lib/auth-helpers";
 
 // GET - List registrations for an event with filters
 export async function GET(
@@ -10,6 +11,15 @@ export async function GET(
 ) {
   try {
     const payload = await getPayload({ config });
+
+    const authUser = await getCurrentUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (!isAdmin(authUser.role)) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
+
     const { eventId } = await params;
     const { searchParams } = new URL(request.url);
 
@@ -73,6 +83,15 @@ export async function PATCH(
 ) {
   try {
     const payload = await getPayload({ config });
+
+    const authUser = await getCurrentUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (!isAdmin(authUser.role)) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
+
     const { eventId } = await params;
     const body = await request.json();
 
@@ -81,6 +100,26 @@ export async function PATCH(
     if (!registrationIds || !Array.isArray(registrationIds)) {
       return NextResponse.json(
         { error: "registrationIds array is required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate that all registration IDs belong to the specified event
+    const registrations = await payload.find({
+      collection: "event-registrations",
+      where: {
+        and: [
+          { id: { in: registrationIds } },
+          { event: { equals: eventId } },
+        ],
+      },
+      limit: registrationIds.length,
+      depth: 0,
+    });
+
+    if (registrations.docs.length !== registrationIds.length) {
+      return NextResponse.json(
+        { error: "Some registration IDs do not belong to this event" },
         { status: 400 }
       );
     }
@@ -116,6 +155,15 @@ export async function DELETE(
 ) {
   try {
     const payload = await getPayload({ config });
+
+    const authUser = await getCurrentUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (!isAdmin(authUser.role)) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
+
     const { eventId } = await params;
     const { searchParams } = new URL(request.url);
 

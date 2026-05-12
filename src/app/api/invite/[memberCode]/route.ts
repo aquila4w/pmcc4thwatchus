@@ -92,7 +92,7 @@ export async function GET(
     return NextResponse.json({
       member: {
         name: member.name,
-        phone: member.phone || null,
+        phone: member.phone,
         church: church?.name || null,
       },
       events: availableEvents,

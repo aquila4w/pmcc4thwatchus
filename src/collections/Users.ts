@@ -1,13 +1,14 @@
 import type { CollectionConfig, Where } from "payload";
+import { randomInt, randomBytes } from "crypto";
 
-// Generate a readable invite code (6 chars) + UUID suffix for uniqueness
+// Generate a readable invite code (6 chars) + random suffix for uniqueness
 const generateInviteCode = (): string => {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let readable = "";
   for (let i = 0; i < 6; i++) {
-    readable += chars[Math.floor(Math.random() * chars.length)];
+    readable += chars[randomInt(chars.length)];
   }
-  const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const suffix = randomBytes(3).toString("hex").toUpperCase();
   return `${readable}-${suffix}`;
 };
 
@@ -74,6 +75,13 @@ export const Users: CollectionConfig = {
     {
       name: "phone",
       type: "text",
+      access: {
+        read: ({ req: { user } }) => {
+          if (!user) return false;
+          const adminRoles = ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "eventAdmin", "headMinister", "secretary"];
+          return adminRoles.includes(user.role);
+        },
+      },
       admin: {
         description: "Phone number for contact and event invitations",
       },
@@ -102,6 +110,12 @@ export const Users: CollectionConfig = {
         description: "Account status - new registrations start as pending",
       },
       access: {
+        // Only admins can read status
+        read: ({ req: { user } }) => {
+          if (!user) return false;
+          const adminRoles = ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "eventAdmin", "headMinister", "secretary"];
+          return adminRoles.includes(user.role);
+        },
         // Only admins can change status
         update: ({ req: { user } }) => {
           if (!user) return false;
@@ -192,6 +206,13 @@ export const Users: CollectionConfig = {
         { label: "Apple", value: "apple" },
       ],
       defaultValue: "credentials",
+      access: {
+        read: ({ req: { user } }) => {
+          if (!user) return false;
+          const adminRoles = ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "eventAdmin", "headMinister", "secretary"];
+          return adminRoles.includes(user.role);
+        },
+      },
       admin: {
         position: "sidebar",
         readOnly: true,
@@ -201,6 +222,13 @@ export const Users: CollectionConfig = {
     {
       name: "authProviderId",
       type: "text",
+      access: {
+        read: ({ req: { user } }) => {
+          if (!user) return false;
+          const adminRoles = ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "eventAdmin", "headMinister", "secretary"];
+          return adminRoles.includes(user.role);
+        },
+      },
       admin: {
         position: "sidebar",
         readOnly: true,
@@ -214,6 +242,13 @@ export const Users: CollectionConfig = {
       name: "inviteCode",
       type: "text",
       unique: true,
+      access: {
+        read: ({ req: { user } }) => {
+          if (!user) return false;
+          const adminRoles = ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "eventAdmin", "headMinister", "secretary"];
+          return adminRoles.includes(user.role);
+        },
+      },
       admin: {
         position: "sidebar",
         description: "Unique code for event invitation links",
@@ -236,6 +271,13 @@ export const Users: CollectionConfig = {
     {
       name: "bio",
       type: "textarea",
+      access: {
+        read: ({ req: { user } }) => {
+          if (!user) return false;
+          const adminRoles = ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "eventAdmin", "headMinister", "secretary"];
+          return adminRoles.includes(user.role);
+        },
+      },
       admin: {
         description: "Short biography",
       },

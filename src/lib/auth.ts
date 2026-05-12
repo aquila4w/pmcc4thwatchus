@@ -5,8 +5,10 @@ import AppleProvider from "next-auth/providers/apple";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { getPayload } from "payload";
 import config from "@payload-config";
+import { randomBytes } from "crypto";
 
 export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
   providers: [
     // Email/Password
     CredentialsProvider({
@@ -139,7 +141,7 @@ export const authOptions: NextAuthOptions = {
             data: {
               email: user.email!,
               name: user.name || user.email!.split("@")[0],
-              password: Math.random().toString(36).slice(-12), // Random password for OAuth users
+              password: randomBytes(16).toString("base64url").slice(0, 20),
               authProvider: account.provider,
               authProviderId: account.providerAccountId,
               role: "member",

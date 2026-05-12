@@ -6,11 +6,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
-  const startTime = Date.now();
   try {
-    console.log(`[AUTH/ME] Starting at ${new Date().toISOString()}`);
     const payload = await getPayload({ config });
-    console.log(`[AUTH/ME] Payload initialized in ${Date.now() - startTime}ms`);
 
     // Try Payload token first (credentials login)
     const token = request.cookies.get("payload-token")?.value;
@@ -56,19 +53,14 @@ export async function GET(request: NextRequest) {
 
     // Get invite statistics
     const inviteStats = await getInviteStats(payload, String(user.id));
-    console.log(`[AUTH/ME] Stats loaded at ${Date.now() - startTime}ms`);
 
     // Get event-specific invites for this member (future, registration-open events only)
     // Wrap in timeout so it doesn't block the whole response
     type EventInviteResult = Awaited<ReturnType<typeof getEventInvites>>;
     const eventInvites = await Promise.race([
       getEventInvites(payload, String(user.id)),
-      new Promise<EventInviteResult>((resolve) => setTimeout(() => {
-        console.log(`[AUTH/ME] Event invites timed out after 5s`);
-        resolve([]);
-      }, 5000)),
+      new Promise<EventInviteResult>((resolve) => setTimeout(() => resolve([]), 5000)),
     ]);
-    console.log(`[AUTH/ME] Event invites loaded at ${Date.now() - startTime}ms`);
 
     return NextResponse.json({
       user: {
@@ -141,7 +133,6 @@ async function getInviteStats(payload: Awaited<ReturnType<typeof getPayload>>, u
 async function getEventInvites(payload: Awaited<ReturnType<typeof getPayload>>, userId: string) {
   const t = Date.now();
   try {
-    console.log(`[EVENT-INVITES] Fetching invites for user ${userId}`);
     const invites = await payload.find({
       collection: "event-invites",
       where: {
@@ -166,7 +157,6 @@ async function getEventInvites(payload: Awaited<ReturnType<typeof getPayload>>, 
       })
       .filter(Boolean) as string[];
 
-    console.log(`[EVENT-INVITES] Fetching ${eventIds.length} events`);
     const eventsResult = await payload.find({
       collection: "managed-events",
       where: {
@@ -185,8 +175,6 @@ async function getEventInvites(payload: Awaited<ReturnType<typeof getPayload>>, 
       limit: 100,
       overrideAccess: true,
     });
-    console.log(`[EVENT-INVITES] Got ${eventsResult.docs.length} events in ${Date.now() - t}ms`);
-
     // Build event lookup
     const eventMap = new Map(
       eventsResult.docs.map((event) => [String(event.id), event])
@@ -201,11 +189,10 @@ async function getEventInvites(payload: Awaited<ReturnType<typeof getPayload>>, 
       return startDate > new Date();
     });
 
-    console.log(`[EVENT-INVITES] ${validInvites.length} valid invites after filtering`);
+    console.log(`[EVENT-INVITES] ${validInvites.length} valid invites in ${Date.now() - t}ms`);
     if (validInvites.length === 0) return [];
 
     // Batch: get registration counts for all invites in parallel
-    console.log(`[EVENT-INVITES] Fetching registration counts...`);
     const countResults = await Promise.all(
       validInvites.map((invite) =>
         payload.find({
@@ -216,7 +203,6 @@ async function getEventInvites(payload: Awaited<ReturnType<typeof getPayload>>, 
         })
       )
     );
-    console.log(`[EVENT-INVITES] Registration counts loaded in ${Date.now() - t}ms`);
 
     return validInvites.map((invite, i) => {
       const eventId = typeof invite.event === "string" ? invite.event : (invite.event as { id?: string })?.id;
@@ -237,7 +223,7 @@ async function getEventInvites(payload: Awaited<ReturnType<typeof getPayload>>, 
       registrationCount: number;
     }>;
   } catch (error) {
-    console.error(`[EVENT-INVITES] Error after ${Date.now() - t}ms:`, error);
+    console.error("[EVENT-INVITES] Error:", error);
     return [];
   }
 }

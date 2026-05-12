@@ -154,12 +154,14 @@ export default function RegistrationsPage() {
   };
 
   const generateInviteLinks = (count: number) => {
-    // Generate random invite codes
+    // Generate random invite codes using cryptographically secure randomness
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const codes = Array.from({ length: count }, () => {
-      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      const randomValues = new Uint32Array(6);
+      crypto.getRandomValues(randomValues);
       let code = "";
       for (let i = 0; i < 6; i++) {
-        code += chars[Math.floor(Math.random() * chars.length)];
+        code += chars[randomValues[i] % chars.length];
       }
       return code;
     });

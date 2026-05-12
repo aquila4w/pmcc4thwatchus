@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
+import { getCurrentUser, isAdmin } from "@/lib/auth-helpers";
 
 interface EventRegistration {
   registrationCode?: string;
@@ -26,6 +27,15 @@ export async function GET(
 ) {
   try {
     const payload = await getPayload({ config });
+
+    const authUser = await getCurrentUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (!isAdmin(authUser.role)) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
+
     const { eventId } = await params;
     const { searchParams } = new URL(request.url);
     const format = searchParams.get("format") || "json";

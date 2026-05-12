@@ -104,11 +104,11 @@ export async function GET(
       : false;
     const isFull = spotsRemaining === 0;
 
-    // Resolve contact: invite-specific > church phone/email
+    // Resolve contact: invite-specific name only
     const contact = {
       name: churchInvite.contactName || null,
-      email: churchInvite.contactEmail || null,
       phone: churchInvite.contactPhone || null,
+      email: churchInvite.contactEmail || null,
     };
 
     return NextResponse.json({

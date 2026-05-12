@@ -1,10 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
+import { getCurrentUser, isAdmin } from "@/lib/auth-helpers";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
+  // Rate limit by IP: 20 requests per minute
+  const clientIp = getClientIp(request);
+  const { allowed, resetIn } = rateLimit(`check-in:${clientIp}`, { windowMs: 60 * 1000, maxRequests: 20 });
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil(resetIn / 1000)) },
+      }
+    );
+  }
+
   try {
     const payload = await getPayload({ config });
+
+    const authUser = await getCurrentUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (!isAdmin(authUser.role)) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
+
     const body = await request.json();
 
     const { registrationCode, eventId } = body;
@@ -80,17 +104,24 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    const invitedBy = registration.invitedBy as { name?: string; church?: string | { name?: string } } | null;
+    let inviterChurch: string | undefined;
+    if (invitedBy?.church) {
+      inviterChurch = typeof invitedBy.church === "string" ? invitedBy.church : invitedBy.church.name;
+    }
+
     return NextResponse.json({
       success: true,
       message: "Check-in successful",
       registration: {
         id: updated.id,
         guestName: registration.guestInfo?.name,
-        guestEmail: registration.guestInfo?.email,
-        guestPhone: registration.guestInfo?.phone,
         status: updated.status,
         attendedAt: updated.attendedAt,
-        invitedBy: registration.invitedBy,
+        invitedBy: invitedBy ? {
+          name: invitedBy.name,
+          church: inviterChurch,
+        } : null,
       },
       event: {
         id: event?.id,
@@ -109,8 +140,22 @@ export async function POST(request: NextRequest) {
 
 // GET endpoint to lookup a registration without checking in
 export async function GET(request: NextRequest) {
+  // Rate limit by IP: 20 requests per minute
+  const clientIp = getClientIp(request);
+  const { allowed, resetIn } = rateLimit(`check-in-get:${clientIp}`, { windowMs: 60 * 1000, maxRequests: 20 });
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil(resetIn / 1000)) },
+      }
+    );
+  }
+
   try {
     const payload = await getPayload({ config });
+
     const { searchParams } = new URL(request.url);
     const code = searchParams.get("code");
 

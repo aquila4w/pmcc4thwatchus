@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
 import type { Where } from "payload";
+import { getCurrentUser, isAdmin } from "@/lib/auth-helpers";
 
-// GET - List all managed events with filters
+// GET - List all managed events with filters (public)
 export async function GET(request: NextRequest) {
   try {
     const payload = await getPayload({ config });
@@ -41,8 +42,11 @@ export async function GET(request: NextRequest) {
       depth,
     });
 
+    // Strip sensitive fields from public listing
+    const safeDocs = result.docs.map(({ adminNotes, ...rest }: Record<string, unknown>) => rest);
+
     return NextResponse.json({
-      docs: result.docs,
+      docs: safeDocs,
       totalDocs: result.totalDocs,
       totalPages: result.totalPages,
     });
@@ -55,15 +59,102 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create a new managed event
+// POST - Create a new managed event (admin only)
 export async function POST(request: NextRequest) {
   try {
     const payload = await getPayload({ config });
+
+    // Auth check
+    const authUser = await getCurrentUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (!isAdmin(authUser.role)) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
+
     const body = await request.json();
 
+    // Only allow expected fields (prevent mass assignment)
+    const {
+      title,
+      slug,
+      description,
+      location,
+      address,
+      startDate,
+      endDate,
+      timezone,
+      status,
+      maxAttendees,
+      registrationEnabled,
+      registrationDeadline,
+      requireApproval,
+      checkInEnabled,
+      hasBaptism,
+      heroImage,
+      landingPageHeroImage,
+      landingPageTitle,
+      landingPageContent,
+      landingPageShowQR,
+      landingPageShowInviter,
+      landingPageCTA,
+      landingPageCTALink,
+      thankYouTitle,
+      thankYouMessage,
+      showQRCode,
+      sendConfirmationEmail,
+      allowMultipleCheckIns,
+      checkInStartTime,
+      organizer,
+      eventType,
+      contactName,
+      contactPhone,
+      contactEmail,
+      contactWebsite,
+    } = body;
+
+    const data: Record<string, unknown> = {
+      title,
+      slug,
+      description,
+      location,
+      address,
+      startDate,
+      endDate,
+      timezone,
+      status,
+      maxAttendees,
+      registrationEnabled,
+      registrationDeadline,
+      requireApproval,
+      checkInEnabled,
+      hasBaptism,
+      heroImage,
+      landingPageHeroImage,
+      landingPageTitle,
+      landingPageContent,
+      landingPageShowQR,
+      landingPageShowInviter,
+      landingPageCTA,
+      landingPageCTALink,
+      thankYouTitle,
+      thankYouMessage,
+      showQRCode,
+      sendConfirmationEmail,
+      allowMultipleCheckIns,
+      checkInStartTime,
+      organizer,
+      eventType,
+      contactName,
+      contactPhone,
+      contactEmail,
+      contactWebsite,
+    };
+
     // Auto-generate slug from title if not provided
-    if (body.title && !body.slug) {
-      body.slug = body.title
+    if (title) {
+      data.slug = title
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "");
@@ -71,7 +162,7 @@ export async function POST(request: NextRequest) {
 
     const result = await payload.create({
       collection: "managed-events",
-      data: body,
+      data,
       depth: 1,
     });
 

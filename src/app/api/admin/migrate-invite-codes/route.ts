@@ -4,13 +4,14 @@ import { getPayload } from "payload";
 import config from "@payload-config";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { randomInt } from "crypto";
 
 const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 function generateShortCode(): string {
   let code = "";
   for (let i = 0; i < 8; i++) {
-    code += CHARS[Math.floor(Math.random() * CHARS.length)];
+    code += CHARS[randomInt(CHARS.length)];
   }
   return code;
 }

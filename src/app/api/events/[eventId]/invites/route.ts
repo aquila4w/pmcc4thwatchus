@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
+import { getCurrentUser, isAdmin } from "@/lib/auth-helpers";
 import type { Where } from "payload";
+import { randomInt } from "crypto";
 
 // GET - List all invites for an event
 export async function GET(
@@ -64,6 +66,15 @@ export async function POST(
 ) {
   try {
     const payload = await getPayload({ config });
+
+    const authUser = await getCurrentUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (!isAdmin(authUser.role)) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
+
     const { eventId } = await params;
     const body = await request.json();
     const { regenerate = false, churchId = null } = body;
@@ -164,7 +175,7 @@ export async function POST(
         const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
         let newCode = "";
         for (let i = 0; i < 8; i++) {
-          newCode += CHARS[Math.floor(Math.random() * CHARS.length)];
+          newCode += CHARS[randomInt(CHARS.length)];
         }
         const regeneratedInvite = await payload.update({
           collection: "event-invites",

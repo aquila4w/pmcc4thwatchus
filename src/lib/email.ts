@@ -73,14 +73,14 @@ export async function sendRegistrationEmail({
     });
 
     if (error) {
-      console.error("Email send error:", error);
+      console.error("Email send failed");
       return { success: false, error: error.message };
     }
 
     console.log("Email sent successfully:", data?.id);
     return { success: true };
   } catch (error) {
-    console.error("Email service error:", error);
+    console.error("Email send failed");
     return { success: false, error: "Failed to send email" };
   }
 }
@@ -310,14 +310,14 @@ export async function sendReminderEmail({
     });
 
     if (error) {
-      console.error("Reminder email error:", error);
+      console.error("Reminder email send failed");
       return { success: false, error: error.message };
     }
 
     console.log("Reminder email sent:", data?.id);
     return { success: true };
   } catch (error) {
-    console.error("Reminder email service error:", error);
+    console.error("Reminder email send failed");
     return { success: false, error: "Failed to send reminder email" };
   }
 }

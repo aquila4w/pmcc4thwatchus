@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
+import { getCurrentUser, isAdmin, isElevatedRole } from "@/lib/auth-helpers";
 
-// GET - Get single event details
+// GET - Get single event details (public)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
@@ -34,19 +35,106 @@ export async function GET(
   }
 }
 
-// PATCH - Update event
+// PATCH - Update event (admin only)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
     const payload = await getPayload({ config });
+
+    // Auth check
+    const authUser = await getCurrentUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (!isAdmin(authUser.role)) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
+
     const { eventId } = await params;
     const body = await request.json();
 
-    // Auto-generate slug from title if not provided
-    if (body.title && !body.slug) {
-      body.slug = body.title
+    // Only allow expected fields (prevent mass assignment)
+    const {
+      title,
+      slug,
+      description,
+      location,
+      address,
+      startDate,
+      endDate,
+      timezone,
+      status,
+      maxAttendees,
+      registrationEnabled,
+      registrationDeadline,
+      requireApproval,
+      checkInEnabled,
+      hasBaptism,
+      heroImage,
+      landingPageHeroImage,
+      landingPageTitle,
+      landingPageContent,
+      landingPageShowQR,
+      landingPageShowInviter,
+      landingPageCTA,
+      landingPageCTALink,
+      thankYouTitle,
+      thankYouMessage,
+      showQRCode,
+      sendConfirmationEmail,
+      allowMultipleCheckIns,
+      checkInStartTime,
+      organizer,
+      eventType,
+      contactName,
+      contactPhone,
+      contactEmail,
+      contactWebsite,
+    } = body;
+
+    const data: Record<string, unknown> = {
+      title,
+      slug,
+      description,
+      location,
+      address,
+      startDate,
+      endDate,
+      timezone,
+      status,
+      maxAttendees,
+      registrationEnabled,
+      registrationDeadline,
+      requireApproval,
+      checkInEnabled,
+      hasBaptism,
+      heroImage,
+      landingPageHeroImage,
+      landingPageTitle,
+      landingPageContent,
+      landingPageShowQR,
+      landingPageShowInviter,
+      landingPageCTA,
+      landingPageCTALink,
+      thankYouTitle,
+      thankYouMessage,
+      showQRCode,
+      sendConfirmationEmail,
+      allowMultipleCheckIns,
+      checkInStartTime,
+      organizer,
+      eventType,
+      contactName,
+      contactPhone,
+      contactEmail,
+      contactWebsite,
+    };
+
+    // Auto-generate slug from title if provided
+    if (title) {
+      data.slug = title
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "");
@@ -55,7 +143,7 @@ export async function PATCH(
     const event = await payload.update({
       collection: "managed-events",
       id: eventId,
-      data: body,
+      data,
       depth: 2,
       overrideAccess: true,
     });
@@ -71,13 +159,23 @@ export async function PATCH(
   }
 }
 
-// DELETE - Delete event
+// DELETE - Delete event (elevated roles only)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
     const payload = await getPayload({ config });
+
+    // Auth check - elevated roles only
+    const authUser = await getCurrentUser(request);
+    if (!authUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (!isElevatedRole(authUser.role)) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
+
     const { eventId } = await params;
 
     await payload.delete({

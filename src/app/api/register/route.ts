@@ -3,12 +3,14 @@ import { getPayload } from "payload";
 import config from "@payload-config";
 import { sendRegistrationEmail } from "@/lib/email";
 import { sendRegistrationSMS } from "@/lib/sms";
+import { rateLimit } from "@/lib/rate-limit";
+import { randomInt } from "crypto";
 
 function generateRegistrationCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "";
   for (let i = 0; i < 8; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
+    code += chars[randomInt(chars.length)];
   }
   return code;
 }
@@ -16,8 +18,8 @@ function generateRegistrationCode(): string {
 async function verifyRecaptcha(token: string): Promise<boolean> {
   const secret = process.env.GOOGLE_RECAPTCHA_SECRET_KEY;
   if (!secret) {
-    console.warn("GOOGLE_RECAPTCHA_SECRET_KEY not set, skipping verification");
-    return true;
+    console.error("GOOGLE_RECAPTCHA_SECRET_KEY not configured, rejecting request");
+    return false;
   }
 
   try {
@@ -80,15 +82,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify reCAPTCHA
-    if (recaptchaToken) {
-      const isValid = await verifyRecaptcha(recaptchaToken);
-      if (!isValid) {
-        return NextResponse.json(
-          { error: "Captcha verification failed. Please try again." },
-          { status: 400 }
-        );
-      }
+    // Rate limit by invite code: 5 registrations per invite code per hour
+    const inviteKey = eventInviteCode || refCode || adCode || platformCode || "anonymous";
+    const inviteRateLimit = rateLimit(`register:${inviteKey}`, { windowMs: 60 * 60 * 1000, maxRequests: 5 });
+    if (!inviteRateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many registrations for this invite. Please try again later." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(Math.ceil(inviteRateLimit.resetIn / 1000)) },
+        }
+      );
+    }
+
+    // Verify reCAPTCHA — mandatory
+    if (!recaptchaToken) {
+      return NextResponse.json(
+        { error: "Captcha verification is required" },
+        { status: 400 }
+      );
+    }
+    const isValid = await verifyRecaptcha(recaptchaToken);
+    if (!isValid) {
+      return NextResponse.json(
+        { error: "Captcha verification failed. Please try again." },
+        { status: 400 }
+      );
     }
 
     const phoneToUse = phone?.trim() || guestPhone?.trim();
@@ -389,7 +408,7 @@ export async function POST(request: NextRequest) {
         guestUserId = String(guestUser.id);
       }
     } catch (err) {
-      console.error("Failed to create guest user:", err);
+      console.error("Failed to create guest user");
     }
 
     // Get inviter church ID and name
@@ -432,7 +451,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Build URLs
-    const baseUrl = request.headers.get("origin") || "https://pmcc4thwatch.us";
+    const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || "https://pmcc4thwatch.us";
     const landingPageUrl = `${baseUrl}/ticket/${registrationCode}`;
     const shortUrl = `${baseUrl}/t/${registrationCode}`;
 
@@ -542,7 +561,7 @@ export async function POST(request: NextRequest) {
       invitedBy: invitedByDisplay,
     });
   } catch (error) {
-    console.error("Registration error:", error);
+    console.error("Registration error");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

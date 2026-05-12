@@ -3,8 +3,6 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/lib/i18n";
 import "../globals.css";
 
-console.log("🖼️ [frontend/layout.tsx] Frontend layout module loaded");
-
 // Force all routes to be dynamically rendered at runtime (not at build time)
 // This prevents build timeouts from Payload CMS/MongoDB connections
 export const dynamic = "force-dynamic";

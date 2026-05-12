@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
 
+function escapeHtml(str: string | undefined | null): string {
+  if (!str) return "";
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
@@ -57,7 +67,7 @@ export async function GET(
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Event Ticket - ${registration.inviteCode}</title>
+  <title>Event Ticket - ${escapeHtml(registration.inviteCode)}</title>
   <style>
     @page { size: A5 landscape; margin: 0; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -187,7 +197,7 @@ export async function GET(
         </div>
       </div>
 
-      <h1 class="event-title">${event?.title || "Event"}</h1>
+      <h1 class="event-title">${escapeHtml(event?.title) || "Event"}</h1>
 
       <div class="detail">
         <svg class="detail-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -202,20 +212,20 @@ export async function GET(
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
         </svg>
         <div>
-          <div>${event?.location || "TBD"}</div>
-          ${event?.address ? `<div style="font-size: 12px; color: #9ca3af;">${event.address}</div>` : ""}
+          <div>${escapeHtml(event?.location) || "TBD"}</div>
+          ${event?.address ? `<div style="font-size: 12px; color: #9ca3af;">${escapeHtml(event.address)}</div>` : ""}
         </div>
       </div>
 
-      <div class="guest-name">${registration.guestInfo?.name || "Guest"}</div>
-      ${invitedBy?.name ? `<div class="invited-by">Invited by ${invitedBy.name}</div>` : ""}
+      <div class="guest-name">${escapeHtml(registration.guestInfo?.name) || "Guest"}</div>
+      ${invitedBy?.name ? `<div class="invited-by">Invited by ${escapeHtml(invitedBy.name)}</div>` : ""}
     </div>
 
     <div class="ticket-qr">
       <div class="qr-box">
         <img src="${qrCodeUrl}" alt="QR Code" width="176" height="176">
       </div>
-      <div class="qr-code">${registration.inviteCode}</div>
+      <div class="qr-code">${escapeHtml(registration.inviteCode)}</div>
       <div class="qr-label">Present at check-in</div>
     </div>
   </div>
