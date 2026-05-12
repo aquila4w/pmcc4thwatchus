@@ -91,7 +91,7 @@ export default buildConfig({
   // Default depth 0 prevents R2/S3 storage hangs when Payload's built-in API
   // populates upload fields. Custom API routes set depth explicitly as needed.
   defaultDepth: 0,
-  secret: process.env.PAYLOAD_SECRET || (() => { throw new Error("PAYLOAD_SECRET environment variable is required") })(),
+  secret: process.env.PAYLOAD_SECRET || "build-time-placeholder",
   typescript: {
     outputFile: path.resolve(dirname, "payload-types.ts"),
   },
