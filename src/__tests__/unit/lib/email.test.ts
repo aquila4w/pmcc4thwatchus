@@ -5,7 +5,7 @@ const mockSend = vi.fn().mockResolvedValue({ data: { id: "email-123" }, error: n
 
 vi.mock("resend", () => {
   return {
-    Resend: vi.fn().mockImplementation(function (this: any, _apiKey: string) {
+    Resend: vi.fn().mockImplementation(function (this: Record<string, unknown>, _apiKey: string) {
       this.emails = { send: mockSend };
     }),
   };
@@ -56,7 +56,7 @@ describe("sendRegistrationEmail", () => {
     vi.resetModules();
 
     vi.doMock("resend", () => ({
-      Resend: vi.fn().mockImplementation(function (this: any, _key: string) {
+      Resend: vi.fn().mockImplementation(function (this: Record<string, unknown>, _key: string) {
         this.emails = { send: mockSend };
       }),
     }));

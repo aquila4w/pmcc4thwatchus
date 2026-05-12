@@ -55,7 +55,7 @@ describe("POST /api/auth/register", () => {
       },
     });
     payload = mock.payload;
-    vi.mocked(getPayload).mockResolvedValue(payload as any);
+    vi.mocked(getPayload).mockResolvedValue(payload as unknown as Awaited<ReturnType<typeof getPayload>>);
   });
 
   // ---- Success cases ----
@@ -286,7 +286,7 @@ describe("POST /api/auth/register", () => {
       },
     });
     payload = mock.payload;
-    vi.mocked(getPayload).mockResolvedValue(payload as any);
+    vi.mocked(getPayload).mockResolvedValue(payload as unknown as Awaited<ReturnType<typeof getPayload>>);
 
     const request = buildRequest({
       method: "POST",

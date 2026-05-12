@@ -6,6 +6,51 @@ interface CreateMockPayloadOptions {
   stores?: Partial<MockDataStore>;
 }
 
+interface FindArgs {
+  collection: string;
+  where?: Record<string, unknown>;
+  limit?: number;
+  page?: number;
+  sort?: string;
+  depth?: number;
+  overrideAccess?: boolean;
+}
+
+interface FindByIDArgs {
+  collection: string;
+  id: string;
+}
+
+interface CreateArgs {
+  collection: string;
+  data: Record<string, unknown>;
+}
+
+interface UpdateArgs {
+  collection: string;
+  id: string;
+  data: Record<string, unknown>;
+}
+
+interface DeleteArgs {
+  collection: string;
+  id: string;
+}
+
+interface CountArgs {
+  collection: string;
+  where?: Record<string, unknown>;
+}
+
+interface LoginArgs {
+  collection: string;
+  data: Record<string, unknown>;
+}
+
+interface AuthArgs {
+  headers?: Record<string, string>;
+}
+
 /**
  * Creates a mock Payload CMS client with an in-memory data store.
  * Supports simplified where-clause matching for common operators.
@@ -29,8 +74,8 @@ export function createMockPayload(options: CreateMockPayloadOptions = {}) {
   };
 
   const payload = {
-    find: vi.fn(async ({ collection, where, limit, page, sort, depth, overrideAccess }: any) => {
-      let docs = [...(data[collection] || [])];
+    find: vi.fn(async ({ collection, where, limit, page }: FindArgs) => {
+      const docs = [...(data[collection] || [])];
       const filtered = applyWhere(docs, where);
       const effectiveLimit = limit === 0 ? filtered.length : (limit || filtered.length);
       const paged = filtered.slice(0, effectiveLimit);
@@ -46,14 +91,14 @@ export function createMockPayload(options: CreateMockPayloadOptions = {}) {
       };
     }),
 
-    findByID: vi.fn(async ({ collection, id }: any) => {
+    findByID: vi.fn(async ({ collection, id }: FindByIDArgs) => {
       const docs = data[collection] || [];
       const doc = docs.find((d) => String(d.id) === String(id));
       if (!doc) throw new Error(`Document with id ${id} not found in ${collection}`);
       return deepClone(doc);
     }),
 
-    create: vi.fn(async ({ collection, data: createData }: any) => {
+    create: vi.fn(async ({ collection, data: createData }: CreateArgs) => {
       const newDoc = {
         id: `${collection}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         createdAt: new Date().toISOString(),
@@ -66,7 +111,7 @@ export function createMockPayload(options: CreateMockPayloadOptions = {}) {
       return deepClone(newDoc);
     }),
 
-    update: vi.fn(async ({ collection, id, data: updateData }: any) => {
+    update: vi.fn(async ({ collection, id, data: updateData }: UpdateArgs) => {
       const docs = data[collection] || [];
       const idx = docs.findIndex((d) => String(d.id) === String(id));
       if (idx === -1) throw new Error(`Document with id ${id} not found in ${collection}`);
@@ -74,7 +119,7 @@ export function createMockPayload(options: CreateMockPayloadOptions = {}) {
       return deepClone(docs[idx]);
     }),
 
-    delete: vi.fn(async ({ collection, id }: any) => {
+    delete: vi.fn(async ({ collection, id }: DeleteArgs) => {
       const docs = data[collection] || [];
       const idx = docs.findIndex((d) => String(d.id) === String(id));
       if (idx === -1) throw new Error(`Document with id ${id} not found in ${collection}`);
@@ -82,12 +127,12 @@ export function createMockPayload(options: CreateMockPayloadOptions = {}) {
       return deepClone(deleted);
     }),
 
-    count: vi.fn(async ({ collection, where }: any) => {
+    count: vi.fn(async ({ collection, where }: CountArgs) => {
       const docs = data[collection] || [];
       return { totalDocs: applyWhere(docs, where).length };
     }),
 
-    login: vi.fn(async ({ collection, data: loginData }: any) => {
+    login: vi.fn(async ({ collection, data: loginData }: LoginArgs) => {
       const docs = data[collection] || [];
       const user = docs.find(
         (d) => String(d.email).toLowerCase() === String(loginData.email).toLowerCase()
@@ -96,7 +141,7 @@ export function createMockPayload(options: CreateMockPayloadOptions = {}) {
       return { token: "mock-payload-token", user: deepClone(user) };
     }),
 
-    auth: vi.fn(async ({ headers }: any) => {
+    auth: vi.fn(async (_args: AuthArgs) => {
       return { user: null };
     }),
   };
@@ -112,20 +157,20 @@ function deepClone(obj: unknown): unknown {
  * Simplified where-clause evaluator.
  * Handles: equals, in, contains, like, greater_than_equal, less_than, and/or/not
  */
-function applyWhere(docs: Record<string, unknown>[], where: any): Record<string, unknown>[] {
+function applyWhere(docs: Record<string, unknown>[], where: Record<string, unknown> | undefined): Record<string, unknown>[] {
   if (!where || Object.keys(where).length === 0) return docs;
 
   return docs.filter((doc) => evaluateWhere(doc, where));
 }
 
-function evaluateWhere(doc: Record<string, unknown>, where: any): boolean {
+function evaluateWhere(doc: Record<string, unknown>, where: Record<string, unknown> | undefined): boolean {
   if (!where) return true;
 
   for (const [key, condition] of Object.entries(where)) {
     if (key === "and") {
-      if (!(condition as any[]).every((c) => evaluateWhere(doc, c))) return false;
+      if (!(condition as Record<string, unknown>[]).every((c) => evaluateWhere(doc, c))) return false;
     } else if (key === "or") {
-      if (!(condition as any[]).some((c) => evaluateWhere(doc, c))) return false;
+      if (!(condition as Record<string, unknown>[]).some((c) => evaluateWhere(doc, c))) return false;
     } else if (key === "not") {
       if (evaluateWhere(doc, condition)) return false;
     } else {

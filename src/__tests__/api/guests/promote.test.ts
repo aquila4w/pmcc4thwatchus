@@ -181,7 +181,7 @@ describe("POST /api/guests/[guestId]/promote", () => {
     setupPromoteStore();
 
     // Override findByID to return null for nonexistent guest
-    payload.findByID = vi.fn(async ({ collection, id }: any) => {
+    payload.findByID = vi.fn(async ({ collection, id }: { collection: string; id: string }) => {
       if (collection === "users" && id === "nonexistent-guest") return null;
       const docs = [
         mockGuest,
@@ -254,9 +254,9 @@ describe("POST /api/guests/[guestId]/promote", () => {
 
     // Override findByID to return null for nonexistent church
     const originalFindByID = payload.findByID;
-    payload.findByID = vi.fn(async ({ collection, id }: any) => {
+    payload.findByID = vi.fn(async ({ collection, id }: { collection: string; id: string }) => {
       if (collection === "churches") return null;
-      return originalFindByID({ collection, id } as any);
+      return originalFindByID({ collection, id } as unknown as Parameters<typeof originalFindByID>[0]);
     });
 
     const request = buildPromoteRequest("guest-1", { churchId: "nonexistent-church" });

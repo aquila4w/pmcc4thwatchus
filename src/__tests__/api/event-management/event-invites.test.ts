@@ -320,7 +320,7 @@ describe("POST /api/events/[eventId]/invites", () => {
 
     // Verify the members query includes church filter
     const memberFindCall = payload.find.mock.calls.find(
-      (call: any[]) => call[0].collection === "users"
+      (call: [Record<string, unknown>]) => call[0].collection === "users"
     );
     expect(memberFindCall).toBeDefined();
     expect(memberFindCall![0].where.and).toEqual(

@@ -81,14 +81,14 @@ export function createAdminRequest(
  * Configure getPayload mock to return the provided payload mock.
  * Requires that setupModuleMocks() has been called at the top of the test file.
  */
-export function mockGetPayload(payload: any) {
+export function mockGetPayload(payload: Record<string, unknown>) {
   _getPayloadMock.mockResolvedValue(payload);
 }
 
 /**
  * Configure payload.auth to return a specific user.
  */
-export function mockPayloadAuth(payload: any, user: Record<string, unknown> | null) {
+export function mockPayloadAuth(payload: Record<string, unknown>, user: Record<string, unknown> | null) {
   payload.auth.mockResolvedValue({ user });
 }
 

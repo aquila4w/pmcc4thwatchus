@@ -189,7 +189,7 @@ describe("POST /api/campaigns/[id]/send", () => {
     });
 
     // Override findByID to return null for nonexistent campaign
-    payload.findByID = vi.fn(async ({ collection, id }: any) => {
+    payload.findByID = vi.fn(async ({ collection, id }: { collection: string; id: string }) => {
       if (collection === "campaigns" && id === "nonexistent") return null;
       throw new Error(`Document with id ${id} not found in ${collection}`);
     });

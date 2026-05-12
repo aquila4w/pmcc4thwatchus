@@ -81,7 +81,7 @@ describe("GET /api/auth/me", () => {
       },
     });
     payload = mock.payload;
-    vi.mocked(getPayload).mockResolvedValue(payload as any);
+    vi.mocked(getPayload).mockResolvedValue(payload as unknown as Awaited<ReturnType<typeof getPayload>>);
 
     // Default: no NextAuth session
     vi.mocked(getServerSession).mockResolvedValue(null);

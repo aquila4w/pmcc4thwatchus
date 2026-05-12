@@ -140,7 +140,7 @@ describe("POST /api/register", () => {
 
     const mock = createMockPayload({ stores: buildDefaultStores() });
     payload = mock.payload;
-    vi.mocked(getPayload).mockResolvedValue(payload as any);
+    vi.mocked(getPayload).mockResolvedValue(payload as unknown as Awaited<ReturnType<typeof getPayload>>);
   });
 
   // -------------------------------------------------------------------------
@@ -406,7 +406,7 @@ describe("POST /api/register", () => {
         "event-registrations": registrations,
       }),
     });
-    vi.mocked(getPayload).mockResolvedValue(mock.payload as any);
+    vi.mocked(getPayload).mockResolvedValue(mock.payload as unknown as Awaited<ReturnType<typeof getPayload>>);
 
     const request = buildRequest({
       method: "POST",
@@ -541,7 +541,7 @@ describe("POST /api/register", () => {
         "managed-events": [closedEvent],
       }),
     });
-    vi.mocked(getPayload).mockResolvedValue(mock.payload as any);
+    vi.mocked(getPayload).mockResolvedValue(mock.payload as unknown as Awaited<ReturnType<typeof getPayload>>);
 
     const request = buildRequest({
       method: "POST",
@@ -576,7 +576,7 @@ describe("POST /api/register", () => {
         "event-registrations": registrations,
       }),
     });
-    vi.mocked(getPayload).mockResolvedValue(mock.payload as any);
+    vi.mocked(getPayload).mockResolvedValue(mock.payload as unknown as Awaited<ReturnType<typeof getPayload>>);
 
     const request = buildRequest({
       method: "POST",

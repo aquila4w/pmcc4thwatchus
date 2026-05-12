@@ -168,13 +168,13 @@ describe("Campaign Flow: Setup registrations -> Send campaign -> Verify dispatch
 
     expect(_sendRegistrationEmail).toHaveBeenCalled();
     const emailCalls = _sendRegistrationEmail.mock.calls;
-    const recipientNames = emailCalls.map((call: any) => call[0].guestName);
+    const recipientNames = emailCalls.map((call: [Record<string, unknown>]) => call[0].guestName);
 
     expect(recipientNames).toContain("Diana Registered");
     expect(recipientNames).toContain("Erik Attended");
     expect(recipientNames).toContain("Fiona NoPhone");
 
-    const dianaCall = emailCalls.find((c: any) => c[0].guestName === "Diana Registered");
+    const dianaCall = emailCalls.find((c: [Record<string, unknown>]) => c[0].guestName === "Diana Registered");
     expect(dianaCall).toBeDefined();
     expect(dianaCall![0].subject).toContain("Summer Crusade 2026");
   });
@@ -190,12 +190,12 @@ describe("Campaign Flow: Setup registrations -> Send campaign -> Verify dispatch
 
     expect(_sendRegistrationSMS).toHaveBeenCalled();
     const smsCalls = _sendRegistrationSMS.mock.calls;
-    const smsRecipients = smsCalls.map((call: any) => call[0].guestName);
+    const smsRecipients = smsCalls.map((call: [Record<string, unknown>]) => call[0].guestName);
 
     expect(smsRecipients).toContain("Diana Registered");
     expect(smsRecipients).toContain("Erik Attended");
 
-    const dianaSms = smsCalls.find((c: any) => c[0].guestName === "Diana Registered");
+    const dianaSms = smsCalls.find((c: [Record<string, unknown>]) => c[0].guestName === "Diana Registered");
     expect(dianaSms).toBeDefined();
     expect(dianaSms![0].ticketUrl).toContain("/ticket/");
   });

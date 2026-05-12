@@ -161,7 +161,7 @@ describe("GET /api/events/[eventId]/export", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    const attendedReg = data.data.find((r: any) => r["Guest Name"] === "Bob Jones");
+    const attendedReg = data.data.find((r: Record<string, unknown>) => r["Guest Name"] === "Bob Jones");
     expect(attendedReg).toBeDefined();
     expect(attendedReg["Guest Phone"]).toBe("+15551001002");
     expect(attendedReg["Checked In At"]).toBeDefined();

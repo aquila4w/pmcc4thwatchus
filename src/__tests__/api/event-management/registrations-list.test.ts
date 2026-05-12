@@ -97,7 +97,7 @@ describe("GET /api/managed-events/[eventId]/registrations", () => {
     expect(data.totalDocs).toBeGreaterThanOrEqual(1);
 
     // Verify PII is present in guestInfo
-    const regWithGuestInfo = data.docs.find((d: any) => d.id === "reg-1");
+    const regWithGuestInfo = data.docs.find((d: Record<string, unknown>) => d.id === "reg-1");
     expect(regWithGuestInfo).toBeDefined();
     expect(regWithGuestInfo.guestInfo).toBeDefined();
     expect(regWithGuestInfo.guestInfo.email).toBe("jane@example.com");

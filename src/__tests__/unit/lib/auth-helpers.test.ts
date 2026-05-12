@@ -95,7 +95,7 @@ describe("getCurrentUser", () => {
     const mockPayload = {
       auth: vi.fn().mockResolvedValue({ user: mockUser }),
     };
-    vi.mocked(getPayload).mockResolvedValue(mockPayload as any);
+    vi.mocked(getPayload).mockResolvedValue(mockPayload as unknown as Awaited<ReturnType<typeof getPayload>>);
 
     const request = buildRequest({
       cookies: { "payload-token": "valid-token" },
@@ -111,8 +111,8 @@ describe("getCurrentUser", () => {
     const mockPayload = {
       findByID: vi.fn().mockResolvedValue(mockUser),
     };
-    vi.mocked(getPayload).mockResolvedValue(mockPayload as any);
-    vi.mocked(getServerSession).mockResolvedValue({ user: { id: "user-2" } } as any);
+    vi.mocked(getPayload).mockResolvedValue(mockPayload as unknown as Awaited<ReturnType<typeof getPayload>>);
+    vi.mocked(getServerSession).mockResolvedValue({ user: { id: "user-2" } } as unknown as Awaited<ReturnType<typeof getServerSession>>);
 
     // No payload-token cookie
     const request = buildRequest({});
@@ -130,7 +130,7 @@ describe("getCurrentUser", () => {
     const mockPayload = {
       auth: vi.fn().mockResolvedValue({ user: null }),
     };
-    vi.mocked(getPayload).mockResolvedValue(mockPayload as any);
+    vi.mocked(getPayload).mockResolvedValue(mockPayload as unknown as Awaited<ReturnType<typeof getPayload>>);
     vi.mocked(getServerSession).mockResolvedValue(null);
 
     // No payload-token cookie so it goes straight to NextAuth
