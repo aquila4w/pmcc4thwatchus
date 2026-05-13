@@ -257,7 +257,7 @@ export default function InvitePage({ params }: { params: Promise<{ memberCode: s
               <p className="text-white/60 mb-6">
                 There are no events open for registration at the moment. Please check back later!
               </p>
-              <Button asChild variant="outline" className="bg-white/5 border-white/20 text-white hover:bg-white/10">
+              <Button asChild variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
                 <Link href="/">
                   Learn More About Us
                   <ArrowRight className="w-4 h-4 ml-2" />

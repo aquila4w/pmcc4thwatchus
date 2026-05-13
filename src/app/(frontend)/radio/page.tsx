@@ -264,7 +264,7 @@ export default function RadioPage() {
           </div>
 
           <div className="text-center mt-12">
-            <Button asChild variant="outline" className="border-white/20 text-white hover:bg-white/10">
+            <Button asChild variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
               <Link href="/sermons">View All Episodes</Link>
             </Button>
           </div>

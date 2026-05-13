@@ -315,7 +315,7 @@ export default function TicketPage({ params }: { params: Promise<{ code: string 
             <div className="flex flex-col sm:flex-row gap-3">
               <Button
                 variant="outline"
-                className="flex-1 bg-white/5 border-white/20 text-white hover:bg-white/10"
+                className="flex-1 bg-white/10 border-white/20 text-white hover:bg-white/20"
                 onClick={handleDownloadQR}
               >
                 <Download className="w-4 h-4 mr-2" />
@@ -323,7 +323,7 @@ export default function TicketPage({ params }: { params: Promise<{ code: string 
               </Button>
               <Button
                 variant="outline"
-                className="flex-1 bg-white/5 border-white/20 text-white hover:bg-white/10"
+                className="flex-1 bg-white/10 border-white/20 text-white hover:bg-white/20"
                 onClick={handleShare}
               >
                 <Share2 className="w-4 h-4 mr-2" />

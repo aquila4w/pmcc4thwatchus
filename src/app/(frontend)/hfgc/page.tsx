@@ -99,7 +99,7 @@ export default function HFGCPage() {
                 View Schedule <ArrowRight className="ml-2 w-5 h-5" />
               </Link>
             </Button>
-            <Button asChild variant="outline" className="border-white/20 text-white hover:bg-white/10 px-8 py-6">
+            <Button asChild variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20 px-8 py-6">
               <Link href="/gallery">
                 <Play className="mr-2 w-5 h-5" /> Watch Highlights
               </Link>
@@ -184,7 +184,7 @@ export default function HFGCPage() {
           </div>
 
           <div className="text-center mt-12">
-            <Button asChild variant="outline" className="border-white/20 text-white hover:bg-white/10">
+            <Button asChild variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
               <Link href="/events">
                 View All Events <ArrowRight className="ml-2 w-4 h-4" />
               </Link>
@@ -211,7 +211,7 @@ export default function HFGCPage() {
               <Button asChild className="bg-secondary hover:bg-secondary/90 text-[#0a0f1a]">
                 <Link href="/new-here">Get Involved</Link>
               </Button>
-              <Button asChild variant="outline" className="border-white/20 text-white hover:bg-white/10">
+              <Button asChild variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
                 <Link href="/give">Support the Mission</Link>
               </Button>
             </div>

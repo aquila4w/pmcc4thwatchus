@@ -144,7 +144,7 @@ export default function NewHerePage() {
                   Find a Church Near You
                 </Link>
               </Button>
-              <Button asChild size="lg" variant="outline" className="border-white/20 text-white hover:bg-white/10">
+              <Button asChild size="lg" variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
                 <Link href="/events">
                   <Calendar className="w-4 h-4 mr-2" />
                   Upcoming Events

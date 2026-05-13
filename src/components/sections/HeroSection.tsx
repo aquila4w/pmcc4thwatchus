@@ -911,7 +911,7 @@ export function HeroSection() {
               asChild
               variant="outline"
               size="lg"
-              className="border-slate-300 dark:border-white/20 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 px-8 py-7 text-base rounded-full bg-white/70 dark:bg-transparent backdrop-blur-sm shadow-lg shadow-black/5"
+              className="border-slate-300 dark:border-white/20 text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-white/10 px-8 py-7 text-base rounded-full bg-white/70 dark:bg-transparent backdrop-blur-sm shadow-lg shadow-black/5"
             >
               <Link href="/new-here">
                 <Heart className="w-5 h-5 mr-2" />

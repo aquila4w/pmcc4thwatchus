@@ -584,7 +584,7 @@ export default function NewsEventsPage() {
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Link>
                 </Button>
-                <Button asChild variant="outline" className="border-white/20 text-white hover:bg-white/10">
+                <Button asChild variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
                   <Link href="/contact">
                     Contact Us
                   </Link>

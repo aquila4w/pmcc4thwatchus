@@ -294,7 +294,7 @@ export default function LeaderDetailPage() {
               </p>
             </div>
             <div className="flex gap-4">
-              <Button asChild variant="outline" className="border-white/20 text-white hover:bg-white/10">
+              <Button asChild variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
                 <Link href="/about/leaders">
                   All Leaders
                 </Link>

@@ -308,7 +308,7 @@ export default function WelcomePage({
                 <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
                   <Button
                     variant="outline"
-                    className="bg-white/5 border-white/20 text-white hover:bg-white/10"
+                    className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                     onClick={handleDownloadQR}
                   >
                     <Download className="w-4 h-4 mr-2" />
@@ -316,7 +316,7 @@ export default function WelcomePage({
                   </Button>
                   <Button
                     variant="outline"
-                    className="bg-white/5 border-white/20 text-white hover:bg-white/10"
+                    className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                     onClick={handleShare}
                   >
                     <Share2 className="w-4 h-4 mr-2" />

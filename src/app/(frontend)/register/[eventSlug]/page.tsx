@@ -414,7 +414,7 @@ export default function RegisterPage({
             <h1 className="text-2xl font-serif font-bold text-white mb-2">Something Went Wrong</h1>
             <p className="text-white/60 mb-6">{errorMessage}</p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button variant="outline" className="bg-white/5 border-white/20 text-white hover:bg-white/10" onClick={() => window.location.reload()}>Try Again</Button>
+              <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => window.location.reload()}>Try Again</Button>
               <Button asChild className="bg-secondary hover:bg-secondary/90 text-[#0a0f1a]">
                 <Link href="/"><Home className="w-4 h-4 mr-2" />Back to Home</Link>
               </Button>
@@ -668,7 +668,7 @@ export default function RegisterPage({
                       <Button onClick={(e) => handleSubmit(e, true)} className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-4">
                         <Users className="w-5 h-5 mr-2" />Join Waitlist
                       </Button>
-                      <Button variant="outline" onClick={() => setStep("form")} className="bg-white/5 border-white/20 text-white hover:bg-white/10">Go Back</Button>
+                      <Button variant="outline" onClick={() => setStep("form")} className="bg-white/10 border-white/20 text-white hover:bg-white/20">Go Back</Button>
                     </div>
                     <p className="text-white/40 text-xs mt-4">You&apos;ll be notified if a spot becomes available</p>
                   </div>
@@ -743,7 +743,7 @@ export default function RegisterPage({
 
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
                       {eventData.event.landingPage.showQR && (
-                        <Button variant="outline" className="bg-white/5 border-white/20 text-white hover:bg-white/10"
+                        <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                           onClick={() => {
                             const link = document.createElement("a");
                             link.href = registrationResult.qrCodeUrl;

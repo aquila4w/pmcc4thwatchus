@@ -189,7 +189,7 @@ export default function MinistriesPage() {
                     Get Connected <ArrowRight className="ml-2 w-5 h-5" />
                   </Link>
                 </Button>
-                <Button asChild variant="outline" className="border-white/20 text-white hover:bg-white/10">
+                <Button asChild variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
                   <Link href="/locate">Find a Church</Link>
                 </Button>
               </div>
