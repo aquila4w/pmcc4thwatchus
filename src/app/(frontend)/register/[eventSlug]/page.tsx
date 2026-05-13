@@ -21,6 +21,7 @@ import {
   AlertCircle,
   Users,
   Church,
+  CheckSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,6 +109,7 @@ export default function RegisterPage({
     phone: "",
     email: "",
   });
+  const [smsConsent, setSmsConsent] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [registrationResult, setRegistrationResult] = useState<RegistrationResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>("");
@@ -264,6 +266,10 @@ export default function RegisterPage({
     }
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = "Please enter a valid email address";
+    }
+    if (!smsConsent) {
+      setErrorMessage("You must agree to receive SMS confirmation to register");
+      return false;
     }
     if (process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY && !captchaToken) {
       setErrorMessage("Please complete the captcha verification");
@@ -590,6 +596,25 @@ export default function RegisterPage({
                             className={`pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/30 ${errors.email ? "border-red-500" : ""}`} />
                         </div>
                         {errors.email && <p className="text-red-400 text-sm mt-1">{errors.email}</p>}
+                      </div>
+
+                      {/* SMS Opt-In Consent */}
+                      <div className="flex items-start gap-3 bg-white/5 rounded-lg p-4 border border-white/10">
+                        <input
+                          type="checkbox"
+                          id="smsConsent"
+                          checked={smsConsent}
+                          onChange={(e) => setSmsConsent(e.target.checked)}
+                          className="mt-1 h-4 w-4 rounded border-white/30 bg-white/5 text-secondary accent-secondary flex-shrink-0"
+                        />
+                        <label htmlFor="smsConsent" className="text-white/60 text-sm leading-relaxed cursor-pointer">
+                          I agree to receive one informational SMS confirmation for this church event.
+                          I understand that message frequency varies. Msg &amp; data rates may apply.
+                          Reply STOP to unsubscribe.{" "}
+                          <Link href="/privacy-policy" target="_blank" className="text-secondary underline hover:text-secondary/80">
+                            Privacy policy
+                          </Link>
+                        </label>
                       </div>
 
                       {/* reCAPTCHA */}

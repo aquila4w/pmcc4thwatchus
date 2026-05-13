@@ -46,7 +46,7 @@ export async function sendRegistrationSMS({
   const contactSuffix = invitedByName
     ? ` Questions? Contact ${invitedByName}${invitedByPhone ? ` at ${invitedByPhone}` : ""}.`
     : "";
-  const message = customMessage || `Hi ${guestName}! You're registered for ${eventTitle}. View your ticket & QR code: ${ticketUrl}${contactSuffix}`;
+  const message = customMessage || `Hi ${guestName}! You're registered for ${eventTitle}. View your ticket & QR code: ${ticketUrl}${contactSuffix} Reply STOP to unsubscribe.`;
 
   console.log("[SMS] Sending message");
 

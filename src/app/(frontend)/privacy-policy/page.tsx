@@ -120,6 +120,21 @@ export default function PrivacyPolicyPage() {
                 </ul>
 
                 <h2 className="font-serif text-2xl font-bold text-slate-900 dark:text-white mb-4">
+                  SMS / Text Messaging Opt-In
+                </h2>
+                <p className="text-slate-600 dark:text-slate-300 mb-4">
+                  When you provide your phone number and check the opt-in box on our registration forms, you
+                  consent to receive informational SMS confirmations related to church events you register for.
+                </p>
+                <ul className="list-disc pl-6 text-slate-600 dark:text-slate-300 mb-8 space-y-2">
+                  <li>Message frequency varies depending on your registrations.</li>
+                  <li>Msg &amp; data rates may apply from your mobile carrier.</li>
+                  <li>You may reply STOP to any message to unsubscribe.</li>
+                  <li>We do not share, sell, or rent your SMS opt-in data or consent status with any third parties for promotional or marketing purposes.</li>
+                  <li>For help, reply HELP or contact us at info@pmcc4thwatch.us.</li>
+                </ul>
+
+                <h2 className="font-serif text-2xl font-bold text-slate-900 dark:text-white mb-4">
                   Data Security
                 </h2>
                 <p className="text-slate-600 dark:text-slate-300 mb-8">

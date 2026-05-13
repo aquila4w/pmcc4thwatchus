@@ -9,7 +9,7 @@ const siteUrl = "https://pmcc4thwatch.us";
 export const metadata: Metadata = {
   title: {
     default: "PMCC 4th Watch | US District",
-    template: "%s | PMCC 4th Watch US District",
+    template: "%s - PMCC 4th Watch | US District",
   },
   description: "Pentecostal Missionary Church of Christ (4th Watch) - An apostolic church committed to holiness, evangelism, and service unto the Lord. US District comprising approximately 50 local churches.",
   keywords: ["church", "PMCC", "4th Watch", "Pentecostal", "Christian", "US District", "apostolic", "holiness", "evangelism", "Home Free Global Crusade"],
@@ -63,7 +63,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/favicon.ico" sizes="16x16 32x32" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
         <link rel="apple-touch-icon" href="/images/apple-touch-icon.png" />
       </head>
       <body>{children}</body>
