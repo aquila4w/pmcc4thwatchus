@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use, useMemo } from "react";
 import Link from "next/link";
-import DOMPurify from "isomorphic-dompurify";
+import DOMPurify from "dompurify";
 import {
   Calendar,
   MapPin,
