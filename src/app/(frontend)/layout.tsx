@@ -1,7 +1,15 @@
+import type { Metadata } from "next";
 import Script from "next/script";
 import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/lib/i18n";
 import "../globals.css";
+
+export const metadata: Metadata = {
+  title: {
+    default: "PMCC 4th Watch | US District",
+    template: "%s - PMCC 4th Watch | US District",
+  },
+};
 
 // Force all routes to be dynamically rendered at runtime (not at build time)
 // This prevents build timeouts from Payload CMS/MongoDB connections
