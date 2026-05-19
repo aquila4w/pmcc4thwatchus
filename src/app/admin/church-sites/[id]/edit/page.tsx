@@ -1,0 +1,740 @@
+"use client";
+
+import { useState, useEffect, use } from "react";
+import { useRouter } from "next/navigation";
+import {
+  ArrowLeft,
+  Save,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  Plus,
+  Trash2,
+  GripVertical,
+  Upload,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { THEME_LABELS } from "@/lib/church-site-types";
+
+interface ServiceItem {
+  day: string;
+  time: string;
+  serviceName: string;
+}
+
+interface PastorItem {
+  name: string;
+  title: string;
+  bio: string;
+  photoUrl: string;
+}
+
+interface UpdateItem {
+  title: string;
+  content: string;
+  date: string;
+  link: string;
+}
+
+interface GalleryItem {
+  imageUrl: string;
+  caption: string;
+}
+
+interface SiteFormData {
+  published: boolean;
+  template: string;
+  welcomeTitle: string;
+  missionStatement: string;
+  serviceSchedule: ServiceItem[];
+  pastors: PastorItem[];
+  aboutContent: string;
+  history: string;
+  beliefs: string;
+  gallery: GalleryItem[];
+  latestUpdates: UpdateItem[];
+  primaryColor: string;
+  accentColor: string;
+  facebook: string;
+  instagram: string;
+  youtube: string;
+  website: string;
+  churchName: string;
+  churchSlug: string;
+}
+
+const DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+
+export default function EditChurchSitePage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
+  const router = useRouter();
+  const [form, setForm] = useState<SiteFormData>({
+    published: false,
+    template: "modern",
+    welcomeTitle: "Welcome to Our Church",
+    missionStatement: "",
+    serviceSchedule: [],
+    pastors: [],
+    aboutContent: "",
+    history: "",
+    beliefs: "",
+    gallery: [],
+    latestUpdates: [],
+    primaryColor: "",
+    accentColor: "",
+    facebook: "",
+    instagram: "",
+    youtube: "",
+    website: "",
+    churchName: "",
+    churchSlug: "",
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [activeTab, setActiveTab] = useState("general");
+
+  useEffect(() => {
+    const fetchSite = async () => {
+      try {
+        const res = await fetch(`/api/church-sites-admin/${id}`);
+        if (!res.ok) throw new Error("Failed to load site");
+        const data = await res.json();
+
+        const site = data.site || data;
+        setForm({
+          published: site.published || false,
+          template: site.template || "modern",
+          welcomeTitle: site.welcomeTitle || "",
+          missionStatement: site.missionStatement || "",
+          serviceSchedule: site.serviceSchedule || [],
+          pastors: (site.pastors || []).map((p: Record<string, unknown>) => ({
+            name: (p.name as string) || "",
+            title: (p.title as string) || "",
+            bio: (p.bio as string) || "",
+            photoUrl: "",
+          })),
+          aboutContent: "",
+          history: "",
+          beliefs: "",
+          gallery: (site.gallery || []).map((g: Record<string, unknown>) => ({
+            imageUrl: "",
+            caption: (g.caption as string) || "",
+          })),
+          latestUpdates: (site.latestUpdates || []).map((u: Record<string, unknown>) => ({
+            title: (u.title as string) || "",
+            content: (u.content as string) || "",
+            date: (u.date as string) || "",
+            link: (u.link as string) || "",
+          })),
+          primaryColor: site.customColors?.primaryColor || "",
+          accentColor: site.customColors?.accentColor || "",
+          facebook: site.socialLinks?.facebook || "",
+          instagram: site.socialLinks?.instagram || "",
+          youtube: site.socialLinks?.youtube || "",
+          website: site.socialLinks?.website || "",
+          churchName: site.church?.name || "",
+          churchSlug: site.church?.slug || "",
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSite();
+  }, [id]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    setSuccess(false);
+
+    try {
+      const res = await fetch(`/api/church-sites-admin/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          published: form.published,
+          template: form.template,
+          welcomeTitle: form.welcomeTitle,
+          missionStatement: form.missionStatement,
+          serviceSchedule: form.serviceSchedule,
+          pastors: form.pastors,
+          aboutContent: { root: { type: "paragraph", children: [{ type: "text", text: form.aboutContent }] } },
+          history: { root: { type: "paragraph", children: [{ type: "text", text: form.history }] } },
+          beliefs: { root: { type: "paragraph", children: [{ type: "text", text: form.beliefs }] } },
+          gallery: form.gallery,
+          latestUpdates: form.latestUpdates,
+          customColors: {
+            primaryColor: form.primaryColor,
+            accentColor: form.accentColor,
+          },
+          socialLinks: {
+            facebook: form.facebook,
+            instagram: form.instagram,
+            youtube: form.youtube,
+            website: form.website,
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to save");
+      }
+
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 text-slate-400 animate-spin" />
+      </div>
+    );
+  }
+
+  const tabs = [
+    { id: "general", label: "General" },
+    { id: "home", label: "Home Page" },
+    { id: "schedule", label: "Service Schedule" },
+    { id: "pastors", label: "Pastors" },
+    { id: "about", label: "About" },
+    { id: "gallery", label: "Gallery" },
+    { id: "updates", label: "Updates" },
+    { id: "social", label: "Social Links" },
+    { id: "design", label: "Design" },
+  ];
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={() => router.push("/admin/church-sites")}>
+            <ArrowLeft className="w-4 h-4 mr-1" /> Back
+          </Button>
+          <div>
+            <h1 className="text-xl font-serif font-bold text-slate-900 dark:text-white">
+              Edit: {form.churchName || "Church Site"}
+            </h1>
+            {form.churchSlug && (
+              <p className="text-sm text-slate-500">{form.churchSlug}.pmcc4thwatch.us</p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          {success && (
+            <span className="flex items-center gap-1 text-green-600 text-sm">
+              <CheckCircle2 className="w-4 h-4" /> Saved
+            </span>
+          )}
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+            Save Changes
+          </Button>
+        </div>
+      </div>
+
+      {error && (
+        <Card className="p-4 mb-6 border-red-200 bg-red-50 dark:bg-red-900/20">
+          <p className="text-red-600 text-sm flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" /> {error}
+          </p>
+        </Card>
+      )}
+
+      {/* Tabs */}
+      <div className="flex flex-wrap gap-1 mb-6 border-b border-slate-200 dark:border-slate-700 pb-px">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+              activeTab === tab.id
+                ? "bg-white dark:bg-slate-800 text-primary border border-b-0 border-slate-200 dark:border-slate-700"
+                : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      <Card className="p-6">
+        {activeTab === "general" && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="published"
+                checked={form.published}
+                onChange={(e) => setForm({ ...form, published: e.target.checked })}
+                className="h-4 w-4 rounded border-slate-300 accent-primary"
+              />
+              <label htmlFor="published" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Published (visible to the public)
+              </label>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Template
+              </label>
+              <select
+                value={form.template}
+                onChange={(e) => setForm({ ...form, template: e.target.value })}
+                className="w-full max-w-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+              >
+                {Object.entries(THEME_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "home" && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Welcome Title
+              </label>
+              <Input
+                value={form.welcomeTitle}
+                onChange={(e) => setForm({ ...form, welcomeTitle: e.target.value })}
+                placeholder="Welcome to Our Church"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Mission Statement
+              </label>
+              <textarea
+                value={form.missionStatement}
+                onChange={(e) => setForm({ ...form, missionStatement: e.target.value })}
+                rows={3}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                placeholder="A brief mission statement for the church..."
+              />
+            </div>
+          </div>
+        )}
+
+        {activeTab === "schedule" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Weekly Service Schedule
+              </label>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    serviceSchedule: [...form.serviceSchedule, { day: "sunday", time: "", serviceName: "" }],
+                  })
+                }
+              >
+                <Plus className="w-4 h-4 mr-1" /> Add Service
+              </Button>
+            </div>
+            {form.serviceSchedule.map((service, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <select
+                  value={service.day}
+                  onChange={(e) => {
+                    const updated = [...form.serviceSchedule];
+                    updated[i] = { ...updated[i], day: e.target.value };
+                    setForm({ ...form, serviceSchedule: updated });
+                  }}
+                  className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                >
+                  {DAYS.map((d) => (
+                    <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>
+                  ))}
+                </select>
+                <Input
+                  placeholder="Service name (e.g., Morning Worship)"
+                  value={service.serviceName}
+                  onChange={(e) => {
+                    const updated = [...form.serviceSchedule];
+                    updated[i] = { ...updated[i], serviceName: e.target.value };
+                    setForm({ ...form, serviceSchedule: updated });
+                  }}
+                  className="flex-1"
+                />
+                <Input
+                  placeholder="Time (e.g., 10:00 AM)"
+                  value={service.time}
+                  onChange={(e) => {
+                    const updated = [...form.serviceSchedule];
+                    updated[i] = { ...updated[i], time: e.target.value };
+                    setForm({ ...form, serviceSchedule: updated });
+                  }}
+                  className="w-36"
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setForm({
+                      ...form,
+                      serviceSchedule: form.serviceSchedule.filter((_, idx) => idx !== i),
+                    });
+                  }}
+                >
+                  <Trash2 className="w-4 h-4 text-red-400" />
+                </Button>
+              </div>
+            ))}
+            {form.serviceSchedule.length === 0 && (
+              <p className="text-sm text-slate-400 text-center py-4">No services added yet.</p>
+            )}
+          </div>
+        )}
+
+        {activeTab === "pastors" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Pastors & Leaders
+              </label>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    pastors: [...form.pastors, { name: "", title: "", bio: "", photoUrl: "" }],
+                  })
+                }
+              >
+                <Plus className="w-4 h-4 mr-1" /> Add Pastor
+              </Button>
+            </div>
+            {form.pastors.map((pastor, i) => (
+              <div key={i} className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-500">Pastor {i + 1}</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setForm({ ...form, pastors: form.pastors.filter((_, idx) => idx !== i) });
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4 text-red-400" />
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    placeholder="Name"
+                    value={pastor.name}
+                    onChange={(e) => {
+                      const updated = [...form.pastors];
+                      updated[i] = { ...updated[i], name: e.target.value };
+                      setForm({ ...form, pastors: updated });
+                    }}
+                  />
+                  <Input
+                    placeholder="Title (e.g., Head Minister)"
+                    value={pastor.title}
+                    onChange={(e) => {
+                      const updated = [...form.pastors];
+                      updated[i] = { ...updated[i], title: e.target.value };
+                      setForm({ ...form, pastors: updated });
+                    }}
+                  />
+                </div>
+                <textarea
+                  placeholder="Brief bio..."
+                  value={pastor.bio}
+                  onChange={(e) => {
+                    const updated = [...form.pastors];
+                    updated[i] = { ...updated[i], bio: e.target.value };
+                    setForm({ ...form, pastors: updated });
+                  }}
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {activeTab === "about" && (
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                About Content
+              </label>
+              <textarea
+                value={form.aboutContent}
+                onChange={(e) => setForm({ ...form, aboutContent: e.target.value })}
+                rows={6}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                placeholder="Tell visitors about the church..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Church History
+              </label>
+              <textarea
+                value={form.history}
+                onChange={(e) => setForm({ ...form, history: e.target.value })}
+                rows={6}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                placeholder="History of this local church..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Core Beliefs
+              </label>
+              <textarea
+                value={form.beliefs}
+                onChange={(e) => setForm({ ...form, beliefs: e.target.value })}
+                rows={6}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                placeholder="What this church believes..."
+              />
+            </div>
+          </div>
+        )}
+
+        {activeTab === "gallery" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Gallery Images
+              </label>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    gallery: [...form.gallery, { imageUrl: "", caption: "" }],
+                  })
+                }
+              >
+                <Plus className="w-4 h-4 mr-1" /> Add Image
+              </Button>
+            </div>
+            {form.gallery.map((item, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <Input
+                  placeholder="Image URL"
+                  value={item.imageUrl}
+                  onChange={(e) => {
+                    const updated = [...form.gallery];
+                    updated[i] = { ...updated[i], imageUrl: e.target.value };
+                    setForm({ ...form, gallery: updated });
+                  }}
+                  className="flex-1"
+                />
+                <Input
+                  placeholder="Caption (optional)"
+                  value={item.caption}
+                  onChange={(e) => {
+                    const updated = [...form.gallery];
+                    updated[i] = { ...updated[i], caption: e.target.value };
+                    setForm({ ...form, gallery: updated });
+                  }}
+                  className="flex-1"
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setForm({ ...form, gallery: form.gallery.filter((_, idx) => idx !== i) });
+                  }}
+                >
+                  <Trash2 className="w-4 h-4 text-red-400" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {activeTab === "updates" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Latest Updates & Events
+              </label>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    latestUpdates: [...form.latestUpdates, { title: "", content: "", date: "", link: "" }],
+                  })
+                }
+              >
+                <Plus className="w-4 h-4 mr-1" /> Add Update
+              </Button>
+            </div>
+            {form.latestUpdates.map((update, i) => (
+              <div key={i} className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-500">Update {i + 1}</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setForm({ ...form, latestUpdates: form.latestUpdates.filter((_, idx) => idx !== i) });
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4 text-red-400" />
+                  </Button>
+                </div>
+                <Input
+                  placeholder="Title"
+                  value={update.title}
+                  onChange={(e) => {
+                    const updated = [...form.latestUpdates];
+                    updated[i] = { ...updated[i], title: e.target.value };
+                    setForm({ ...form, latestUpdates: updated });
+                  }}
+                />
+                <textarea
+                  placeholder="Content"
+                  value={update.content}
+                  onChange={(e) => {
+                    const updated = [...form.latestUpdates];
+                    updated[i] = { ...updated[i], content: e.target.value };
+                    setForm({ ...form, latestUpdates: updated });
+                  }}
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    type="date"
+                    value={update.date}
+                    onChange={(e) => {
+                      const updated = [...form.latestUpdates];
+                      updated[i] = { ...updated[i], date: e.target.value };
+                      setForm({ ...form, latestUpdates: updated });
+                    }}
+                  />
+                  <Input
+                    placeholder="Link (optional)"
+                    value={update.link}
+                    onChange={(e) => {
+                      const updated = [...form.latestUpdates];
+                      updated[i] = { ...updated[i], link: e.target.value };
+                      setForm({ ...form, latestUpdates: updated });
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {activeTab === "social" && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Facebook</label>
+              <Input
+                placeholder="https://facebook.com/..."
+                value={form.facebook}
+                onChange={(e) => setForm({ ...form, facebook: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Instagram</label>
+              <Input
+                placeholder="https://instagram.com/..."
+                value={form.instagram}
+                onChange={(e) => setForm({ ...form, instagram: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">YouTube</label>
+              <Input
+                placeholder="https://youtube.com/..."
+                value={form.youtube}
+                onChange={(e) => setForm({ ...form, youtube: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Website</label>
+              <Input
+                placeholder="https://..."
+                value={form.website}
+                onChange={(e) => setForm({ ...form, website: e.target.value })}
+              />
+            </div>
+          </div>
+        )}
+
+        {activeTab === "design" && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500">
+              Override the template&apos;s default colors. Leave blank to use template defaults.
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Primary Color
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={form.primaryColor || "#1a365d"}
+                  onChange={(e) => setForm({ ...form, primaryColor: e.target.value })}
+                  className="h-10 w-10 rounded border border-slate-200"
+                />
+                <Input
+                  value={form.primaryColor}
+                  onChange={(e) => setForm({ ...form, primaryColor: e.target.value })}
+                  placeholder="#1a365d"
+                  className="max-w-xs"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Accent Color
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={form.accentColor || "#c9a84c"}
+                  onChange={(e) => setForm({ ...form, accentColor: e.target.value })}
+                  className="h-10 w-10 rounded border border-slate-200"
+                />
+                <Input
+                  value={form.accentColor}
+                  onChange={(e) => setForm({ ...form, accentColor: e.target.value })}
+                  placeholder="#c9a84c"
+                  className="max-w-xs"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}

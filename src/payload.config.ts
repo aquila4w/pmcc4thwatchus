@@ -26,6 +26,7 @@ import { Media } from "./collections/Media";
 import { Categories } from "./collections/Categories";
 import { Tags } from "./collections/Tags";
 import { Widgets } from "./collections/Widgets";
+import { ChurchSites } from "./collections/ChurchSites";
 // import { PuckPages } from "./collections/PuckPages"; // REMOVED FOR TESTING
 
 // Globals
@@ -75,6 +76,8 @@ export default buildConfig({
     Categories,
     Tags,
     Widgets,
+    // Church Websites
+    ChurchSites,
     // Event Management (Admin Only)
     ManagedEvents,
     EventRegistrations,

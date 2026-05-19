@@ -32,6 +32,7 @@ interface Church {
   email: string;
   lat: number;
   lng: number;
+  slug: string;
 }
 
 // Church locations fetched from internal API (proxies Google Sheets server-side)
@@ -407,6 +408,21 @@ export default function LocateChurchesPage() {
                                                   className="text-sm text-slate-600 dark:text-slate-400 hover:text-primary transition-colors truncate"
                                                 >
                                                   {church.email}
+                                                </a>
+                                              </div>
+                                            )}
+
+                                            {/* Church Website */}
+                                            {church.slug && (
+                                              <div className="flex items-center gap-2">
+                                                <ExternalLink className="w-4 h-4 text-primary flex-shrink-0" />
+                                                <a
+                                                  href={`https://${church.slug}.pmcc4thwatch.us`}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="text-sm text-primary hover:text-primary/80 transition-colors"
+                                                >
+                                                  Visit Website
                                                 </a>
                                               </div>
                                             )}

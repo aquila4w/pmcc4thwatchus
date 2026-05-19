@@ -159,6 +159,12 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
       roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "eventAdmin"],
     },
     {
+      label: "Church Websites",
+      icon: Globe,
+      href: "/admin/church-sites",
+      roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary"],
+    },
+    {
       label: "CMS Admin",
       icon: Settings,
       href: "/cms",

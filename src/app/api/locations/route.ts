@@ -10,6 +10,7 @@ interface Church {
   lat: number;
   lng: number;
   subDistrict: string;
+  slug: string;
 }
 
 // Google Sheets configuration (server-side only - not exposed to client)
@@ -53,6 +54,12 @@ export async function GET() {
       const lat = parseFloat(row[7]) || 0;
       const lng = parseFloat(row[8]) || 0;
 
+      // Generate URL-friendly slug from locale name
+      const slug = localeName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+
       places.push({
         localeName,
         name: row[5]?.trim() || localeName,
@@ -63,6 +70,7 @@ export async function GET() {
         subDistrict: currentSubDistrict,
         lat,
         lng,
+        slug,
       });
     });
 
