@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getPayload } from "payload";
 import config from "@payload-config";
+import "../../globals.css";
 
 export async function generateMetadata({
   params,
