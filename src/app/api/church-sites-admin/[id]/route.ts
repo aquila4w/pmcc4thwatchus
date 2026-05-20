@@ -118,6 +118,63 @@ export async function PATCH(
       }
     }
 
+    // Sanitize serviceSchedule: remove items with empty required fields
+    if (Array.isArray(updateData.serviceSchedule)) {
+      updateData.serviceSchedule = (updateData.serviceSchedule as Record<string, unknown>[])
+        .filter((s) => s.day && s.serviceName)
+        .map((s) => ({
+          day: s.day,
+          time: s.time || "",
+          serviceName: s.serviceName,
+        }));
+    }
+
+    // Remove gallery items without a valid upload ID
+    if (Array.isArray(updateData.gallery)) {
+      updateData.gallery = (updateData.gallery as Record<string, unknown>[])
+        .filter((g) => g.image && typeof g.image === "string" && g.image.length > 0);
+    }
+
+    // Remove pastors without a valid upload ID for photo (keep if no photo)
+    if (Array.isArray(updateData.pastors)) {
+      updateData.pastors = (updateData.pastors as Record<string, unknown>[])
+        .filter((p) => p.name)
+        .map((p) => {
+          const pastor: Record<string, unknown> = { name: p.name };
+          if (p.title) pastor.title = p.title;
+          if (p.bio) pastor.bio = p.bio;
+          if (p.photo && typeof p.photo === "string" && p.photo.length > 0) {
+            pastor.photo = p.photo;
+          }
+          return pastor;
+        });
+    }
+
+    // Clean empty richText fields — skip them so Payload doesn't validate empty Lexical
+    for (const rtField of ["aboutContent", "history", "beliefs", "welcomeText"]) {
+      const val = updateData[rtField];
+      if (val && typeof val === "object") {
+        const root = (val as Record<string, unknown>)?.root;
+        const children = (root as Record<string, unknown>)?.children;
+        if (
+          Array.isArray(children) &&
+          children.length === 1 &&
+          (children[0] as Record<string, unknown>)?.type === "text" &&
+          !((children[0] as Record<string, unknown>)?.text as string)?.trim()
+        ) {
+          delete updateData[rtField];
+        }
+      }
+    }
+
+    // Clean empty customColors
+    if (updateData.customColors && typeof updateData.customColors === "object") {
+      const cc = updateData.customColors as Record<string, unknown>;
+      if (!cc.primaryColor && !cc.accentColor) {
+        delete updateData.customColors;
+      }
+    }
+
     const result = await payload.update({
       collection: "church-sites",
       id,
