@@ -74,13 +74,13 @@ export default function ChurchHomePage({
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-100 via-amber-50/30 to-stone-200">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#1a1209]">
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-6 rounded-full border-2 border-amber-700/30 flex items-center justify-center bg-amber-50">
-            <span className="text-amber-800 font-serif font-bold text-xl">P</span>
+          <div className="w-16 h-16 mx-auto mb-6 rounded-full border border-amber-500/30 flex items-center justify-center">
+            <span className="text-amber-400 font-serif font-bold text-xl">P</span>
           </div>
-          <Loader2 className="w-8 h-8 text-amber-700/60 animate-spin mx-auto mb-4" />
-          <p className="text-stone-500 font-light tracking-wide">Loading...</p>
+          <Loader2 className="w-8 h-8 text-amber-500/50 animate-spin mx-auto mb-4" />
+          <p className="text-amber-200/40 text-sm tracking-widest uppercase">Loading</p>
         </div>
       </div>
     );
@@ -88,19 +88,30 @@ export default function ChurchHomePage({
 
   if (error === "coming-soon") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-100 via-amber-50/30 to-stone-200 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C7A3C' fill-opacity='1'%3E%3Cpath d='M0 0h80v80H0V0zm10 10v60h60V10H10z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
-        <div className="relative text-center max-w-md mx-4 px-8 py-12">
-          <div className="w-20 h-20 mx-auto mb-8 rounded-full border-2 border-amber-700/20 flex items-center justify-center bg-amber-50/80 shadow-lg shadow-amber-900/5">
-            <Globe className="w-9 h-9 text-amber-700/60" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#1a1209] relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(180,130,50,0.08)_0%,_transparent_60%)]" />
+        <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23B48232' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
+        <div className="relative text-center max-w-lg mx-6 px-8 py-16">
+          <div className="flex items-center justify-center gap-3 mb-10">
+            <div className="w-12 h-12 rounded-full border border-amber-500/30 flex items-center justify-center">
+              <span className="text-amber-400 font-serif font-bold text-lg">P</span>
+            </div>
+            <div className="text-left">
+              <p className="text-amber-200/70 font-serif text-sm font-medium tracking-wide">PMCC 4th Watch</p>
+              <p className="text-amber-200/30 text-[10px] tracking-[0.25em] uppercase">US District</p>
+            </div>
           </div>
-          <p className="text-amber-800/60 text-xs tracking-[0.3em] uppercase mb-3 font-medium">PMCC 4th Watch</p>
-          <h1 className="text-4xl md:text-5xl font-serif font-bold text-stone-800 mb-4">Coming Soon</h1>
-          <div className="w-16 h-px bg-gradient-to-r from-transparent via-amber-700/40 to-transparent mx-auto mb-6" />
-          <p className="text-stone-500 mb-8 leading-relaxed font-light">
-            This church website is being set up.<br />Check back soon!
-          </p>
-          <Button asChild className="bg-amber-700 hover:bg-amber-800 text-white font-medium px-8 shadow-lg shadow-amber-900/10">
+          <div className="mb-8">
+            <div className="w-20 h-20 mx-auto mb-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+              <Globe className="w-9 h-9 text-amber-400/70" />
+            </div>
+            <h1 className="text-5xl md:text-6xl font-serif font-bold text-amber-50 mb-4 tracking-tight">Coming Soon</h1>
+            <div className="w-24 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent mx-auto mb-6" />
+            <p className="text-amber-200/50 text-lg leading-relaxed">
+              This church website is being set up.<br />Check back soon!
+            </p>
+          </div>
+          <Button asChild className="bg-amber-700/80 hover:bg-amber-600 text-white font-medium px-8 py-6 text-base rounded-full shadow-lg shadow-amber-900/30 border border-amber-500/20">
             <Link href="https://pmcc4thwatch.us">
               <ExternalLink className="w-4 h-4 mr-2" />
               Visit PMCC 4th Watch
@@ -113,19 +124,30 @@ export default function ChurchHomePage({
 
   if (error || !data) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-100 via-amber-50/30 to-stone-200 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C7A3C' fill-opacity='1'%3E%3Cpath d='M0 0h80v80H0V0zm10 10v60h60V10H10z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
-        <div className="relative text-center max-w-md mx-4 px-8 py-12">
-          <div className="w-20 h-20 mx-auto mb-8 rounded-full border-2 border-amber-700/20 flex items-center justify-center bg-amber-50/80 shadow-lg shadow-amber-900/5">
-            <AlertCircle className="w-9 h-9 text-amber-700/60" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#1a1209] relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(180,130,50,0.08)_0%,_transparent_60%)]" />
+        <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23B48232' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
+        <div className="relative text-center max-w-lg mx-6 px-8 py-16">
+          <div className="flex items-center justify-center gap-3 mb-10">
+            <div className="w-12 h-12 rounded-full border border-amber-500/30 flex items-center justify-center">
+              <span className="text-amber-400 font-serif font-bold text-lg">P</span>
+            </div>
+            <div className="text-left">
+              <p className="text-amber-200/70 font-serif text-sm font-medium tracking-wide">PMCC 4th Watch</p>
+              <p className="text-amber-200/30 text-[10px] tracking-[0.25em] uppercase">US District</p>
+            </div>
           </div>
-          <p className="text-amber-800/60 text-xs tracking-[0.3em] uppercase mb-3 font-medium">PMCC 4th Watch</p>
-          <h1 className="text-4xl md:text-5xl font-serif font-bold text-stone-800 mb-4">Church Not Found</h1>
-          <div className="w-16 h-px bg-gradient-to-r from-transparent via-amber-700/40 to-transparent mx-auto mb-6" />
-          <p className="text-stone-500 mb-8 leading-relaxed font-light">
-            We couldn't find this church.<br />Please check the URL and try again.
-          </p>
-          <Button asChild className="bg-amber-700 hover:bg-amber-800 text-white font-medium px-8 shadow-lg shadow-amber-900/10">
+          <div className="mb-8">
+            <div className="w-20 h-20 mx-auto mb-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+              <AlertCircle className="w-9 h-9 text-amber-400/70" />
+            </div>
+            <h1 className="text-5xl md:text-6xl font-serif font-bold text-amber-50 mb-4 tracking-tight">Church Not Found</h1>
+            <div className="w-24 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent mx-auto mb-6" />
+            <p className="text-amber-200/50 text-lg leading-relaxed">
+              We couldn't find this church.<br />Please check the URL and try again.
+            </p>
+          </div>
+          <Button asChild className="bg-amber-700/80 hover:bg-amber-600 text-white font-medium px-8 py-6 text-base rounded-full shadow-lg shadow-amber-900/30 border border-amber-500/20">
             <Link href="https://pmcc4thwatch.us">
               <ExternalLink className="w-4 h-4 mr-2" />
               Visit PMCC 4th Watch
