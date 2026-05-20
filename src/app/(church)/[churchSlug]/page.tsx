@@ -207,7 +207,7 @@ export default function ChurchHomePage({
       </header>
 
       {/* Hero Section */}
-      <section className={`relative ${t.heroGradient} overflow-hidden`}>
+      <section className={`relative bg-gradient-to-r ${t.heroGradient} overflow-hidden`}>
         {heroImageUrl && (
           <div className="absolute inset-0">
             <img src={heroImageUrl} alt="" className="w-full h-full object-cover opacity-30" />
