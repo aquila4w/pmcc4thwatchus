@@ -100,6 +100,8 @@ export default function EditChurchSitePage({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState("general");
+  const [slugError, setSlugError] = useState<string | null>(null);
+  const [slugSaving, setSlugSaving] = useState(false);
 
   useEffect(() => {
     const fetchSite = async () => {
@@ -200,6 +202,25 @@ export default function EditChurchSitePage({
     }
   };
 
+  const handleSlugSave = async () => {
+    setSlugSaving(true);
+    setSlugError(null);
+    try {
+      const res = await fetch(`/api/church-sites-admin/${id}/slug`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: form.churchSlug }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update slug");
+      setForm({ ...form, churchSlug: data.slug });
+    } catch (err) {
+      setSlugError(err instanceof Error ? err.message : "Failed to update slug");
+    } finally {
+      setSlugSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -290,6 +311,38 @@ export default function EditChurchSitePage({
               <label htmlFor="published" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                 Published (visible to the public)
               </label>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Subdomain Slug
+              </label>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden max-w-md">
+                  <Input
+                    value={form.churchSlug}
+                    onChange={(e) => setForm({ ...form, churchSlug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/(^-|-$)/g, "") })}
+                    className="border-0 rounded-none flex-1"
+                    placeholder="e.g., anchorage"
+                  />
+                  <span className="px-3 py-2 bg-slate-50 dark:bg-slate-800 text-slate-500 text-sm whitespace-nowrap border-l border-slate-200 dark:border-slate-700">
+                    .pmcc4thwatch.us
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSlugSave}
+                  disabled={slugSaving}
+                >
+                  {slugSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Slug"}
+                </Button>
+              </div>
+              {slugError && (
+                <p className="text-red-500 text-xs mt-1">{slugError}</p>
+              )}
+              <p className="text-xs text-slate-400 mt-1">
+                Changes the subdomain URL. Only admins can edit this. Use lowercase letters, numbers, and hyphens.
+              </p>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
