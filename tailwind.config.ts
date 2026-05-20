@@ -98,4 +98,14 @@ export default {
     }
   },
   plugins: [require("tailwindcss-animate")],
+  safelist: [
+    // Template classes from church-site-types.ts — arbitrary values that
+    // Tailwind JIT won't detect since they live in string constants.
+    { pattern: /bg-\[#[0-9a-f]+\]/ },
+    { pattern: /from-\[#[0-9a-f]+\]/ },
+    { pattern: /to-\[#[0-9a-f]+\]/ },
+    { pattern: /text-\[#[0-9a-f]+\]/ },
+    { pattern: /hover:bg-\[#[0-9a-f]+\]/ },
+    { pattern: /border-\[#[0-9a-f]+\]/ },
+  ],
 } satisfies Config;
