@@ -64,17 +64,17 @@ export async function GET(
       } catch { /* no church */ }
     }
 
-    // Fetch landing page hero image URL separately
-    let landingPageHeroImageUrl: string | null = null;
-    if (fullEvent?.landingPageHeroImage) {
+    // Fetch hero image URL separately (depth:0 returns just the ID)
+    let heroImageUrl: string | null = null;
+    if (fullEvent?.heroImage) {
       try {
         const media = await payload.findByID({
           collection: "media",
-          id: fullEvent.landingPageHeroImage as string,
+          id: fullEvent.heroImage as string,
           depth: 0,
           overrideAccess: true,
         });
-        landingPageHeroImageUrl = media?.url || null;
+        heroImageUrl = media?.url || null;
       } catch { /* no image */ }
     }
 
@@ -117,11 +117,12 @@ export async function GET(
         location: fullEvent?.location,
         address: fullEvent?.address,
         eventType: fullEvent?.eventType,
+        heroImageUrl: heroImageUrl,
+        hasBaptism: fullEvent?.hasBaptism,
         spotsRemaining: spotsRemaining,
         isFull: isFull,
         isPastDeadline: isPastDeadline,
         landingPage: {
-          heroImageUrl: landingPageHeroImageUrl,
           title: fullEvent?.landingPageTitle || "You're Registered!",
           content: fullEvent?.landingPageContent,
           showQR: fullEvent?.landingPageShowQR ?? true,
