@@ -54,7 +54,9 @@ function addSecurityHeaders(response: NextResponse) {
 }
 
 export function middleware(request: NextRequest) {
-  const host = request.headers.get("host") || "";
+  // Cloudflare Worker sets X-Forwarded-Host with the original subdomain;
+  // fall back to the direct Host header for local dev and non-proxied requests.
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
   const churchSlug = getChurchSubdomain(host);
 
   // Rewrite church subdomain requests to the _church route group
