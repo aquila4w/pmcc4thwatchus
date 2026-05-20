@@ -65,7 +65,7 @@ export function middleware(request: NextRequest) {
   if (churchSlug) {
     const url = request.nextUrl.clone();
     const pathname = url.pathname === "/" ? "" : url.pathname;
-    url.pathname = `/(church)/${churchSlug}${pathname}`;
+    url.pathname = `/${churchSlug}${pathname}`;
     const response = NextResponse.rewrite(url);
     addSecurityHeaders(response);
 
