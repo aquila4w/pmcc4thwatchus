@@ -140,7 +140,7 @@ export default function LocateChurchesPage() {
         if (data.churches) {
           setProximityChurches(data.churches);
           setGeocodedName(data.geocodedName || null);
-          setExpandedDistricts([]);
+          setExpandedChurch(null);
         }
       } catch {
         setProximityChurches(null);
@@ -164,7 +164,7 @@ export default function LocateChurchesPage() {
             setSearchQuery("");
             setProximityChurches(data.churches);
             setGeocodedName("Your Location");
-            setExpandedDistricts([]);
+            setExpandedChurch(null);
           }
         } catch { /* ignore */ } finally {
           setNearMeLoading(false);
@@ -390,10 +390,115 @@ export default function LocateChurchesPage() {
                 </Card>
               )}
 
-              {/* Sub-District Groups */}
-              {!loading && !error && (
+              {/* Sub-District Groups or Flat Proximity List */}
+              {!loading && !error && !proximityLoading && (
                 <div className="space-y-3 max-h-[650px] overflow-y-auto pr-2">
-                  {districtOrder.map((district) => (
+                  {proximityChurches ? (
+                    /* Flat list sorted by distance */
+                    filteredChurches.map((church) => {
+                      const churchKey = `${church.name}-${church.address}`;
+                      const isExpanded = expandedChurch === churchKey;
+
+                      return (
+                        <Card key={churchKey} className={`overflow-hidden ${isExpanded ? "ring-1 ring-primary/20" : ""}`}>
+                          <button
+                            type="button"
+                            onClick={() => handleChurchClick(church)}
+                            className="w-full text-left px-4 py-3 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              <MapPin className={`w-4 h-4 flex-shrink-0 ${isExpanded ? 'text-primary' : 'text-slate-400'}`} />
+                              <span className={`text-sm ${isExpanded ? 'font-medium text-primary' : 'text-slate-700 dark:text-slate-300'}`}>
+                                {church.localeName}
+                              </span>
+                              {church.distance != null && (
+                                <span className="text-xs text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
+                                  {church.distance} mi
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">{church.subDistrict}</span>
+                              <ChevronRight
+                                className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
+                              />
+                            </div>
+                          </button>
+                          <AnimatePresence>
+                            {isExpanded && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.15 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="px-4 pb-4 pl-11 space-y-3 border-t border-slate-100 dark:border-slate-700 pt-3">
+                                  {church.name && church.name !== church.localeName && (
+                                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{church.name}</p>
+                                  )}
+                                  {church.pastor && (
+                                    <div className="flex items-start gap-2">
+                                      <span className="text-sm text-slate-500 font-medium whitespace-nowrap">Pastor:</span>
+                                      <span className="text-sm text-slate-600 dark:text-slate-400">{church.pastor}</span>
+                                    </div>
+                                  )}
+                                  <div className="flex items-start gap-2">
+                                    <MapPin className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                                    <p className="text-sm text-slate-600 dark:text-slate-400">{church.address}</p>
+                                  </div>
+                                  {church.phone && (
+                                    <div className="flex items-center gap-2">
+                                      <Phone className="w-4 h-4 text-primary flex-shrink-0" />
+                                      <a href={`tel:${church.phone}`} className="text-sm text-slate-600 dark:text-slate-400 hover:text-primary transition-colors">{church.phone}</a>
+                                    </div>
+                                  )}
+                                  {church.email && (
+                                    <div className="flex items-center gap-2">
+                                      <Mail className="w-4 h-4 text-primary flex-shrink-0" />
+                                      <a href={`mailto:${church.email}`} className="text-sm text-slate-600 dark:text-slate-400 hover:text-primary transition-colors truncate">{church.email}</a>
+                                    </div>
+                                  )}
+                                  {church.slug && (
+                                    <div className="flex items-center gap-2">
+                                      <ExternalLink className="w-4 h-4 text-primary flex-shrink-0" />
+                                      <a href={`https://${church.slug}.pmcc4thwatch.us`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:text-primary/80 transition-colors">Visit Website</a>
+                                    </div>
+                                  )}
+                                  {church.facebook && (
+                                    <div className="flex items-center gap-2">
+                                      <ExternalLink className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                                      <a
+                                        href={church.facebook.startsWith("http") ? church.facebook : `https://facebook.com/${church.facebook}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-sm text-blue-600 hover:text-blue-800 transition-colors truncate"
+                                      >
+                                        {church.facebook.startsWith("http") ? church.facebook.replace(/^https?:\/\/(www\.)?/, "") : `facebook.com/${church.facebook}`}
+                                      </a>
+                                    </div>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    className="w-full mt-2 bg-primary hover:bg-primary/90"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(church.address)}`, "_blank");
+                                    }}
+                                  >
+                                    <Navigation className="w-4 h-4 mr-2" />
+                                    Get Directions
+                                  </Button>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </Card>
+                      );
+                    })
+                  ) : (
+                    /* Grouped by sub-district */
+                    districtOrder.map((district) => (
                     <Card key={district} className="overflow-hidden">
                       {/* Sub-District Header */}
                       <button
@@ -554,9 +659,9 @@ export default function LocateChurchesPage() {
                                                   href={church.facebook.startsWith("http") ? church.facebook : `https://facebook.com/${church.facebook}`}
                                                   target="_blank"
                                                   rel="noopener noreferrer"
-                                                  className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
+                                                  className="text-sm text-blue-600 hover:text-blue-800 transition-colors truncate"
                                                 >
-                                                  Facebook Page
+                                                  {church.facebook.startsWith("http") ? church.facebook.replace(/^https?:\/\/(www\.)?/, "") : `facebook.com/${church.facebook}`}
                                                 </a>
                                               </div>
                                             )}
@@ -588,7 +693,8 @@ export default function LocateChurchesPage() {
                         )}
                       </AnimatePresence>
                     </Card>
-                  ))}
+                  ))
+                  )}
                 </div>
               )}
             </div>

@@ -85,7 +85,7 @@ export default function ChurchHomePage({
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#1a1209]">
         <div className="text-center">
           <div className="w-16 h-16 mx-auto mb-6 flex items-center justify-center">
-            <img src="/images/logo-white.png" alt="PMCC 4th Watch" className="w-full h-full object-contain" />
+            <img src="https://pmcc4thwatch.us/images/logo-white.png" alt="PMCC 4th Watch" className="w-full h-full object-contain" />
           </div>
           <Loader2 className="w-8 h-8 text-amber-500/50 animate-spin mx-auto mb-4" />
           <p className="text-amber-200/40 text-sm tracking-widest uppercase">Loading</p>
@@ -102,7 +102,7 @@ export default function ChurchHomePage({
         <div className="relative text-center max-w-lg mx-6 px-8 py-16">
           <div className="flex items-center justify-center gap-3 mb-10">
             <div className="w-12 h-12 flex items-center justify-center">
-              <img src="/images/logo-white.png" alt="PMCC 4th Watch" className="w-full h-full object-contain" />
+              <img src="https://pmcc4thwatch.us/images/logo-white.png" alt="PMCC 4th Watch" className="w-full h-full object-contain" />
             </div>
             <div className="text-left">
               <p className="text-amber-200/70 font-serif text-sm font-medium tracking-wide">PMCC 4th Watch</p>
@@ -138,7 +138,7 @@ export default function ChurchHomePage({
         <div className="relative text-center max-w-lg mx-6 px-8 py-16">
           <div className="flex items-center justify-center gap-3 mb-10">
             <div className="w-12 h-12 flex items-center justify-center">
-              <img src="/images/logo-white.png" alt="PMCC 4th Watch" className="w-full h-full object-contain" />
+              <img src="https://pmcc4thwatch.us/images/logo-white.png" alt="PMCC 4th Watch" className="w-full h-full object-contain" />
             </div>
             <div className="text-left">
               <p className="text-amber-200/70 font-serif text-sm font-medium tracking-wide">PMCC 4th Watch</p>
@@ -184,7 +184,7 @@ export default function ChurchHomePage({
         <div className="container mx-auto px-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
             <div className="w-10 h-10 flex items-center justify-center">
-              <img src="/images/logo-white.png" alt="PMCC 4th Watch" className="w-full h-full object-contain" />
+              <img src="https://pmcc4thwatch.us/images/logo-white.png" alt="PMCC 4th Watch" className="w-full h-full object-contain" />
             </div>
             <div>
               <span className="text-white font-serif text-lg font-semibold">{church.name}</span>
