@@ -18,7 +18,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { THEME_LABELS } from "@/lib/church-site-types";
+import { THEME_LABELS, TEMPLATES } from "@/lib/church-site-types";
+
+const hex = (cls: string) => (cls.match(/#([0-9a-fA-F]{3,8})/) || ["", "#6b7280"])[1];
 
 interface ServiceItem {
   day: string;
@@ -395,6 +397,55 @@ export default function EditChurchSitePage({
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>
+              {TEMPLATES[form.template] && (() => {
+                const t = TEMPLATES[form.template];
+                const primary = `#${hex(t.primaryBg)}`;
+                const accent = `#${hex(t.accentBg)}`;
+                const footer = `#${hex(t.footerBg)}`;
+                const heroFrom = `#${hex(t.heroGradient.split(" ")[0])}`;
+                const heroTo = `#${hex(t.heroGradient.split(" ")[1])}`;
+                const isSerif = t.fontSerif === "font-serif";
+                return (
+                  <div className="mt-3 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden max-w-sm shadow-sm">
+                    <div className="flex text-[9px] font-semibold text-center">
+                      <div className="flex-1 py-1" style={{ background: primary, color: "#fff" }}>{THEME_LABELS[form.template]}</div>
+                    </div>
+                    <div className="flex gap-0.5 p-1.5 bg-slate-100 dark:bg-slate-800">
+                      <div className="flex-1 h-4 rounded-sm" style={{ background: primary }} />
+                      <div className="flex-1 h-4 rounded-sm" style={{ background: accent }} />
+                      <div className="flex-1 h-4 rounded-sm bg-white border border-slate-200" />
+                      <div className="flex-1 h-4 rounded-sm" style={{ background: footer }} />
+                    </div>
+                    <div style={{ background: "#fff" }}>
+                      <div className="flex items-center justify-between px-3 py-1.5" style={{ background: primary, color: "#fff", fontFamily: isSerif ? "Georgia,serif" : "system-ui,sans-serif" }}>
+                        <span className="text-[10px] font-bold">{form.welcomeTitle || "Our Church"}</span>
+                        <span className="text-[9px] opacity-70 flex gap-2"><span style={{ color: accent }}>Home</span>About</span>
+                      </div>
+                      <div className="px-4 py-5 text-center" style={{ background: `linear-gradient(135deg,${heroFrom},${heroTo})`, color: "#fff", fontFamily: isSerif ? "Georgia,serif" : "system-ui,sans-serif" }}>
+                        <div className="text-sm font-bold mb-0.5">Welcome to Our Church</div>
+                        <div className="text-[9px] opacity-80">Join us in worship and fellowship</div>
+                        <div className="inline-block mt-2 px-3 py-1 text-[9px] font-bold" style={{ background: accent, color: primary === "#0a0a0a" || primary === "#1a1a1a" || primary === "#1c1c1c" ? "#fff" : primary, borderRadius: t.buttonRadius === "rounded-full" ? 9999 : t.buttonRadius === "rounded-none" ? 0 : t.buttonRadius === "rounded-xl" ? 12 : t.buttonRadius === "rounded-2xl" ? 16 : 6 }}>Visit Us</div>
+                      </div>
+                      <div className="px-3 py-2" style={{ background: "#f8fafc" }}>
+                        <div className="text-[9px] font-bold mb-1" style={{ color: primary }}>Service Schedule</div>
+                        <div className="grid grid-cols-2 gap-1">
+                          <div className="text-[8px] p-1 rounded" style={{ background: "#fff", border: "1px solid #e2e8f0" }}>
+                            <span className="font-bold" style={{ color: primary }}>Sunday</span>
+                            <span className="opacity-70 ml-1">10:00 AM</span>
+                          </div>
+                          <div className="text-[8px] p-1 rounded" style={{ background: "#fff", border: "1px solid #e2e8f0" }}>
+                            <span className="font-bold" style={{ color: primary }}>Wednesday</span>
+                            <span className="opacity-70 ml-1">7:00 PM</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="px-3 py-2 text-center text-[8px]" style={{ background: footer, color: "#fff", opacity: 0.8 }}>
+                        &copy; 2026 PMCC 4th Watch
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
