@@ -12,6 +12,8 @@ import {
   Trash2,
   GripVertical,
   Upload,
+  X,
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -28,7 +30,8 @@ interface PastorItem {
   name: string;
   title: string;
   bio: string;
-  photoUrl: string;
+  photo: string;
+  photoPreview: string;
 }
 
 interface UpdateItem {
@@ -39,7 +42,8 @@ interface UpdateItem {
 }
 
 interface GalleryItem {
-  imageUrl: string;
+  image: string;
+  imagePreview: string;
   caption: string;
 }
 
@@ -117,19 +121,27 @@ export default function EditChurchSitePage({
           welcomeTitle: site.welcomeTitle || "",
           missionStatement: site.missionStatement || "",
           serviceSchedule: site.serviceSchedule || [],
-          pastors: (site.pastors || []).map((p: Record<string, unknown>) => ({
-            name: (p.name as string) || "",
-            title: (p.title as string) || "",
-            bio: (p.bio as string) || "",
-            photoUrl: "",
-          })),
+          pastors: (site.pastors || []).map((p: Record<string, unknown>) => {
+            const photo = p.photo as Record<string, string> | string | null;
+            return {
+              name: (p.name as string) || "",
+              title: (p.title as string) || "",
+              bio: (p.bio as string) || "",
+              photo: typeof photo === "object" && photo ? photo.id || "" : typeof photo === "string" ? photo : "",
+              photoPreview: typeof photo === "object" && photo ? photo.url || "" : "",
+            };
+          }),
           aboutContent: "",
           history: "",
           beliefs: "",
-          gallery: (site.gallery || []).map((g: Record<string, unknown>) => ({
-            imageUrl: "",
-            caption: (g.caption as string) || "",
-          })),
+          gallery: (site.gallery || []).map((g: Record<string, unknown>) => {
+            const image = g.image as Record<string, string> | string | null;
+            return {
+              image: typeof image === "object" && image ? image.id || "" : typeof image === "string" ? image : "",
+              imagePreview: typeof image === "object" && image ? image.url || "" : "",
+              caption: (g.caption as string) || "",
+            };
+          }),
           latestUpdates: (site.latestUpdates || []).map((u: Record<string, unknown>) => ({
             title: (u.title as string) || "",
             content: (u.content as string) || "",
@@ -169,11 +181,19 @@ export default function EditChurchSitePage({
           welcomeTitle: form.welcomeTitle,
           missionStatement: form.missionStatement,
           serviceSchedule: form.serviceSchedule,
-          pastors: form.pastors,
+          pastors: form.pastors.map((p) => ({
+            name: p.name,
+            title: p.title,
+            bio: p.bio,
+            ...(p.photo ? { photo: p.photo } : {}),
+          })),
           aboutContent: { root: { type: "paragraph", children: [{ type: "text", text: form.aboutContent }] } },
           history: { root: { type: "paragraph", children: [{ type: "text", text: form.history }] } },
           beliefs: { root: { type: "paragraph", children: [{ type: "text", text: form.beliefs }] } },
-          gallery: form.gallery,
+          gallery: form.gallery.map((g) => ({
+            ...(g.image ? { image: g.image } : {}),
+            caption: g.caption,
+          })),
           latestUpdates: form.latestUpdates,
           customColors: {
             primaryColor: form.primaryColor,
@@ -218,6 +238,23 @@ export default function EditChurchSitePage({
       setSlugError(err instanceof Error ? err.message : "Failed to update slug");
     } finally {
       setSlugSaving(false);
+    }
+  };
+
+  const uploadFile = async (file: File): Promise<{ id: string; url: string } | null> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await fetch("/payload-api/media", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.doc ? { id: data.doc.id, url: data.doc.url } : null;
+    } catch {
+      return null;
     }
   };
 
@@ -474,7 +511,7 @@ export default function EditChurchSitePage({
                 onClick={() =>
                   setForm({
                     ...form,
-                    pastors: [...form.pastors, { name: "", title: "", bio: "", photoUrl: "" }],
+                    pastors: [...form.pastors, { name: "", title: "", bio: "", photo: "", photoPreview: "" }],
                   })
                 }
               >
@@ -495,37 +532,81 @@ export default function EditChurchSitePage({
                     <Trash2 className="w-4 h-4 text-red-400" />
                   </Button>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    placeholder="Name"
-                    value={pastor.name}
-                    onChange={(e) => {
-                      const updated = [...form.pastors];
-                      updated[i] = { ...updated[i], name: e.target.value };
-                      setForm({ ...form, pastors: updated });
-                    }}
-                  />
-                  <Input
-                    placeholder="Title (e.g., Head Minister)"
-                    value={pastor.title}
-                    onChange={(e) => {
-                      const updated = [...form.pastors];
-                      updated[i] = { ...updated[i], title: e.target.value };
-                      setForm({ ...form, pastors: updated });
-                    }}
-                  />
+                <div className="flex gap-4">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-20 h-20 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 flex items-center justify-center relative group">
+                      {pastor.photoPreview ? (
+                        <img src={pastor.photoPreview} alt={pastor.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-8 h-8 text-slate-400" />
+                      )}
+                      {pastor.photoPreview && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = [...form.pastors];
+                            updated[i] = { ...updated[i], photo: "", photoPreview: "" };
+                            setForm({ ...form, pastors: updated });
+                          }}
+                          className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    <label className="cursor-pointer text-xs text-primary hover:underline">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const result = await uploadFile(file);
+                          if (result) {
+                            const updated = [...form.pastors];
+                            updated[i] = { ...updated[i], photo: result.id, photoPreview: result.url };
+                            setForm({ ...form, pastors: updated });
+                          }
+                        }}
+                      />
+                      Upload Photo
+                    </label>
+                  </div>
+                  <div className="flex-1 space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input
+                        placeholder="Name"
+                        value={pastor.name}
+                        onChange={(e) => {
+                          const updated = [...form.pastors];
+                          updated[i] = { ...updated[i], name: e.target.value };
+                          setForm({ ...form, pastors: updated });
+                        }}
+                      />
+                      <Input
+                        placeholder="Title (e.g., Head Minister)"
+                        value={pastor.title}
+                        onChange={(e) => {
+                          const updated = [...form.pastors];
+                          updated[i] = { ...updated[i], title: e.target.value };
+                          setForm({ ...form, pastors: updated });
+                        }}
+                      />
+                    </div>
+                    <textarea
+                      placeholder="Brief bio..."
+                      value={pastor.bio}
+                      onChange={(e) => {
+                        const updated = [...form.pastors];
+                        updated[i] = { ...updated[i], bio: e.target.value };
+                        setForm({ ...form, pastors: updated });
+                      }}
+                      rows={2}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                    />
+                  </div>
                 </div>
-                <textarea
-                  placeholder="Brief bio..."
-                  value={pastor.bio}
-                  onChange={(e) => {
-                    const updated = [...form.pastors];
-                    updated[i] = { ...updated[i], bio: e.target.value };
-                    setForm({ ...form, pastors: updated });
-                  }}
-                  rows={2}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-                />
               </div>
             ))}
           </div>
@@ -584,7 +665,7 @@ export default function EditChurchSitePage({
                 onClick={() =>
                   setForm({
                     ...form,
-                    gallery: [...form.gallery, { imageUrl: "", caption: "" }],
+                    gallery: [...form.gallery, { image: "", imagePreview: "", caption: "" }],
                   })
                 }
               >
@@ -593,26 +674,42 @@ export default function EditChurchSitePage({
             </div>
             {form.gallery.map((item, i) => (
               <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-                <Input
-                  placeholder="Image URL"
-                  value={item.imageUrl}
-                  onChange={(e) => {
-                    const updated = [...form.gallery];
-                    updated[i] = { ...updated[i], imageUrl: e.target.value };
-                    setForm({ ...form, gallery: updated });
-                  }}
-                  className="flex-1"
-                />
-                <Input
-                  placeholder="Caption (optional)"
-                  value={item.caption}
-                  onChange={(e) => {
-                    const updated = [...form.gallery];
-                    updated[i] = { ...updated[i], caption: e.target.value };
-                    setForm({ ...form, gallery: updated });
-                  }}
-                  className="flex-1"
-                />
+                <div className="w-16 h-16 rounded-lg overflow-hidden bg-slate-200 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
+                  {item.imagePreview ? (
+                    <img src={item.imagePreview} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <Upload className="w-5 h-5 text-slate-400" />
+                  )}
+                </div>
+                <div className="flex-1 space-y-2">
+                  <label className="cursor-pointer text-xs text-primary hover:underline">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const result = await uploadFile(file);
+                        if (result) {
+                          const updated = [...form.gallery];
+                          updated[i] = { ...updated[i], image: result.id, imagePreview: result.url };
+                          setForm({ ...form, gallery: updated });
+                        }
+                      }}
+                    />
+                    {item.image ? "Change Image" : "Upload Image"}
+                  </label>
+                  <Input
+                    placeholder="Caption (optional)"
+                    value={item.caption}
+                    onChange={(e) => {
+                      const updated = [...form.gallery];
+                      updated[i] = { ...updated[i], caption: e.target.value };
+                      setForm({ ...form, gallery: updated });
+                    }}
+                  />
+                </div>
                 <Button
                   size="sm"
                   variant="ghost"
