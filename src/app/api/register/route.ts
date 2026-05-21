@@ -95,21 +95,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify reCAPTCHA — mandatory
-    if (!recaptchaToken) {
-      return NextResponse.json(
-        { error: "Captcha verification is required" },
-        { status: 400 }
-      );
-    }
-    const isValid = await verifyRecaptcha(recaptchaToken);
-    if (!isValid) {
-      return NextResponse.json(
-        { error: "Captcha verification failed. Please try again." },
-        { status: 400 }
-      );
-    }
-
     const phoneToUse = phone?.trim() || guestPhone?.trim();
     const emailToUse = email?.trim() || guestEmail?.trim();
 
