@@ -50,6 +50,14 @@ export default function ChurchHomePage({
   const [data, setData] = useState<ChurchSiteData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setIsScrolled(window.scrollY > 20);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -76,8 +84,8 @@ export default function ChurchHomePage({
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#1a1209]">
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-6 rounded-full border border-amber-500/30 flex items-center justify-center">
-            <span className="text-amber-400 font-serif font-bold text-xl">P</span>
+          <div className="w-16 h-16 mx-auto mb-6 flex items-center justify-center">
+            <img src="/images/logo-white.png" alt="PMCC 4th Watch" className="w-full h-full object-contain" />
           </div>
           <Loader2 className="w-8 h-8 text-amber-500/50 animate-spin mx-auto mb-4" />
           <p className="text-amber-200/40 text-sm tracking-widest uppercase">Loading</p>
@@ -93,8 +101,8 @@ export default function ChurchHomePage({
         <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23B48232' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
         <div className="relative text-center max-w-lg mx-6 px-8 py-16">
           <div className="flex items-center justify-center gap-3 mb-10">
-            <div className="w-12 h-12 rounded-full border border-amber-500/30 flex items-center justify-center">
-              <span className="text-amber-400 font-serif font-bold text-lg">P</span>
+            <div className="w-12 h-12 flex items-center justify-center">
+              <img src="/images/logo-white.png" alt="PMCC 4th Watch" className="w-full h-full object-contain" />
             </div>
             <div className="text-left">
               <p className="text-amber-200/70 font-serif text-sm font-medium tracking-wide">PMCC 4th Watch</p>
@@ -129,8 +137,8 @@ export default function ChurchHomePage({
         <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23B48232' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
         <div className="relative text-center max-w-lg mx-6 px-8 py-16">
           <div className="flex items-center justify-center gap-3 mb-10">
-            <div className="w-12 h-12 rounded-full border border-amber-500/30 flex items-center justify-center">
-              <span className="text-amber-400 font-serif font-bold text-lg">P</span>
+            <div className="w-12 h-12 flex items-center justify-center">
+              <img src="/images/logo-white.png" alt="PMCC 4th Watch" className="w-full h-full object-contain" />
             </div>
             <div className="text-left">
               <p className="text-amber-200/70 font-serif text-sm font-medium tracking-wide">PMCC 4th Watch</p>
@@ -172,11 +180,11 @@ export default function ChurchHomePage({
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className={`${t.headerBg} border-b border-white/10`}>
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${t.headerBg} ${isScrolled ? 'py-2 shadow-lg' : 'py-4 border-b border-white/10'}`}>
+        <div className="container mx-auto px-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full border-2 border-white/30 flex items-center justify-center bg-white/10">
-              <span className="text-white font-serif font-bold text-sm">P</span>
+            <div className="w-10 h-10 flex items-center justify-center">
+              <img src="/images/logo-white.png" alt="PMCC 4th Watch" className="w-full h-full object-contain" />
             </div>
             <div>
               <span className="text-white font-serif text-lg font-semibold">{church.name}</span>
@@ -207,7 +215,7 @@ export default function ChurchHomePage({
       </header>
 
       {/* Hero Section */}
-      <section className={`relative bg-gradient-to-r ${t.heroGradient} overflow-hidden`}>
+      <section className={`relative bg-gradient-to-r ${t.heroGradient} overflow-hidden pt-20`}>
         {heroImageUrl && (
           <div className="absolute inset-0">
             <img src={heroImageUrl} alt="" className="w-full h-full object-cover opacity-30" />
@@ -283,7 +291,7 @@ export default function ChurchHomePage({
         <section className={`py-16 ${t.sectionAlt}`}>
           <div className="container mx-auto px-4">
             <h2 className={`${t.fontSerif} text-3xl font-bold ${t.primaryText} text-center mb-12`}>
-              Our Pastors
+              {site.pastors.length === 1 ? "Our Pastor" : "Our Pastors"}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-4xl mx-auto">
               {site.pastors.map((pastor, i) => (
@@ -504,9 +512,15 @@ export default function ChurchHomePage({
             </div>
           </div>
           <div className="border-t border-white/10 mt-8 pt-8">
-            <p className="text-white/30 text-sm text-center">
-              &copy; {new Date().getFullYear()} {church.name} &mdash; PMCC 4th Watch US District
-            </p>
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <p className="text-white/30 text-sm">
+                &copy; {new Date().getFullYear()} Pentecostal Missionary Church of Christ (4th Watch) US District | US IT &amp; Website Team. All rights reserved.
+              </p>
+              <div className="flex items-center gap-6 text-sm">
+                <a href="https://pmcc4thwatch.us/privacy-policy" className="text-white/30 hover:text-white/60 transition-colors">Privacy Policy</a>
+                <a href="https://pmcc4thwatch.us/terms" className="text-white/30 hover:text-white/60 transition-colors">Terms of Service</a>
+              </div>
+            </div>
           </div>
         </div>
       </footer>

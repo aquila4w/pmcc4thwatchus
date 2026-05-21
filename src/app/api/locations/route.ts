@@ -1,24 +1,37 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getPayload } from "payload";
+import config from "@payload-config";
 
 interface Church {
   localeName: string;
   name: string;
   pastor: string;
+  subDistrict: string;
   address: string;
   phone: string;
   email: string;
   lat: number;
   lng: number;
-  subDistrict: string;
   slug: string;
+  facebook: string;
+  distance?: number;
 }
 
 // Google Sheets configuration (server-side only - not exposed to client)
 const SHEET_ID = "1tmlYhjUlbk5SU4T9kAa6hgHwg1pMscxev6s6NFyr69Y";
 const API_KEY = process.env.GOOGLE_SHEETS_API_KEY || "";
-const RANGE = "A8:I100";
+const RANGE = "A8:H100";
 
-export async function GET() {
+function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 3958.8; // Earth radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+export async function GET(request: NextRequest) {
   if (!API_KEY) {
     return NextResponse.json(
       { error: "Google Sheets API key not configured" },
@@ -26,14 +39,46 @@ export async function GET() {
     );
   }
 
+  const { searchParams } = new URL(request.url);
+  const geocodeQuery = searchParams.get("geocode");
+  const nearLat = searchParams.get("lat");
+  const nearLng = searchParams.get("lng");
+
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
 
   try {
-    const response = await fetch(url);
+    const [response, payload] = await Promise.all([
+      fetch(url),
+      getPayload({ config }),
+    ]);
+
     const data = await response.json();
 
     if (data.error) {
       throw new Error(data.error.message || "Failed to fetch data");
+    }
+
+    // Build slug lookup from Payload CMS churches
+    const { docs: payloadChurches } = await payload.find({
+      collection: "churches",
+      limit: 200,
+      depth: 0,
+    });
+    const slugMap = new Map<string, string>();
+    for (const c of payloadChurches) {
+      const slug = c.slug as string;
+      const name = (c.name as string || "").toLowerCase();
+      if (slug && name) {
+        slugMap.set(name, slug);
+      }
+    }
+
+    function findSlug(localeName: string): string | undefined {
+      const lower = localeName.toLowerCase().trim();
+      for (const [name, slug] of slugMap) {
+        if (name.includes(lower)) return slug;
+      }
+      return undefined;
     }
 
     const places: Church[] = [];
@@ -47,34 +92,70 @@ export async function GET() {
         return;
       }
 
-      if (row.length < 9) return;
+      if (row.length < 7) return;
       if (row[0] === "LOCALE CHURCH") return;
 
       const localeName = row[0]?.trim() || "";
-      const lat = parseFloat(row[7]) || 0;
-      const lng = parseFloat(row[8]) || 0;
+      const lat = parseFloat(row[6]) || 0;
+      const lng = parseFloat(row[7]) || 0;
 
-      // Generate URL-friendly slug from locale name
-      const slug = localeName
+      const payloadSlug = findSlug(localeName);
+      const fallbackSlug = localeName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "");
 
       places.push({
         localeName,
-        name: row[5]?.trim() || localeName,
+        name: localeName,
         pastor: row[1]?.trim() || "",
         address: row[2]?.trim() || "",
         email: row[3]?.trim() || "",
         phone: row[4]?.trim() || "",
         subDistrict: currentSubDistrict,
+        facebook: row[5]?.trim() || "",
         lat,
         lng,
-        slug,
+        slug: payloadSlug || fallbackSlug,
       });
     });
 
-    return NextResponse.json({ churches: places });
+    // Handle geocode search
+    let searchLat: number | null = null;
+    let searchLng: number | null = null;
+    let geocodedName: string | null = null;
+
+    if (geocodeQuery) {
+      const geoRes = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(geocodeQuery)}&countrycodes=us&format=json&limit=1`,
+        { headers: { "User-Agent": "PMCC4thWatch-Locate/1.0" } }
+      );
+      const geoData = await geoRes.json();
+      if (geoData && geoData.length > 0) {
+        searchLat = parseFloat(geoData[0].lat);
+        searchLng = parseFloat(geoData[0].lon);
+        geocodedName = geoData[0].display_name?.split(",").slice(0, 2).join(",").trim() || null;
+      }
+    } else if (nearLat && nearLng) {
+      searchLat = parseFloat(nearLat);
+      searchLng = parseFloat(nearLng);
+    }
+
+    if (searchLat !== null && searchLng !== null) {
+      for (const place of places) {
+        if (place.lat && place.lng) {
+          place.distance = Math.round(haversine(searchLat, searchLng, place.lat, place.lng) * 10) / 10;
+        }
+      }
+      places.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+    }
+
+    const response_data: Record<string, unknown> = { churches: places };
+    if (geocodedName) {
+      response_data.geocodedName = geocodedName;
+    }
+
+    return NextResponse.json(response_data);
   } catch (err) {
     console.error("Error fetching church data:", err);
     return NextResponse.json(

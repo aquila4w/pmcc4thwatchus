@@ -69,6 +69,10 @@ interface SiteFormData {
   website: string;
   churchName: string;
   churchSlug: string;
+  heroImage: string;
+  heroImagePreview: string;
+  churchImage: string;
+  churchImagePreview: string;
 }
 
 const DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
@@ -100,6 +104,10 @@ export default function EditChurchSitePage({
     website: "",
     churchName: "",
     churchSlug: "",
+    heroImage: "",
+    heroImagePreview: "",
+    churchImage: "",
+    churchImagePreview: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -158,6 +166,10 @@ export default function EditChurchSitePage({
           website: site.socialLinks?.website || "",
           churchName: site.church?.name || "",
           churchSlug: site.church?.slug || "",
+          heroImage: typeof site.heroImage === "object" && site.heroImage ? (site.heroImage as { id: string }).id || "" : "",
+          heroImagePreview: typeof site.heroImage === "object" && site.heroImage ? (site.heroImage as { url: string }).url || "" : "",
+          churchImage: typeof data.church?.image === "object" && data.church.image ? (data.church.image as { id: string }).id || "" : "",
+          churchImagePreview: typeof data.church?.image === "object" && data.church.image ? (data.church.image as { url: string }).url || "" : "",
         });
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load");
@@ -207,6 +219,8 @@ export default function EditChurchSitePage({
             youtube: form.youtube,
             website: form.website,
           },
+          ...(form.heroImage ? { heroImage: form.heroImage } : {}),
+          ...(form.churchImage ? { churchImage: form.churchImage } : {}),
         }),
       });
 
@@ -473,6 +487,118 @@ export default function EditChurchSitePage({
                 className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                 placeholder="A brief mission statement for the church..."
               />
+            </div>
+
+            {/* Hero Image */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Hero Image
+              </label>
+              <p className="text-xs text-slate-400 mb-2">Displayed as the background banner at the top of the church homepage.</p>
+              {form.heroImagePreview ? (
+                <div className="relative group rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
+                  <img src={form.heroImagePreview} alt="Hero" className="w-full h-40 object-cover" />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <label className="cursor-pointer px-3 py-1.5 bg-white text-slate-900 rounded text-sm font-medium hover:bg-slate-100">
+                      Replace
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const result = await uploadFile(file);
+                          if (result) {
+                            setForm({ ...form, heroImage: result.id, heroImagePreview: result.url });
+                          }
+                        }}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, heroImage: "", heroImagePreview: "" })}
+                      className="px-3 py-1.5 bg-red-600 text-white rounded text-sm font-medium hover:bg-red-700"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <label className="flex items-center justify-center gap-2 h-32 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer hover:border-primary hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <Upload className="w-5 h-5 text-slate-400" />
+                  <span className="text-sm text-slate-500">Upload hero image</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const result = await uploadFile(file);
+                      if (result) {
+                        setForm({ ...form, heroImage: result.id, heroImagePreview: result.url });
+                      }
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+
+            {/* Church Picture */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Church Picture
+              </label>
+              <p className="text-xs text-slate-400 mb-2">A photo of the church building or grounds. Used as fallback if no hero image is set.</p>
+              {form.churchImagePreview ? (
+                <div className="relative group rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 inline-block">
+                  <img src={form.churchImagePreview} alt="Church" className="w-32 h-32 object-cover" />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                    <label className="cursor-pointer px-2 py-1 bg-white text-slate-900 rounded text-xs font-medium hover:bg-slate-100">
+                      Replace
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const result = await uploadFile(file);
+                          if (result) {
+                            setForm({ ...form, churchImage: result.id, churchImagePreview: result.url });
+                          }
+                        }}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, churchImage: "", churchImagePreview: "" })}
+                      className="px-2 py-1 bg-red-600 text-white rounded text-xs font-medium hover:bg-red-700"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <label className="flex items-center justify-center gap-2 w-32 h-32 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer hover:border-primary hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <Upload className="w-5 h-5 text-slate-400" />
+                  <span className="text-xs text-slate-500">Upload</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const result = await uploadFile(file);
+                      if (result) {
+                        setForm({ ...form, churchImage: result.id, churchImagePreview: result.url });
+                      }
+                    }}
+                  />
+                </label>
+              )}
             </div>
           </div>
         )}

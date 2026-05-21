@@ -10,7 +10,7 @@ const UPDATEABLE_FIELDS = [
   "published", "template", "heroImage", "welcomeTitle", "welcomeText",
   "missionStatement", "serviceSchedule", "pastors", "aboutContent",
   "history", "beliefs", "gallery", "socialLinks", "customColors",
-  "latestUpdates",
+  "latestUpdates", "churchImage",
 ];
 
 function validateOrigin(request: NextRequest): boolean {
@@ -173,6 +173,17 @@ export async function PATCH(
       if (!cc.primaryColor && !cc.accentColor) {
         delete updateData.customColors;
       }
+    }
+
+    // Update church image if provided
+    const churchImageId = updateData.churchImage as string | undefined;
+    delete updateData.churchImage;
+    if (churchImageId) {
+      await payload.update({
+        collection: "churches",
+        id: siteChurchId,
+        data: { image: churchImageId },
+      });
     }
 
     const result = await payload.update({

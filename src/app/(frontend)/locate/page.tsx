@@ -15,6 +15,7 @@ import {
   RefreshCw,
   Building2,
   ExternalLink,
+  LocateFixed,
 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -33,6 +34,8 @@ interface Church {
   lat: number;
   lng: number;
   slug: string;
+  facebook: string;
+  distance?: number;
 }
 
 // Church locations fetched from internal API (proxies Google Sheets server-side)
@@ -45,6 +48,10 @@ export default function LocateChurchesPage() {
   const [expandedChurch, setExpandedChurch] = useState<string | null>(null);
   const [expandedDistricts, setExpandedDistricts] = useState<string[]>([]);
   const [selectedChurch, setSelectedChurch] = useState<Church | null>(null);
+  const [proximityChurches, setProximityChurches] = useState<Church[] | null>(null);
+  const [geocodedName, setGeocodedName] = useState<string | null>(null);
+  const [proximityLoading, setProximityLoading] = useState(false);
+  const [nearMeLoading, setNearMeLoading] = useState(false);
 
   // Fetch churches from internal API
   const fetchChurches = useCallback(async () => {
@@ -83,10 +90,14 @@ export default function LocateChurchesPage() {
 
   // Filter churches based on search
   const filteredChurches = useMemo(() => {
-    if (!searchQuery.trim()) return churches;
+    if (!searchQuery.trim()) {
+      setProximityChurches(null);
+      setGeocodedName(null);
+      return churches;
+    }
 
     const query = searchQuery.toLowerCase();
-    return churches.filter(
+    const textMatches = churches.filter(
       church =>
         church.localeName.toLowerCase().includes(query) ||
         church.name.toLowerCase().includes(query) ||
@@ -95,7 +106,74 @@ export default function LocateChurchesPage() {
         church.email.toLowerCase().includes(query) ||
         church.pastor.toLowerCase().includes(query)
     );
-  }, [churches, searchQuery]);
+
+    if (textMatches.length > 0) {
+      setProximityChurches(null);
+      setGeocodedName(null);
+      return textMatches;
+    }
+
+    // No text matches — use proximity results if available
+    return proximityChurches || [];
+  }, [churches, searchQuery, proximityChurches]);
+
+  // Geocode search when text returns no results
+  useEffect(() => {
+    if (!searchQuery.trim()) return;
+    const query = searchQuery.toLowerCase();
+    const hasTextMatch = churches.some(
+      church =>
+        church.localeName.toLowerCase().includes(query) ||
+        church.name.toLowerCase().includes(query) ||
+        church.address.toLowerCase().includes(query) ||
+        church.subDistrict.toLowerCase().includes(query) ||
+        church.email.toLowerCase().includes(query) ||
+        church.pastor.toLowerCase().includes(query)
+    );
+    if (hasTextMatch) return;
+
+    const timer = setTimeout(async () => {
+      setProximityLoading(true);
+      try {
+        const res = await fetch(`/api/locations?geocode=${encodeURIComponent(searchQuery)}`);
+        const data = await res.json();
+        if (data.churches) {
+          setProximityChurches(data.churches);
+          setGeocodedName(data.geocodedName || null);
+          setExpandedDistricts([]);
+        }
+      } catch {
+        setProximityChurches(null);
+      } finally {
+        setProximityLoading(false);
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, churches]);
+
+  const handleNearMe = () => {
+    if (!navigator.geolocation) return;
+    setNearMeLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const res = await fetch(`/api/locations?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`);
+          const data = await res.json();
+          if (data.churches) {
+            setSearchQuery("");
+            setProximityChurches(data.churches);
+            setGeocodedName("Your Location");
+            setExpandedDistricts([]);
+          }
+        } catch { /* ignore */ } finally {
+          setNearMeLoading(false);
+        }
+      },
+      () => setNearMeLoading(false),
+      { enableHighAccuracy: false, timeout: 10000 }
+    );
+  };
 
   // Group churches by sub-district (preserving original order)
   const { churchesByDistrict, districtOrder } = useMemo(() => {
@@ -180,20 +258,31 @@ export default function LocateChurchesPage() {
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <Input
-                  placeholder="Search by church name, city, or sub-district..."
+                  placeholder="Search by church name, city, or area..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-12 py-6 bg-white border-0 text-slate-800 placeholder:text-slate-400 text-lg rounded-xl shadow-lg"
+                  onChange={(e) => { setSearchQuery(e.target.value); setProximityChurches(null); setGeocodedName(null); }}
+                  className="pl-12 pr-24 py-6 bg-white border-0 text-slate-800 placeholder:text-slate-400 text-lg rounded-xl shadow-lg"
                 />
-                {searchQuery && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    onClick={handleNearMe}
+                    disabled={nearMeLoading}
+                    className="p-2 text-slate-400 hover:text-primary transition-colors"
+                    title="Find churches near me"
                   >
-                    ✕
+                    {nearMeLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <LocateFixed className="w-5 h-5" />}
                   </button>
-                )}
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => { setSearchQuery(""); setProximityChurches(null); setGeocodedName(null); }}
+                      className="p-2 text-slate-400 hover:text-slate-600"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </motion.div>
@@ -233,12 +322,37 @@ export default function LocateChurchesPage() {
               </div>
 
               {/* Stats */}
-              {!loading && (
+              {!loading && !proximityLoading && (
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <span>{filteredChurches.length} churches</span>
                   <span>•</span>
                   <span>{districtOrder.length} sub-districts</span>
                 </div>
+              )}
+
+              {/* Proximity Banner */}
+              {geocodedName && !proximityLoading && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 text-sm">
+                  <Navigation className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span className="text-slate-700 dark:text-slate-300">
+                    Showing churches near <strong>{geocodedName}</strong>, sorted by distance
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => { setProximityChurches(null); setGeocodedName(null); setSearchQuery(""); }}
+                    className="ml-auto text-slate-400 hover:text-slate-600 text-xs"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              {/* Proximity Loading */}
+              {proximityLoading && (
+                <Card className="p-6 text-center">
+                  <Loader2 className="w-6 h-6 text-primary mx-auto mb-2 animate-spin" />
+                  <p className="text-sm text-muted-foreground">Searching nearby locations...</p>
+                </Card>
               )}
 
               {/* Loading State */}
@@ -263,7 +377,7 @@ export default function LocateChurchesPage() {
               )}
 
               {/* No Results */}
-              {!loading && !error && filteredChurches.length === 0 && (
+              {!loading && !error && !proximityLoading && filteredChurches.length === 0 && (
                 <Card className="p-8 text-center">
                   <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="font-semibold text-lg mb-2">No churches found</h3>
@@ -340,6 +454,11 @@ export default function LocateChurchesPage() {
                                         <span className={`text-sm ${isExpanded ? 'font-medium text-primary' : 'text-slate-700 dark:text-slate-300'}`}>
                                           {church.localeName}
                                         </span>
+                                        {church.distance != null && (
+                                          <span className="text-xs text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
+                                            {church.distance} mi
+                                          </span>
+                                        )}
                                       </div>
                                       <ChevronRight
                                         className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
@@ -423,6 +542,21 @@ export default function LocateChurchesPage() {
                                                   className="text-sm text-primary hover:text-primary/80 transition-colors"
                                                 >
                                                   Visit Website
+                                                </a>
+                                              </div>
+                                            )}
+
+                                            {/* Facebook Page */}
+                                            {church.facebook && (
+                                              <div className="flex items-center gap-2">
+                                                <ExternalLink className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                                                <a
+                                                  href={church.facebook.startsWith("http") ? church.facebook : `https://facebook.com/${church.facebook}`}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
+                                                >
+                                                  Facebook Page
                                                 </a>
                                               </div>
                                             )}
