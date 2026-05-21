@@ -124,7 +124,7 @@ export async function PATCH(
         .filter((s) => s.day && s.serviceName)
         .map((s) => ({
           day: s.day,
-          time: s.time || "",
+          time: s.time && String(s.time).trim() ? s.time : "TBD",
           serviceName: s.serviceName,
         }));
     }
