@@ -54,16 +54,26 @@ export async function GET(request: NextRequest) {
       overrideAccess: true,
     });
 
-    // Fetch existing invites for this event
-    const invites = await payload.find({
-      collection: "church-event-invites",
-      where: { event: { equals: eventId } },
-      limit: 500,
-      depth: 0,
-      overrideAccess: true,
-    });
+    // Fetch existing invites for this event (paginated to avoid limit cap)
+    let allInvites: Record<string, unknown>[] = [];
+    let page = 1;
+    const pageSize = 500;
+    let hasMore = true;
+    while (hasMore) {
+      const batch = await payload.find({
+        collection: "church-event-invites",
+        where: { event: { equals: eventId } },
+        limit: pageSize,
+        page,
+        depth: 0,
+        overrideAccess: true,
+      });
+      allInvites = allInvites.concat(batch.docs as Record<string, unknown>[]);
+      hasMore = allInvites.length < batch.totalDocs;
+      page++;
+    }
 
-    const inviteDocs = invites.docs.map((inv) => ({
+    const inviteDocs = allInvites.map((inv) => ({
       id: inv.id,
       code: inv.code,
       church: inv.church as string,
