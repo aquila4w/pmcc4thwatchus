@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const MAIN_DOMAIN = "pmcc4thwatch.us";
-const RESERVED_SUBDOMAINS = ["www", "admin", "cms", "api", "mail", "staging", "dev"];
+const RESERVED_SUBDOMAINS = ["www", "admin", "cms", "api", "mail", "staging", "dev", "images", "cdn"];
 
 function getChurchSubdomain(host: string): string | null {
   // Normalize host (remove port)
