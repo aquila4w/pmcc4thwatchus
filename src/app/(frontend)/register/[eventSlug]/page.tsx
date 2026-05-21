@@ -745,10 +745,26 @@ export default function RegisterPage({
                       {eventData.event.landingPage.showQR && (
                         <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                           onClick={() => {
-                            const link = document.createElement("a");
-                            link.href = registrationResult.qrCodeUrl;
-                            link.download = `registration-${registrationResult.code}.png`;
-                            link.click();
+                            const url = registrationResult.qrCodeUrl;
+                            if (url.startsWith("data:")) {
+                              // Decode base64 data URL to blob without fetch (avoids CSP connect-src)
+                              const [meta, b64] = url.split(",");
+                              const mime = meta.match(/:(.*?);/)?.[1] || "image/png";
+                              const bin = atob(b64);
+                              const buf = new Uint8Array(bin.length);
+                              for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+                              const blobUrl = URL.createObjectURL(new Blob([buf], { type: mime }));
+                              const link = document.createElement("a");
+                              link.href = blobUrl;
+                              link.download = `registration-${registrationResult.code}.png`;
+                              link.click();
+                              URL.revokeObjectURL(blobUrl);
+                            } else {
+                              const link = document.createElement("a");
+                              link.href = url;
+                              link.download = `registration-${registrationResult.code}.png`;
+                              link.click();
+                            }
                           }}>
                           <Download className="w-4 h-4 mr-2" />Save QR Code
                         </Button>
