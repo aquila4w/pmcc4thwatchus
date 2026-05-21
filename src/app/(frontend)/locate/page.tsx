@@ -377,7 +377,7 @@ export default function LocateChurchesPage() {
               )}
 
               {/* No Results */}
-              {!loading && !error && !proximityLoading && filteredChurches.length === 0 && (
+              {!loading && !error && !proximityLoading && filteredChurches.length === 0 && searchQuery && !proximityChurches && (
                 <Card className="p-8 text-center">
                   <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="font-semibold text-lg mb-2">No churches found</h3>
@@ -391,7 +391,7 @@ export default function LocateChurchesPage() {
               )}
 
               {/* Sub-District Groups or Flat Proximity List */}
-              {!loading && !error && !proximityLoading && (
+              {!loading && !error && (
                 <div className="space-y-3 max-h-[650px] overflow-y-auto pr-2">
                   {proximityChurches ? (
                     /* Flat list sorted by distance */
@@ -412,7 +412,7 @@ export default function LocateChurchesPage() {
                                 {church.localeName}
                               </span>
                               {church.distance != null && (
-                                <span className="text-xs text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
+                                <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                                   {church.distance} mi
                                 </span>
                               )}

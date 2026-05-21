@@ -147,7 +147,19 @@ export async function GET(request: NextRequest) {
           place.distance = Math.round(haversine(searchLat, searchLng, place.lat, place.lng) * 10) / 10;
         }
       }
-      places.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+      // Sort by distance, push churches without valid coordinates to the end
+      places.sort((a, b) => {
+        if (a.distance == null && b.distance == null) return 0;
+        if (a.distance == null) return 1;
+        if (b.distance == null) return -1;
+        return a.distance - b.distance;
+      });
+      // Only return churches that have distance (valid coordinates)
+      const nearby = places.filter(p => p.distance != null);
+      if (nearby.length > 0) {
+        places.length = 0;
+        places.push(...nearby);
+      }
     }
 
     const response_data: Record<string, unknown> = { churches: places };
