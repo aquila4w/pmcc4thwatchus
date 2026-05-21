@@ -45,7 +45,7 @@ function addSecurityHeaders(response: NextResponse) {
       "img-src 'self' data: blob: https: http:",
       "font-src 'self'",
       "frame-src https://maps.google.com/ https://www.google.com/maps/ https://www.zeffy.com/ https://www.google.com/recaptcha/",
-      "connect-src 'self' https://www.google-analytics.com https://api.qrserver.com",
+      "connect-src 'self' data: blob: https://www.google-analytics.com https://api.qrserver.com",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
