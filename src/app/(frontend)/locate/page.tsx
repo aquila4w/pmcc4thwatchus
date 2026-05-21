@@ -474,7 +474,7 @@ export default function LocateChurchesPage() {
                                         rel="noopener noreferrer"
                                         className="text-sm text-blue-600 hover:text-blue-800 transition-colors truncate"
                                       >
-                                        {church.facebook.startsWith("http") ? church.facebook.replace(/^https?:\/\/(www\.)?/, "") : `facebook.com/${church.facebook}`}
+                                        {church.facebook}
                                       </a>
                                     </div>
                                   )}
@@ -661,7 +661,7 @@ export default function LocateChurchesPage() {
                                                   rel="noopener noreferrer"
                                                   className="text-sm text-blue-600 hover:text-blue-800 transition-colors truncate"
                                                 >
-                                                  {church.facebook.startsWith("http") ? church.facebook.replace(/^https?:\/\/(www\.)?/, "") : `facebook.com/${church.facebook}`}
+                                                  {church.facebook}
                                                 </a>
                                               </div>
                                             )}
