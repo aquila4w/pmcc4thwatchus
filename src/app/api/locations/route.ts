@@ -22,6 +22,9 @@ const SHEET_ID = "1tmlYhjUlbk5SU4T9kAa6hgHwg1pMscxev6s6NFyr69Y";
 const API_KEY = process.env.GOOGLE_SHEETS_API_KEY || "";
 const RANGE = "A8:H100";
 
+// In-memory geocode cache: query -> {lat, lng}
+const geoCache = new Map<string, { lat: number; lng: number }>();
+
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 3958.8; // Earth radius in miles
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -29,6 +32,50 @@ function haversine(lat1: number, lon1: number, lat2: number, lon2: number): numb
   const a = Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+async function geocode(query: string): Promise<{ lat: number; lng: number } | null> {
+  const cached = geoCache.get(query);
+  if (cached) return cached;
+
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&countrycodes=us&format=json&limit=1`,
+      { headers: { "User-Agent": "PMCC4thWatch-Locate/1.0" } }
+    );
+    const data = await res.json();
+    if (data && data.length > 0) {
+      const result = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      geoCache.set(query, result);
+      return result;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+// Geocode addresses sequentially with Nominatim rate limiting
+async function geocodeAddresses(places: Church[]): Promise<void> {
+  const toGeocode = places.filter(p => (!p.lat || !p.lng) && p.address);
+  if (toGeocode.length === 0) return;
+
+  let delay = 0;
+  for (const place of toGeocode) {
+    if (geoCache.has(place.address)) {
+      const cached = geoCache.get(place.address)!;
+      place.lat = cached.lat;
+      place.lng = cached.lng;
+      continue;
+    }
+    // Wait for rate limit between requests (not before the first)
+    if (delay > 0) await new Promise(r => setTimeout(r, delay));
+    delay = 1100;
+
+    const result = await geocode(place.address);
+    if (result) {
+      place.lat = result.lat;
+      place.lng = result.lng;
+    }
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -120,21 +167,17 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    // Handle geocode search
+    // Handle geocode or near-me search
     let searchLat: number | null = null;
     let searchLng: number | null = null;
     let geocodedName: string | null = null;
 
     if (geocodeQuery) {
-      const geoRes = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(geocodeQuery)}&countrycodes=us&format=json&limit=1`,
-        { headers: { "User-Agent": "PMCC4thWatch-Locate/1.0" } }
-      );
-      const geoData = await geoRes.json();
-      if (geoData && geoData.length > 0) {
-        searchLat = parseFloat(geoData[0].lat);
-        searchLng = parseFloat(geoData[0].lon);
-        geocodedName = geoData[0].display_name?.split(",").slice(0, 2).join(",").trim() || null;
+      const geoResult = await geocode(geocodeQuery);
+      if (geoResult) {
+        searchLat = geoResult.lat;
+        searchLng = geoResult.lng;
+        geocodedName = geocodeQuery.charAt(0).toUpperCase() + geocodeQuery.slice(1);
       }
     } else if (nearLat && nearLng) {
       searchLat = parseFloat(nearLat);
@@ -142,24 +185,23 @@ export async function GET(request: NextRequest) {
     }
 
     if (searchLat !== null && searchLng !== null) {
+      // Geocode church addresses that lack coordinates
+      await geocodeAddresses(places);
+
+      // Calculate distances
       for (const place of places) {
         if (place.lat && place.lng) {
           place.distance = Math.round(haversine(searchLat, searchLng, place.lat, place.lng) * 10) / 10;
         }
       }
-      // Sort by distance, push churches without valid coordinates to the end
+
+      // Sort by distance, push churches without distance to the end
       places.sort((a, b) => {
         if (a.distance == null && b.distance == null) return 0;
         if (a.distance == null) return 1;
         if (b.distance == null) return -1;
         return a.distance - b.distance;
       });
-      // Only return churches that have distance (valid coordinates)
-      const nearby = places.filter(p => p.distance != null);
-      if (nearby.length > 0) {
-        places.length = 0;
-        places.push(...nearby);
-      }
     }
 
     const response_data: Record<string, unknown> = { churches: places };
