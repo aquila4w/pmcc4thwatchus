@@ -40,10 +40,10 @@ function addSecurityHeaders(response: NextResponse) {
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/",
-      "style-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://static.cloudflareinsights.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: blob: https: http:",
-      "font-src 'self'",
+      "font-src 'self' https://fonts.gstatic.com",
       "frame-src https://maps.google.com/ https://www.google.com/maps/ https://www.zeffy.com/ https://www.google.com/recaptcha/",
       "connect-src 'self' data: blob: https://www.google-analytics.com https://api.qrserver.com",
       "object-src 'none'",
