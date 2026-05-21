@@ -44,7 +44,7 @@ export function ImageUploadField({
       try {
         const formData = new FormData();
         formData.append("file", file);
-        formData.append("alt", file.name);
+        formData.append("_payload", JSON.stringify({ alt: file.name }));
 
         const res = await fetch("/api/media/upload", {
           method: "POST",

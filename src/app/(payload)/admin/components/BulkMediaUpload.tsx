@@ -28,6 +28,7 @@ export const BulkMediaUpload: React.FC = () => {
     for (const file of files) {
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("_payload", JSON.stringify({ alt: file.name.replace(/\.[^/.]+$/, "") }));
 
       try {
         // Upload to Payload CMS media API

@@ -244,7 +244,7 @@ export default function EditChurchSitePage({
   const uploadFile = async (file: File): Promise<{ id: string; url: string } | null> => {
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("alt", file.name.replace(/\.[^/.]+$/, ""));
+    formData.append("_payload", JSON.stringify({ alt: file.name.replace(/\.[^/.]+$/, "") }));
     try {
       const res = await fetch("/payload-api/media", {
         method: "POST",
