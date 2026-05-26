@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { formatEventDate } from "@/lib/event-date";
 import {
   Calendar,
   Plus,
@@ -166,12 +167,7 @@ export default function EventsPage() {
                       <div className="flex flex-wrap gap-4 mt-2 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Clock className="w-4 h-4" />
-                          {new Date(event.startDate).toLocaleDateString("en-US", {
-                            weekday: "short",
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric"
-                          })}
+                          {formatEventDate(event.startDate)}
                         </span>
                         <span className="flex items-center gap-1">
                           <MapPin className="w-4 h-4" />

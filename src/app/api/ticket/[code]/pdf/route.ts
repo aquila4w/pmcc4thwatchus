@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
+import { formatEventDate, formatEventTime } from "@/lib/event-date";
 
 function escapeHtml(str: string | undefined | null): string {
   if (!str) return "";
@@ -48,14 +49,7 @@ export async function GET(
 
     // Format date
     const eventDate = event?.startDate
-      ? new Date(event.startDate).toLocaleDateString("en-US", {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-        })
+      ? `${formatEventDate(event.startDate)} at ${formatEventTime(event.startDate)}`
       : "TBD";
 
     // Generate QR code URL

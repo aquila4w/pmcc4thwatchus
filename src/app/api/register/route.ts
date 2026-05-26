@@ -3,6 +3,7 @@ import { getPayload } from "payload";
 import config from "@payload-config";
 import { sendRegistrationEmail } from "@/lib/email";
 import { sendRegistrationSMS } from "@/lib/sms";
+import { formatEventDate, formatEventTime } from "@/lib/event-date";
 import { rateLimit } from "@/lib/rate-limit";
 import { randomInt } from "crypto";
 
@@ -441,10 +442,7 @@ export async function POST(request: NextRequest) {
     const shortUrl = `${baseUrl}/t/${registrationCode}`;
 
     // Format event date
-    const eventDate = new Date(fullEvent.startDate).toLocaleDateString("en-US", {
-      weekday: "long", year: "numeric", month: "long", day: "numeric",
-      hour: "numeric", minute: "2-digit",
-    });
+    const eventDate = `${formatEventDate(fullEvent.startDate)} at ${formatEventTime(fullEvent.startDate)}`;
 
     // Send email
     if (emailToUse) {

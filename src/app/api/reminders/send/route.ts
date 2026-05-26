@@ -3,6 +3,7 @@ import { getPayload } from "payload";
 import config from "@payload-config";
 import { getCurrentUser, isAdmin } from "@/lib/auth-helpers";
 import { sendReminderEmail } from "@/lib/email";
+import { formatEventDate, formatEventTime } from "@/lib/event-date";
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
               to: reg.guestInfo.email,
               guestName: reg.guestInfo.name || "Guest",
               eventTitle: event.title,
-              eventDate: new Date(event.startDate as string).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" }),
+              eventDate: `${formatEventDate(event.startDate as string)} at ${formatEventTime(event.startDate as string)}`,
               eventLocation: event.location || "TBD",
               ticketUrl: `${process.env.NEXT_PUBLIC_SITE_URL || ""}/ticket/${reg.inviteCode}`,
               reminderType: "day-before",
@@ -86,12 +87,11 @@ export async function POST(request: NextRequest) {
               to: reg.guestInfo.email,
               guestName: reg.guestInfo.name || "Guest",
               eventTitle: event.title,
-              eventDate: new Date(event.startDate as string).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" }),
+              eventDate: `${formatEventDate(event.startDate as string)} at ${formatEventTime(event.startDate as string)}`,
               eventLocation: event.location || "TBD",
               ticketUrl: `${process.env.NEXT_PUBLIC_SITE_URL || ""}/ticket/${reg.inviteCode}`,
               reminderType: "hour-before",
             });
-            await payload.update({ collection: "event-registrations", id: reg.id, data: { reminderHourBeforeSent: true } });
             results.hourBefore++;
           } catch (e) { results.errors.push(`${reg.guestInfo.email}: ${e}`); }
         }

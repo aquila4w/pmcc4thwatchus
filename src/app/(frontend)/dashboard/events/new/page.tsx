@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { formatEventDate } from "@/lib/event-date";
 import {
   Calendar,
   ChevronLeft,
@@ -498,11 +499,7 @@ export default function NewEventPage() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Date</span>
                       <span className="font-medium">
-                        {new Date(formData.startDate).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric"
-                        })}
+                        {formData.startDate ? formatEventDate(formData.startDate) : "Not set"}
                       </span>
                     </div>
                   )}
