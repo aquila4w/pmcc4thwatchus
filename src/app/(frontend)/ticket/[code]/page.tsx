@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
+import { formatEventDate, formatEventTime } from "@/lib/event-date";
 import {
   Calendar,
   MapPin,
@@ -144,24 +145,6 @@ export default function TicketPage({ params }: { params: Promise<{ code: string 
     );
   }
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "";
-    return new Date(dateString).toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  const formatTime = (dateString: string) => {
-    if (!dateString) return "";
-    return new Date(dateString).toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  };
-
   return (
     <div className="min-h-screen bg-[#0a0f1a]">
       {/* Header */}
@@ -187,7 +170,7 @@ export default function TicketPage({ params }: { params: Promise<{ code: string 
             <div>
               <p className="text-green-400 font-semibold">You've checked in!</p>
               <p className="text-green-400/70 text-sm">
-                Checked in on {formatDate(ticketData.registration.attendedAt ?? "")} at {formatTime(ticketData.registration.attendedAt ?? "")}
+                Checked in on {formatEventDate(ticketData.registration.attendedAt ?? "")} at {formatEventTime(ticketData.registration.attendedAt ?? "")}
               </p>
             </div>
           </div>
@@ -199,7 +182,7 @@ export default function TicketPage({ params }: { params: Promise<{ code: string 
             <div>
               <p className="text-purple-400 font-semibold">Congratulations on your baptism!</p>
               <p className="text-purple-400/70 text-sm">
-                Baptized on {formatDate(ticketData.registration.baptizedAt ?? "")}
+                Baptized on {formatEventDate(ticketData.registration.baptizedAt ?? "")}
               </p>
             </div>
           </div>
@@ -216,7 +199,7 @@ export default function TicketPage({ params }: { params: Promise<{ code: string 
             <div className="flex items-center justify-center gap-4 text-white/80 text-sm">
               <span className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
-                {formatDate(ticketData.event.startDate)}
+                {formatEventDate(ticketData.event.startDate)}
               </span>
             </div>
           </div>
@@ -269,8 +252,8 @@ export default function TicketPage({ params }: { params: Promise<{ code: string 
               <div className="flex items-start gap-3 text-white/70">
                 <Calendar className="w-5 h-5 text-white/50 mt-0.5" />
                 <div>
-                  <p className="text-white">{formatDate(ticketData.event.startDate)}</p>
-                  <p>{formatTime(ticketData.event.startDate)}</p>
+                  <p className="text-white">{formatEventDate(ticketData.event.startDate)}</p>
+                  <p>{formatEventTime(ticketData.event.startDate)}</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 text-white/70">
@@ -345,7 +328,7 @@ export default function TicketPage({ params }: { params: Promise<{ code: string 
 
         {/* Footer Note */}
         <p className="text-center text-white/40 text-sm mt-8">
-          Registered on {formatDate(ticketData.registration.registeredAt)}
+          Registered on {formatEventDate(ticketData.registration.registeredAt)}
         </p>
       </main>
 

@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import Link from "next/link";
+import { formatEventDateShort } from "@/lib/event-date";
 import Image from "next/image";
 import { ArrowRight, Calendar, MapPin, ArrowUpRight } from "lucide-react";
 
@@ -122,11 +123,7 @@ const fallbackEvents: EventData[] = [
 
 // Helper function to format date
 function formatEventDate(dateString: string) {
-  const date = new Date(dateString);
-  const month = date.toLocaleString("en-US", { month: "short" });
-  const day = date.getDate();
-  const year = date.getFullYear();
-  return { month, day: day.toString(), year: year.toString() };
+  return formatEventDateShort(dateString);
 }
 
 // Helper function to get category label

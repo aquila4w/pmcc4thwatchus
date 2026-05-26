@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import { formatEventDate } from "@/lib/event-date";
 import {
   ArrowLeft,
   Users,
@@ -353,12 +354,7 @@ export default function EventAnalyticsPage() {
                   <p className="text-sm text-slate-500 mb-1">Date & Time</p>
                   <p className="font-medium">
                     {event.startDate
-                      ? new Date(event.startDate).toLocaleDateString("en-US", {
-                          weekday: "short",
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })
+                      ? formatEventDate(event.startDate)
                       : "TBD"}
                   </p>
                 </div>

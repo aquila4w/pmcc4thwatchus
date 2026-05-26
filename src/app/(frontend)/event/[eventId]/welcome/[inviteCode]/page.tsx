@@ -3,6 +3,7 @@
 import { useState, useEffect, use, useMemo } from "react";
 import Link from "next/link";
 import DOMPurify from "dompurify";
+import { formatEventDate, formatEventTime } from "@/lib/event-date";
 import {
   Calendar,
   MapPin,
@@ -165,22 +166,6 @@ export default function WelcomePage({
     );
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  };
-
   return (
     <div className="min-h-screen bg-[#0a0f1a]">
       {/* Header */}
@@ -248,8 +233,8 @@ export default function WelcomePage({
               <div className="flex items-start gap-3 text-white/70">
                 <Calendar className="w-5 h-5 text-white/50 mt-0.5" />
                 <div>
-                  <p className="text-white font-medium">{formatDate(data.event.startDate)}</p>
-                  <p>{formatTime(data.event.startDate)}</p>
+                  <p className="text-white font-medium">{formatEventDate(data.event.startDate)}</p>
+                  <p>{formatEventTime(data.event.startDate)}</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 text-white/70">

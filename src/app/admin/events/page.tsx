@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { formatEventDate, formatEventTime } from "@/lib/event-date";
 import {
   Calendar,
   MapPin,
@@ -109,24 +110,6 @@ export default function EventsPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -189,12 +172,12 @@ export default function EventsPage() {
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center gap-2 text-sm text-slate-600">
                     <Calendar className="w-4 h-4" />
-                    <span>{formatDate(event.startDate)}</span>
+                    <span>{formatEventDate(event.startDate)}</span>
                   </div>
                   {event.startDate && (
                     <div className="flex items-center gap-2 text-sm text-slate-600">
                       <Clock className="w-4 h-4" />
-                      <span>{formatTime(event.startDate)}</span>
+                      <span>{formatEventTime(event.startDate)}</span>
                     </div>
                   )}
                   {event.location && (

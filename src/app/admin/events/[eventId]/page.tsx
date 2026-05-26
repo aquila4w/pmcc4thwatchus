@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import { formatEventDate, formatEventTime } from "@/lib/event-date";
 import {
   ArrowLeft,
   Calendar,
@@ -161,26 +162,6 @@ export default function EventDetailPage() {
     document.body.appendChild(link);
     link.click();
     setTimeout(() => document.body.removeChild(link), 1000);
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  const formatTime = (dateString?: string) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    return date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-    });
   };
 
   if (loading) {
@@ -429,20 +410,20 @@ export default function EventDetailPage() {
             {event.startDate && (
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-slate-500" />
-                <span className="text-sm">{formatDate(event.startDate)} at {formatTime(event.startDate)}</span>
+                <span className="text-sm">{formatEventDate(event.startDate)} at {formatEventTime(event.startDate)}</span>
               </div>
             )}
             {event.endDate && (
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-slate-500" />
                 <span className="text-sm">
-                  {formatDate(event.endDate)} at {formatTime(event.endDate)}
+                  {formatEventDate(event.endDate)} at {formatEventTime(event.endDate)}
                 </span>
               </div>
             )}
             {event.registrationDeadline && (
               <div className="flex items-center gap-2 text-slate-500">
-                <span className="text-xs">Registration deadline: {formatDate(event.registrationDeadline)}</span>
+                <span className="text-xs">Registration deadline: {formatEventDate(event.registrationDeadline)}</span>
               </div>
             )}
           </div>

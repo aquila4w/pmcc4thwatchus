@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { formatEventDate as formatDateUtil, formatEventTimeRange } from "@/lib/event-date";
 import {
   Calendar,
   MapPin,
@@ -155,37 +156,11 @@ const categories = ["All", "Conference", "Training", "Leadership", "Prayer", "Ev
 
 // Helper functions
 function formatEventDate(dateString: string) {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+  return formatDateUtil(dateString);
 }
 
 function formatEventTime(dateString: string, endDateString?: string) {
-  const startDate = new Date(dateString);
-  const startTime = startDate.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-
-  if (endDateString) {
-    const endDate = new Date(endDateString);
-    // If different days, show date range
-    if (startDate.toDateString() !== endDate.toDateString()) {
-      return "Multi-day event";
-    }
-    const endTime = endDate.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-    return `${startTime} - ${endTime}`;
-  }
-
-  return startTime;
+  return formatEventTimeRange(dateString, endDateString);
 }
 
 function getCategoryLabel(eventType: string) {

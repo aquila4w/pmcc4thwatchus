@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, use } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { formatEventDate, formatEventTime } from "@/lib/event-date";
 import ReCAPTCHA from "react-google-recaptcha";
 import {
   Calendar,
@@ -361,14 +362,6 @@ export default function RegisterPage({
     fieldsInteracted.current.add(fieldName);
   };
 
-  const formatDate = (dateString: string) =>
-    new Date(dateString).toLocaleDateString("en-US", {
-      weekday: "long", year: "numeric", month: "long", day: "numeric",
-    });
-
-  const formatTime = (dateString: string) =>
-    new Date(dateString).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-
   // --- RENDER STATES ---
 
   if (step === "loading") {
@@ -451,8 +444,8 @@ export default function RegisterPage({
                 {eventData.event.title}
               </h1>
               <div className="flex flex-wrap gap-4 text-white/70">
-                <span className="flex items-center gap-2"><Calendar className="w-5 h-5" />{formatDate(eventData.event.startDate)}</span>
-                <span className="flex items-center gap-2"><Clock className="w-5 h-5" />{formatTime(eventData.event.startDate)}</span>
+                <span className="flex items-center gap-2"><Calendar className="w-5 h-5" />{formatEventDate(eventData.event.startDate)}</span>
+                <span className="flex items-center gap-2"><Clock className="w-5 h-5" />{formatEventTime(eventData.event.startDate)}</span>
                 <span className="flex items-center gap-2"><MapPin className="w-5 h-5" />{eventData.event.location}</span>
               </div>
             </div>
@@ -701,8 +694,8 @@ export default function RegisterPage({
                         <div className="bg-white/5 border border-white/10 rounded-lg p-4 mb-4 text-left">
                           <h3 className="text-white font-semibold mb-2">{eventData.event.title}</h3>
                           <div className="flex flex-wrap gap-3 text-white/70 text-sm">
-                            <span className="flex items-center gap-1"><Calendar className="w-4 h-4" />{formatDate(eventData.event.startDate)}</span>
-                            <span className="flex items-center gap-1"><Clock className="w-4 h-4" />{formatTime(eventData.event.startDate)}</span>
+                            <span className="flex items-center gap-1"><Calendar className="w-4 h-4" />{formatEventDate(eventData.event.startDate)}</span>
+                            <span className="flex items-center gap-1"><Clock className="w-4 h-4" />{formatEventTime(eventData.event.startDate)}</span>
                             <span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{eventData.event.location}</span>
                           </div>
                         </div>

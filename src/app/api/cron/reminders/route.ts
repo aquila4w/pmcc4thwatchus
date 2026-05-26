@@ -3,6 +3,7 @@ import { getPayload, type Payload } from "payload";
 import config from "@payload-config";
 import { sendReminderEmail } from "@/lib/email";
 import { sendRegistrationSMS, shortenUrl } from "@/lib/sms";
+import { formatEventDate, formatEventTime } from "@/lib/event-date";
 
 interface Event {
   id: string | number;
@@ -144,17 +145,8 @@ async function sendEventReminders(
   });
 
   // Format event date
-  const eventDate = new Date(event.startDate || "").toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const eventTime = new Date(event.startDate || "").toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  const eventDate = formatEventDate(event.startDate || "");
+  const eventTime = formatEventTime(event.startDate || "");
 
   const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || "https://pmcc4thwatch.us";
 
