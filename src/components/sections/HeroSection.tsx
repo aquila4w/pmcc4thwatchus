@@ -614,6 +614,9 @@ export function HeroSection() {
       ref={containerRef}
       className="relative h-screen overflow-hidden"
     >
+      {/* Preload hero image */}
+      <link rel="preload" as="image" href="https://images.unsplash.com/photo-1504052434569-70ad5836ab65?w=1200&q=80" />
+
       {/* Cursor follower */}
       {mounted && (
         <CursorFollower mouseX={absoluteMousePosition.x} mouseY={absoluteMousePosition.y} />

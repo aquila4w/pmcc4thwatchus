@@ -50,6 +50,15 @@ const nextConfig = {
     ],
   },
   compress: true,
+  experimental: {
+    optimizePackageImports: [
+      "lucide-react",
+      "framer-motion",
+      "date-fns",
+      "recharts",
+      "@radix-ui/react-icons",
+    ],
+  },
   webpack: (config, { isServer }) => {
     if (isServer) {
       // Exclude AWS SDK from server-side bundling
