@@ -31,6 +31,7 @@ interface TicketData {
     guestEmail: string;
     guestPhone: string;
     status: string;
+    sourceType?: string;
     registeredAt: string;
     attendedAt: string | null;
     baptizedAt: string | null;
@@ -264,7 +265,7 @@ export default function TicketPage({ params }: { params: Promise<{ code: string 
           </div>
 
           {/* Invited By / Contact */}
-          {ticketData.invitedBy && (
+          {ticketData.registration.sourceType !== "platform" && ticketData.invitedBy && (
             <div className="p-6 border-b border-white/10 bg-secondary/5">
               <h2 className="text-white/50 text-xs uppercase tracking-wider mb-4">For any questions, please contact</h2>
               <div className="flex items-center gap-3">

@@ -201,6 +201,7 @@ export async function GET(request: NextRequest) {
         guestEmail: registration.guestInfo?.email,
         guestPhone: registration.guestInfo?.phone,
         status: registration.status,
+        sourceType: registration.sourceType,
         registeredAt: registration.registeredAt,
         attendedAt: registration.attendedAt,
         baptizedAt: registration.baptizedAt,

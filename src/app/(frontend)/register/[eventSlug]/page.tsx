@@ -505,7 +505,7 @@ export default function RegisterPage({
               </Card>
 
               {/* Invited By / Contact Card */}
-              {eventData.invitedBy && eventData.event.landingPage.showInviter && (
+              {inviteType !== "platform" && eventData.invitedBy && eventData.event.landingPage.showInviter && (
                 <Card className="bg-secondary/10 border-secondary/20 p-6">
                   <h2 className="font-serif text-lg font-semibold text-white mb-4 flex items-center gap-2">
                     <Phone className="w-5 h-5 text-secondary" />
@@ -710,7 +710,7 @@ export default function RegisterPage({
                         </div>
 
                         {/* Contact info after registration */}
-                        {eventData.invitedBy && (eventData.invitedBy.phone || eventData.invitedBy.email) && (
+                        {inviteType !== "platform" && eventData.invitedBy && (eventData.invitedBy.phone || eventData.invitedBy.email) && (
                           <div className="bg-secondary/10 border border-secondary/20 rounded-lg p-4 mb-6 text-left">
                             <p className="text-white/70 text-sm mb-2">For any questions, please contact</p>
                             <p className="text-white font-semibold">{eventData.invitedBy.name}</p>
