@@ -1,11 +1,23 @@
 import { getPayload } from "payload";
+import { Types } from "mongoose";
 import config from "@payload-config";
 
 /**
- * Get the raw Mongoose model for a Payload CMS collection.
- * Use this to run .aggregate() pipelines directly on MongoDB.
+ * Convert a string ID to MongoDB ObjectId.
+ * Required in aggregation $match stages since Mongoose
+ * doesn't auto-cast in .aggregate() like it does in .find().
  */
-export async function getModel(slug: string) {
+export function toObjectId(id: string) {
+  return new Types.ObjectId(id);
+}
+
+/**
+ * Get the native MongoDB collection for a Payload slug.
+ * Uses the underlying connection for reliable .aggregate() support.
+ */
+export async function getCollection(slug: string) {
   const payload = await getPayload({ config });
-  return payload.db.collections[slug];
+  const db = payload.db.connection.db;
+  if (!db) throw new Error("MongoDB connection not established");
+  return db.collection(slug);
 }
