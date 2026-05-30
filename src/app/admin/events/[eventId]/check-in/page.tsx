@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -56,7 +56,6 @@ interface RecentCheckIn {
 }
 
 export default function AdminCheckInPage() {
-  const router = useRouter();
   const params = useParams();
   const eventId = params.eventId as string;
 
@@ -182,8 +181,10 @@ export default function AdminCheckInPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <ArrowLeft className="w-5 h-5" />
+          <Button variant="ghost" size="icon" asChild>
+            <Link href={`/admin/events/${eventId}`}>
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
           </Button>
           <div>
             <h1 className="text-2xl font-bold">Check-In</h1>

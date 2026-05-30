@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
-import type { Where } from "payload";
 import config from "@payload-config";
 import { getCurrentUser, isAdmin } from "@/lib/auth-helpers";
+import { getOverview } from "@/lib/analytics/overview-pipeline";
+import { getChurches } from "@/lib/analytics/churches-pipeline";
+import { getPlacements } from "@/lib/analytics/placements-pipeline";
+import { getPlatforms } from "@/lib/analytics/platforms-pipeline";
+import { getTechnical } from "@/lib/analytics/technical-pipeline";
 
 // Allow up to 60s for analytics aggregation under heavy load (Vercel Pro)
 export const maxDuration = 60;
@@ -28,26 +32,7 @@ export async function GET(
     const to = searchParams.get("to");
     const section = searchParams.get("section"); // overview|churches|placements|platforms|technical
 
-    // Build where clauses with optional date filters
-    const scanWhere: Where = { event: { equals: eventId } };
-    if (from) scanWhere.scannedAt = { greater_than_equal: from };
-    if (to) {
-      scanWhere.scannedAt = {
-        ...(scanWhere.scannedAt as Record<string, unknown>),
-        less_than_equal: to,
-      };
-    }
-
-    const regWhere: Where = { event: { equals: eventId } };
-    if (from) regWhere.createdAt = { greater_than_equal: from };
-    if (to) {
-      regWhere.createdAt = {
-        ...(regWhere.createdAt as Record<string, unknown>),
-        less_than_equal: to,
-      };
-    }
-
-    // --- Fetch all data in parallel ---
+    // Fetch event details (always needed)
     let event: Record<string, unknown> | null = null;
     try {
       event = await payload.findByID({ collection: "managed-events", id: eventId, depth: 0, overrideAccess: true });
@@ -55,443 +40,66 @@ export async function GET(
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
-    const [
-      scansResult,
-      registrationsResult,
-      eventInvitesResult,
-      churchInvitesResult,
-      platformLinksResult,
-    ] = await Promise.all([
-      payload.find({
-        collection: "invite-scans",
-        where: scanWhere,
-        limit: 0,
-        depth: 0,
-        overrideAccess: true,
-      }),
-      payload.find({
-        collection: "event-registrations",
-        where: regWhere,
-        limit: 0,
-        depth: 0,
-        overrideAccess: true,
-      }),
-      payload.find({
-        collection: "event-invites",
-        where: { event: { equals: eventId } },
-        limit: 0,
-        depth: 0,
-        overrideAccess: true,
-      }),
-      payload.find({
-        collection: "church-event-invites",
-        where: { event: { equals: eventId } },
-        limit: 0,
-        depth: 0,
-        overrideAccess: true,
-      }),
-      payload.find({
-        collection: "platform-event-links",
-        where: { event: { equals: eventId } },
-        limit: 0,
-        depth: 0,
-        overrideAccess: true,
-      }),
-    ]);
+    const eventData = {
+      title: event?.title as string | undefined,
+      startDate: event?.startDate as string | undefined,
+      location: event?.location as string | undefined,
+      maxAttendees: event?.maxAttendees as number | undefined,
+    };
 
-    const scans = scansResult.docs;
-    const registrations = registrationsResult.docs;
-    const eventInvites = eventInvitesResult.docs;
-    const churchInvites = churchInvitesResult.docs;
-    const platformLinks = platformLinksResult.docs;
-
-    // --- Classify scans by type ---
-    const memberScans = scans.filter((s) => s.inviteType === "member");
-    const churchScans = scans.filter((s) => s.inviteType === "church");
-    const platformScans = scans.filter((s) => s.inviteType === "platform");
-
-    // --- Overview metrics ---
-    const totalRegistrations = registrationsResult.totalDocs;
-    const attendedStatuses = ["attended", "baptized"];
-    const attendedCount = registrations.filter((r) => attendedStatuses.includes(r.status as string)).length;
-    const baptizedCount = registrations.filter((r) => r.status === "baptized").length;
-    const waitlistedCount = registrations.filter((r) => r.status === "waitlisted").length;
-
-    const statusDistribution: Record<string, number> = {};
-    for (const reg of registrations) {
-      const s = (reg.status as string) || "unknown";
-      statusDistribution[s] = (statusDistribution[s] || 0) + 1;
+    // Route to the appropriate pipeline based on section
+    if (section === "churches") {
+      const [overviewResult, byChurch] = await Promise.all([
+        getOverview(eventId, eventData, from, to),
+        getChurches(eventId, from, to),
+      ]);
+      return NextResponse.json({ overview: overviewResult.overview, byChurch });
     }
 
-    // Conversion from scans → registrations (via invite-scans.registered boolean)
-    const registeredFromScans = scans.filter((s) => s.registered).length;
-    const overallConversionRate = scans.length > 0
-      ? Math.round((registeredFromScans / scans.length) * 100)
-      : 0;
-    const attendanceRate = totalRegistrations > 0
-      ? Math.round((attendedCount / totalRegistrations) * 100)
-      : 0;
-    const baptismRate = attendedCount > 0
-      ? Math.round((baptizedCount / attendedCount) * 100)
-      : 0;
-
-    // --- Scan timeline ---
-    const timelineMap: Record<string, { date: string; memberScans: number; churchScans: number; platformScans: number; registrations: number }> = {};
-    for (const scan of scans) {
-      const dateStr = scan.scannedAt
-        ? new Date(scan.scannedAt as string).toISOString().split("T")[0]
-        : "unknown";
-      if (!timelineMap[dateStr]) {
-        timelineMap[dateStr] = { date: dateStr, memberScans: 0, churchScans: 0, platformScans: 0, registrations: 0 };
-      }
-      if (scan.inviteType === "member") timelineMap[dateStr].memberScans++;
-      else if (scan.inviteType === "church") timelineMap[dateStr].churchScans++;
-      else if (scan.inviteType === "platform") timelineMap[dateStr].platformScans++;
-      if (scan.registered) timelineMap[dateStr].registrations++;
-    }
-    const scanTimeline = Object.values(timelineMap).sort((a, b) => a.date.localeCompare(b.date));
-
-    // --- Per-church with members ---
-    // Build lookup maps
-    const churchNameMap: Record<string, string> = {};
-    const placementNameMap: Record<string, string> = {};
-    const platformNameMap: Record<string, string> = {};
-
-    // Resolve church names and placement names via bulk queries (not N+1)
-    const churchIds = [...new Set(churchInvites.map((ci) => ci.church as string).filter(Boolean))];
-    const placementIds = [...new Set(churchInvites.map((ci) => ci.adPlacement as string).filter(Boolean))];
-    const platformIds = [...new Set(platformLinks.map((pl) => pl.platform as string).filter(Boolean))];
-
-    // Also include church IDs from registrations (invitedByChurch) and event invites
-    const regChurchIds = [...new Set(registrations.map((r) => r.invitedByChurch as string).filter(Boolean))];
-    const inviteChurchIds = [...new Set(eventInvites.map((ei) => ei.church as string).filter(Boolean))];
-    const allChurchIds = [...new Set([...churchIds, ...regChurchIds, ...inviteChurchIds])];
-
-    const [churchDocsResult, placementDocsResult, platformDocsResult] = await Promise.all([
-      allChurchIds.length > 0
-        ? payload.find({ collection: "churches", where: { id: { in: allChurchIds } }, limit: 0, depth: 0, overrideAccess: true })
-        : Promise.resolve({ docs: [] }),
-      placementIds.length > 0
-        ? payload.find({ collection: "ad-placements", where: { id: { in: placementIds } }, limit: 0, depth: 0, overrideAccess: true })
-        : Promise.resolve({ docs: [] }),
-      platformIds.length > 0
-        ? payload.find({ collection: "online-platforms", where: { id: { in: platformIds } }, limit: 0, depth: 0, overrideAccess: true })
-        : Promise.resolve({ docs: [] }),
-    ]);
-
-    for (const doc of churchDocsResult.docs) {
-      churchNameMap[doc.id] = doc.name || doc.id;
-    }
-    for (const doc of placementDocsResult.docs) {
-      placementNameMap[doc.id] = doc.name || doc.id;
-    }
-    for (const doc of platformDocsResult.docs) {
-      platformNameMap[doc.id] = doc.name || doc.id;
+    if (section === "placements") {
+      const [overviewResult, byPlacement] = await Promise.all([
+        getOverview(eventId, eventData, from, to),
+        getPlacements(eventId, from, to),
+      ]);
+      return NextResponse.json({ overview: overviewResult.overview, byPlacement });
     }
 
-    // Group registrations by church (via invitedByChurch)
-    const regsByChurch: Record<string, { total: number; attended: number; baptized: number; waitlisted: number }> = {};
-    for (const reg of registrations) {
-      const churchId = (reg.invitedByChurch as string) || "unknown";
-      if (!regsByChurch[churchId]) regsByChurch[churchId] = { total: 0, attended: 0, baptized: 0, waitlisted: 0 };
-      regsByChurch[churchId].total++;
-      if (attendedStatuses.includes(reg.status as string)) regsByChurch[churchId].attended++;
-      if (reg.status === "baptized") regsByChurch[churchId].baptized++;
-      if (reg.status === "waitlisted") regsByChurch[churchId].waitlisted++;
+    if (section === "platforms") {
+      const [overviewResult, byPlatform] = await Promise.all([
+        getOverview(eventId, eventData, from, to),
+        getPlatforms(eventId, from, to),
+      ]);
+      return NextResponse.json({ overview: overviewResult.overview, byPlatform });
     }
 
-    // Also include registrations from church ads (sourceType = "church")
-    // These have churchEventInvite but may not have invitedByChurch
-    const regsByChurchInvite: Record<string, number> = {};
-    for (const reg of registrations) {
-      if (reg.churchEventInvite && !reg.invitedByChurch) {
-        const ciId = reg.churchEventInvite as string;
-        regsByChurchInvite[ciId] = (regsByChurchInvite[ciId] || 0) + 1;
-      }
-    }
-
-    // Resolve church-event-invite → church for those registrations
-    for (const [ciId, count] of Object.entries(regsByChurchInvite)) {
-      const ci = churchInvites.find((c) => c.id === ciId);
-      if (ci) {
-        const churchId = ci.church as string;
-        if (!regsByChurch[churchId]) regsByChurch[churchId] = { total: 0, attended: 0, baptized: 0, waitlisted: 0 };
-        regsByChurch[churchId].total += count;
-      }
-    }
-
-    // Group scans by church
-    const scansByChurch: Record<string, number> = {};
-    for (const scan of churchScans) {
-      // Find the church from the churchEventInvite
-      const ciId = scan.churchEventInvite as string;
-      const ci = churchInvites.find((c) => c.id === ciId);
-      if (ci) {
-        const churchId = ci.church as string;
-        scansByChurch[churchId] = (scansByChurch[churchId] || 0) + 1;
-      }
-    }
-    // Also count member scans towards their church
-    const memberScansByChurch: Record<string, number> = {};
-    for (const scan of memberScans) {
-      const eiId = scan.eventInvite as string;
-      const ei = eventInvites.find((e) => e.id === eiId);
-      if (ei) {
-        const churchId = ei.church as string;
-        memberScansByChurch[churchId] = (memberScansByChurch[churchId] || 0) + 1;
-      }
-    }
-
-    // Build per-member data grouped by church
-    const membersByChurch: Record<string, {
-      memberId: string; memberName: string; inviteCode: string;
-      scans: number; registrations: number; conversionRate: number;
-    }[]> = {};
-
-    for (const ei of eventInvites) {
-      const churchId = (ei.church as string) || "unknown";
-      const memberName = (ei.memberContactName as string) || "Unknown Member";
-      const inviteCode = ei.inviteCode as string;
-      const memberId = String(ei.invitedBy || ei.id);
-
-      // Count scans for this invite
-      const inviteScans = memberScans.filter((s) => s.eventInvite === ei.id);
-      const inviteScanCount = inviteScans.length;
-
-      // Count registrations for this invite
-      const inviteRegs = registrations.filter((r) => r.eventInvite === ei.id);
-      const inviteRegCount = inviteRegs.length;
-      const convRate = inviteScanCount > 0
-        ? Math.round((inviteRegCount / inviteScanCount) * 100)
-        : 0;
-
-      if (!membersByChurch[churchId]) membersByChurch[churchId] = [];
-      membersByChurch[churchId].push({
-        memberId,
-        memberName,
-        inviteCode,
-        scans: inviteScanCount,
-        registrations: inviteRegCount,
-        conversionRate: convRate,
+    if (section === "technical") {
+      const [overviewResult, technical] = await Promise.all([
+        getOverview(eventId, eventData, from, to),
+        getTechnical(eventId, from, to),
+      ]);
+      return NextResponse.json({
+        overview: overviewResult.overview,
+        deviceBreakdown: technical.deviceBreakdown,
+        browserBreakdown: technical.browserBreakdown,
+        osBreakdown: technical.osBreakdown,
+        locationBreakdown: technical.locationBreakdown,
+        behavioralMetrics: technical.behavioralMetrics,
       });
     }
 
-    // Assemble byChurch
-    const assembledChurchIds = new Set([
-      ...Object.keys(regsByChurch),
-      ...Object.keys(scansByChurch),
-      ...Object.keys(memberScansByChurch),
-      ...Object.keys(membersByChurch),
-    ]);
+    // Default: overview only (or full if no section param and backward compat)
+    const overviewResult = await getOverview(eventId, eventData, from, to);
 
-    const byChurch = Array.from(assembledChurchIds).map((churchId) => {
-      const regData = regsByChurch[churchId] || { total: 0, attended: 0, baptized: 0, waitlisted: 0 };
-      const churchScanCount = scansByChurch[churchId] || 0;
-      const memberScanCount = memberScansByChurch[churchId] || 0;
-      const totalScanCount = churchScanCount + memberScanCount;
-      const convRate = totalScanCount > 0
-        ? Math.round((regData.total / totalScanCount) * 100)
-        : 0;
-
-      return {
-        churchId,
-        churchName: churchNameMap[churchId] || churchId,
-        registrations: regData.total,
-        scans: totalScanCount,
-        conversionRate: convRate,
-        attendedCount: regData.attended,
-        baptizedCount: regData.baptized,
-        members: (membersByChurch[churchId] || []).sort((a, b) => b.registrations - a.registrations),
-      };
-    }).sort((a, b) => b.registrations - a.registrations);
-
-    // --- Per-placement ---
-    const scansByPlacement: Record<string, { scans: number; registered: number }> = {};
-    for (const scan of churchScans) {
-      const ciId = scan.churchEventInvite as string;
-      const ci = churchInvites.find((c) => c.id === ciId);
-      if (ci) {
-        const placementId = ci.adPlacement as string;
-        if (!scansByPlacement[placementId]) scansByPlacement[placementId] = { scans: 0, registered: 0 };
-        scansByPlacement[placementId].scans++;
-        if (scan.registered) scansByPlacement[placementId].registered++;
-      }
+    if (section === "overview" || !section) {
+      // For lazy-loading, return just overview.
+      // For backward compat (no section param), return overview + timeline.
+      return NextResponse.json({
+        overview: overviewResult.overview,
+        scanTimeline: overviewResult.scanTimeline,
+      });
     }
 
-    const regsByPlacement: Record<string, number> = {};
-    for (const reg of registrations) {
-      if (reg.sourceType === "church" && reg.churchEventInvite) {
-        const ciId = reg.churchEventInvite as string;
-        const ci = churchInvites.find((c) => c.id === ciId);
-        if (ci) {
-          const placementId = ci.adPlacement as string;
-          regsByPlacement[placementId] = (regsByPlacement[placementId] || 0) + 1;
-        }
-      }
-    }
-
-    const allPlacementIds = new Set([
-      ...Object.keys(scansByPlacement),
-      ...Object.keys(regsByPlacement),
-    ]);
-
-    const byPlacement = Array.from(allPlacementIds).map((placementId) => {
-      const scanData = scansByPlacement[placementId] || { scans: 0, registered: 0 };
-      const regCount = regsByPlacement[placementId] || 0;
-      return {
-        placementId,
-        placementName: placementNameMap[placementId] || placementId,
-        scans: scanData.scans,
-        registrations: regCount,
-        conversionRate: scanData.scans > 0 ? Math.round((regCount / scanData.scans) * 100) : 0,
-      };
-    }).sort((a, b) => b.scans - a.scans);
-
-    // --- Per-platform ---
-    const scansByPlatform: Record<string, number> = {};
-    for (const scan of platformScans) {
-      const plId = scan.platformEventLink as string;
-      const pl = platformLinks.find((p) => p.id === plId);
-      if (pl) {
-        const platformId = pl.platform as string;
-        scansByPlatform[platformId] = (scansByPlatform[platformId] || 0) + 1;
-      }
-    }
-
-    const regsByPlatform: Record<string, number> = {};
-    for (const reg of registrations) {
-      if (reg.platformEventLink) {
-        const plId = reg.platformEventLink as string;
-        const pl = platformLinks.find((p) => p.id === plId);
-        if (pl) {
-          const platformId = pl.platform as string;
-          regsByPlatform[platformId] = (regsByPlatform[platformId] || 0) + 1;
-        }
-      }
-    }
-
-    const allPlatformIds = new Set([
-      ...Object.keys(scansByPlatform),
-      ...Object.keys(regsByPlatform),
-    ]);
-
-    const byPlatform = Array.from(allPlatformIds).map((platformId) => {
-      const scanCount = scansByPlatform[platformId] || 0;
-      const regCount = regsByPlatform[platformId] || 0;
-      return {
-        platformId,
-        platformName: platformNameMap[platformId] || platformId,
-        scans: scanCount,
-        registrations: regCount,
-        conversionRate: scanCount > 0 ? Math.round((regCount / scanCount) * 100) : 0,
-      };
-    }).sort((a, b) => b.scans - a.scans);
-
-    // --- Device/Browser/OS breakdowns ---
-    const groupAndCount = (field: string) => {
-      const map: Record<string, { scans: number; registered: number }> = {};
-      for (const scan of scans) {
-        const val = (scan[field as keyof typeof scan] as string) || "unknown";
-        if (!map[val]) map[val] = { scans: 0, registered: 0 };
-        map[val].scans++;
-        if (scan.registered) map[val].registered++;
-      }
-      return Object.entries(map).map(([name, stats]) => ({
-        name,
-        scans: stats.scans,
-        registered: stats.registered,
-        conversionRate: stats.scans > 0 ? Math.round((stats.registered / stats.scans) * 100) : 0,
-      }));
-    };
-
-    const deviceBreakdown = groupAndCount("device");
-    const browserBreakdown = groupAndCount("browser");
-    const osBreakdown = groupAndCount("os");
-
-    // --- Location breakdown ---
-    const locationMap: Record<string, { city: string; region: string; country: string; scans: number; registered: number }> = {};
-    for (const scan of scans) {
-      const city = (scan.city as string) || "";
-      const region = (scan.region as string) || "";
-      const country = (scan.country as string) || "";
-      if (!city && !region && !country) continue;
-      const key = `${city}|${region}|${country}`;
-      if (!locationMap[key]) locationMap[key] = { city, region, country, scans: 0, registered: 0 };
-      locationMap[key].scans++;
-      if (scan.registered) locationMap[key].registered++;
-    }
-    const locationBreakdown = Object.values(locationMap)
-      .sort((a, b) => b.scans - a.scans)
-      .map((loc) => ({ ...loc, conversionRate: loc.scans > 0 ? Math.round((loc.registered / loc.scans) * 100) : 0 }));
-
-    // --- Behavioral metrics ---
-    const registeredScans = scans.filter((s) => s.registered);
-    const avg = (arr: number[]) => arr.length > 0 ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null;
-    const timeOnPageValues = registeredScans.map((s) => s.timeOnPage as number).filter((v): v is number => typeof v === "number" && v > 0);
-    const scrollDepthValues = registeredScans.map((s) => s.scrollDepth as number).filter((v): v is number => typeof v === "number" && v > 0);
-    const formStartValues = registeredScans.map((s) => s.formStartDelay as number).filter((v): v is number => typeof v === "number" && v >= 0);
-
-    const behavioralMetrics = {
-      avgTimeOnPage: avg(timeOnPageValues),
-      avgScrollDepth: avg(scrollDepthValues),
-      avgFormStartDelay: avg(formStartValues),
-      rageClickCount: scans.filter((s) => s.rageClickDetected).length,
-      adBlockerDetectedCount: scans.filter((s) => s.adBlockerDetected).length,
-      sampleSize: timeOnPageValues.length,
-    };
-
-    // Build the overview object (always needed)
-    const overview = {
-      totalRegistrations,
-      attendedCount,
-      baptizedCount,
-      waitlistedCount,
-      totalScans: scans.length,
-      memberScans: memberScans.length,
-      churchScans: churchScans.length,
-      platformScans: platformScans.length,
-      overallConversionRate,
-      attendanceRate,
-      baptismRate,
-      statusDistribution,
-      spotsRemaining: (event?.maxAttendees as number | undefined)
-        ? Math.max(0, (event.maxAttendees as number) - totalRegistrations)
-        : null,
-      eventTitle: event?.title || null,
-      eventStartDate: event?.startDate || null,
-      eventLocation: event?.location || null,
-    };
-
-    // Return only the requested section for lazy-loading
-    if (section === "overview") {
-      return NextResponse.json({ overview, scanTimeline });
-    }
-    if (section === "churches") {
-      return NextResponse.json({ overview, byChurch });
-    }
-    if (section === "placements") {
-      return NextResponse.json({ overview, byPlacement });
-    }
-    if (section === "platforms") {
-      return NextResponse.json({ overview, byPlatform });
-    }
-    if (section === "technical") {
-      return NextResponse.json({ overview, deviceBreakdown, browserBreakdown, osBreakdown, locationBreakdown, behavioralMetrics });
-    }
-
-    // No section param — return everything (backward compatible)
-    return NextResponse.json({
-      overview,
-      byChurch,
-      byPlacement,
-      byPlatform,
-      scanTimeline,
-      deviceBreakdown,
-      browserBreakdown,
-      osBreakdown,
-      locationBreakdown,
-      behavioralMetrics,
-    });
+    return NextResponse.json(overviewResult);
   } catch (error) {
     console.error("Analytics API error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

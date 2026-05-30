@@ -17,6 +17,7 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -211,6 +212,12 @@ export default function EventsPage() {
                       <QrCode className="w-4 h-4 mr-1" />
                       View Details
                       <ChevronRight className="w-4 h-4 ml-1" />
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="sm" className="flex-1">
+                    <Link href={`/admin/events/${event.id}/analytics`}>
+                      <BarChart3 className="w-4 h-4 mr-1" />
+                      Analytics
                     </Link>
                   </Button>
                   <Button asChild variant="ghost" size="sm">

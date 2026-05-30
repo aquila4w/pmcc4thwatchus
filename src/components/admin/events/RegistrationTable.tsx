@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+
 import {
   ChevronLeft,
   ChevronRight,
@@ -240,12 +240,9 @@ export function RegistrationTable({
                     </td>
                     <td className="p-4">
                       <div>
-                        <Link
-                          href={`/admin/registrations/${registration.id}`}
-                          className="font-medium hover:underline"
-                        >
+                        <span className="font-medium">
                           {registration.guestInfo?.name || "Unknown"}
-                        </Link>
+                        </span>
                         <div className="text-sm text-slate-500">
                           {registration.guestInfo?.email || registration.guestInfo?.phone || "-"}
                         </div>

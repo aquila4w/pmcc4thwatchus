@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -125,7 +125,6 @@ interface AnalyticsData {
 // --- Component ---
 
 export default function EventAnalyticsPage() {
-  const router = useRouter();
   const params = useParams();
   const eventId = params.eventId as string;
 
@@ -326,8 +325,10 @@ export default function EventAnalyticsPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <ArrowLeft className="w-5 h-5" />
+          <Button variant="ghost" size="icon" asChild>
+            <Link href={`/admin/events/${eventId}`}>
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
           </Button>
           <div>
             <h1 className="text-2xl font-bold">
