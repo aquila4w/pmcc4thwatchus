@@ -3,6 +3,21 @@ import { withPayload } from "@payloadcms/next/withPayload";
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   allowedDevOrigins: ["*.preview.same-app.com"],
+  async redirects() {
+    return [
+      {
+        source: "/admin",
+        destination: "/admin/events",
+        permanent: false,
+        has: [
+          {
+            type: "cookie",
+            key: "payload-token",
+          },
+        ],
+      },
+    ];
+  },
   // Fix for S3 storage plugin - exclude AWS SDK from bundling
   serverExternalPackages: [
     "@aws-sdk/client-s3",

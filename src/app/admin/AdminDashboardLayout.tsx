@@ -16,7 +16,6 @@ import {
   X,
   Church,
   ChevronLeft,
-  LayoutDashboard,
   Megaphone,
   Globe,
 } from "lucide-react";
@@ -110,12 +109,6 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
 
   // Dashboard sidebar items
   const sidebarItems: SidebarItem[] = [
-    {
-      label: "Dashboard",
-      icon: LayoutDashboard,
-      href: "/admin",
-      roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary", "eventAdmin"],
-    },
     {
       label: "Organization",
       icon: Building2,
@@ -370,7 +363,7 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => router.push("/cms")}>
-                      <LayoutDashboard className="w-4 h-4 mr-2" />
+                      <Settings className="w-4 h-4 mr-2" />
                       Payload CMS
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => router.push("/member/admin")}>
