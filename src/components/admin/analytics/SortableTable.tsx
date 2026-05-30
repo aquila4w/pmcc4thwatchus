@@ -8,6 +8,7 @@ export interface Column<T> {
   key: string;
   label: string;
   sortable?: boolean;
+  align?: "left" | "right" | "center";
   render?: (row: T) => React.ReactNode;
   compare?: (a: T, b: T) => number;
 }
@@ -91,28 +92,31 @@ export function SortableTable<T extends { id?: string }>({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-slate-50">
-              {columns.map((col) => (
-                <th
-                  key={col.key}
-                  className={`text-left py-3 px-4 font-medium text-slate-500 ${
-                    col.sortable !== false ? "cursor-pointer select-none hover:text-slate-700" : ""
-                  }`}
-                  onClick={col.sortable !== false ? () => handleSort(col.key) : undefined}
-                >
-                  <span className="flex items-center gap-1">
-                    {col.label}
-                    {sortKey === col.key ? (
-                      sortDir === "asc" ? (
-                        <ChevronUp className="w-4 h-4" />
+              {columns.map((col) => {
+                const align = col.align || "left";
+                return (
+                  <th
+                    key={col.key}
+                    className={`py-3 px-4 font-medium text-slate-500 ${
+                      align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left"
+                    } ${col.sortable !== false ? "cursor-pointer select-none hover:text-slate-700" : ""}`}
+                    onClick={col.sortable !== false ? () => handleSort(col.key) : undefined}
+                  >
+                    <span className={`inline-flex items-center gap-1 ${align === "right" ? "flex-row-reverse" : ""}`}>
+                      {col.label}
+                      {sortKey === col.key ? (
+                        sortDir === "asc" ? (
+                          <ChevronUp className="w-3.5 h-3.5 flex-shrink-0" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 flex-shrink-0" />
+                        )
                       ) : (
-                        <ChevronDown className="w-4 h-4" />
-                      )
-                    ) : (
-                      col.sortable !== false && <ChevronDown className="w-4 h-4 opacity-30" />
-                    )}
-                  </span>
-                </th>
-              ))}
+                        col.sortable !== false && <ChevronDown className="w-3.5 h-3.5 opacity-30 flex-shrink-0" />
+                      )}
+                    </span>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
@@ -127,11 +131,19 @@ export function SortableTable<T extends { id?: string }>({
                     } ${isExpanded ? "bg-slate-50" : ""}`}
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
                   >
-                    {columns.map((col) => (
-                      <td key={col.key} className="py-3 px-4">
-                        {col.render ? col.render(row) : String((row as Record<string, unknown>)[col.key] ?? "—")}
-                      </td>
-                    ))}
+                    {columns.map((col) => {
+                      const align = col.align || "left";
+                      return (
+                        <td
+                          key={col.key}
+                          className={`py-3 px-4 ${
+                            align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left"
+                          }`}
+                        >
+                          {col.render ? col.render(row) : String((row as Record<string, unknown>)[col.key] ?? "—")}
+                        </td>
+                      );
+                    })}
                   </tr>
                   {isExpanded && expandedRow && (
                     <tr className="bg-slate-50/50">

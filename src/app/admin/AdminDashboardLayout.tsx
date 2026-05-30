@@ -110,6 +110,12 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
   // Dashboard sidebar items
   const sidebarItems: SidebarItem[] = [
     {
+      label: "Dashboard",
+      icon: Home,
+      href: "/admin",
+      roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary", "eventAdmin"],
+    },
+    {
       label: "Organization",
       icon: Building2,
       href: "/admin/organization",

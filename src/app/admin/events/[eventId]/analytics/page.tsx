@@ -21,6 +21,7 @@ import {
   Church,
   Megaphone,
   BarChart3,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -135,6 +136,7 @@ export default function EventAnalyticsPage() {
     label: "All Time",
   });
   const [expandedChurchId, setExpandedChurchId] = useState<string | null>(null);
+  const [loadedSections, setLoadedSections] = useState<Set<string>>(new Set());
 
   // Fetch overview (lightweight) on mount / date range change
   const fetchOverview = useCallback(async () => {
@@ -161,10 +163,7 @@ export default function EventAnalyticsPage() {
   const fetchSection = useCallback(async (section: string) => {
     if (!data) return;
     // Skip if already loaded
-    if (section === "churches" && data?.byChurch?.length > 0) return;
-    if (section === "placements" && data?.byPlacement?.length > 0) return;
-    if (section === "platforms" && data?.byPlatform?.length > 0) return;
-    if (section === "technical" && data?.deviceBreakdown?.length > 0) return;
+    if (loadedSections.has(section)) return;
 
     setSectionLoading(section);
     try {
@@ -177,13 +176,14 @@ export default function EventAnalyticsPage() {
       if (res.ok) {
         const sectionData = await res.json();
         setData((prev) => prev ? { ...prev, ...sectionData } : sectionData as AnalyticsData);
+        setLoadedSections((prev) => new Set(prev).add(section));
       }
     } catch (error) {
       console.error(`Failed to fetch ${section}:`, error);
     } finally {
       setSectionLoading(null);
     }
-  }, [eventId, dateRange, data]);
+  }, [eventId, dateRange, data, loadedSections]);
 
   // Full refresh (overview + current tab)
   const fetchAll = useCallback(async () => {
@@ -257,25 +257,25 @@ export default function EventAnalyticsPage() {
         </div>
       ),
     },
-    { key: "registrations", label: "Registrations", compare: (a, b) => a.registrations - b.registrations },
-    { key: "scans", label: "Scans", compare: (a, b) => a.scans - b.scans },
-    { key: "conversionRate", label: "Conv %", render: (row) => `${row.conversionRate}%`, compare: (a, b) => a.conversionRate - b.conversionRate },
-    { key: "attendedCount", label: "Attended", compare: (a, b) => a.attendedCount - b.attendedCount },
-    { key: "baptizedCount", label: "Baptized", compare: (a, b) => a.baptizedCount - b.baptizedCount },
+    { key: "registrations", label: "Registrations", align: "right", compare: (a, b) => a.registrations - b.registrations },
+    { key: "scans", label: "Scans", align: "right", compare: (a, b) => a.scans - b.scans },
+    { key: "conversionRate", label: "Conv %", align: "right", render: (row) => `${row.conversionRate}%`, compare: (a, b) => a.conversionRate - b.conversionRate },
+    { key: "attendedCount", label: "Attended", align: "right", compare: (a, b) => a.attendedCount - b.attendedCount },
+    { key: "baptizedCount", label: "Baptized", align: "right", compare: (a, b) => a.baptizedCount - b.baptizedCount },
   ];
 
   const placementColumns: Column<(typeof byPlacement)[0]>[] = [
     { key: "placementName", label: "Placement" },
-    { key: "scans", label: "Scans", compare: (a, b) => a.scans - b.scans },
-    { key: "registrations", label: "Registrations", compare: (a, b) => a.registrations - b.registrations },
-    { key: "conversionRate", label: "Conv %", render: (row) => `${row.conversionRate}%`, compare: (a, b) => a.conversionRate - b.conversionRate },
+    { key: "scans", label: "Scans", align: "right", compare: (a, b) => a.scans - b.scans },
+    { key: "registrations", label: "Registrations", align: "right", compare: (a, b) => a.registrations - b.registrations },
+    { key: "conversionRate", label: "Conv %", align: "right", render: (row) => `${row.conversionRate}%`, compare: (a, b) => a.conversionRate - b.conversionRate },
   ];
 
   const platformColumns: Column<(typeof byPlatform)[0]>[] = [
     { key: "platformName", label: "Platform" },
-    { key: "scans", label: "Scans", compare: (a, b) => a.scans - b.scans },
-    { key: "registrations", label: "Registrations", compare: (a, b) => a.registrations - b.registrations },
-    { key: "conversionRate", label: "Conv %", render: (row) => `${row.conversionRate}%`, compare: (a, b) => a.conversionRate - b.conversionRate },
+    { key: "scans", label: "Scans", align: "right", compare: (a, b) => a.scans - b.scans },
+    { key: "registrations", label: "Registrations", align: "right", compare: (a, b) => a.registrations - b.registrations },
+    { key: "conversionRate", label: "Conv %", align: "right", render: (row) => `${row.conversionRate}%`, compare: (a, b) => a.conversionRate - b.conversionRate },
   ];
 
   // CSV export data
@@ -302,6 +302,17 @@ export default function EventAnalyticsPage() {
     Registrations: p.registrations,
     "Conv %": p.conversionRate,
   }));
+
+  // Helper: show loading skeleton for a section that hasn't loaded yet
+  const sectionIsLoading = (section: string) =>
+    sectionLoading === section || !loadedSections.has(section);
+
+  const LoadingSkeleton = () => (
+    <div className="flex flex-col items-center justify-center py-16 gap-3">
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <p className="text-sm text-slate-500">Loading data…</p>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -480,6 +491,8 @@ export default function EventAnalyticsPage() {
 
         {/* ===== BY CHURCH TAB ===== */}
         <TabsContent value="churches" className="space-y-4">
+          {sectionIsLoading("churches") ? <LoadingSkeleton /> : (
+          <>
           <div className="flex items-center justify-between">
             <p className="text-sm text-slate-500">
               {byChurch.length} churches &middot; Click a row to see member breakdown
@@ -551,10 +564,14 @@ export default function EventAnalyticsPage() {
               />
             </div>
           </Card>
+          </>
+          )}
         </TabsContent>
 
         {/* ===== BY PLACEMENT TAB ===== */}
         <TabsContent value="placements" className="space-y-4">
+          {sectionIsLoading("placements") ? <LoadingSkeleton /> : (
+          <>
           <div className="flex items-center justify-between">
             <p className="text-sm text-slate-500">
               {byPlacement.length} ad placements (billboard, bus, flyer, etc.)
@@ -572,10 +589,14 @@ export default function EventAnalyticsPage() {
               />
             </div>
           </Card>
+          </>
+          )}
         </TabsContent>
 
         {/* ===== BY PLATFORM TAB ===== */}
         <TabsContent value="platforms" className="space-y-4">
+          {sectionIsLoading("platforms") ? <LoadingSkeleton /> : (
+          <>
           <div className="flex items-center justify-between">
             <p className="text-sm text-slate-500">
               {byPlatform.length} online platforms (Meta, TikTok, YouTube, etc.)
@@ -593,10 +614,14 @@ export default function EventAnalyticsPage() {
               />
             </div>
           </Card>
+          </>
+          )}
         </TabsContent>
 
         {/* ===== TECHNICAL TAB ===== */}
         <TabsContent value="technical" className="space-y-6">
+          {sectionIsLoading("technical") ? <LoadingSkeleton /> : (
+          <>
           {/* Device / Browser / OS Breakdown */}
           <div className="grid md:grid-cols-3 gap-6">
             <Card className="bg-white p-6">
@@ -710,6 +735,8 @@ export default function EventAnalyticsPage() {
               </p>
             )}
           </Card>
+          </>
+          )}
         </TabsContent>
       </Tabs>
 
