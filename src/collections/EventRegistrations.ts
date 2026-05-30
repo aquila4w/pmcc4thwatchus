@@ -91,6 +91,7 @@ export const EventRegistrations: CollectionConfig = {
         { label: "Member Invite", value: "member" },
         { label: "Church Ad", value: "church" },
         { label: "Online Platform", value: "platform" },
+        { label: "Walk-in", value: "walk-in" },
       ],
       admin: {
         position: "sidebar",
@@ -200,6 +201,15 @@ export const EventRegistrations: CollectionConfig = {
       relationTo: "users",
       admin: {
         description: "User who scanned the QR code at check-in",
+      },
+    },
+    {
+      name: "registeredBy",
+      type: "relationship",
+      relationTo: "users",
+      admin: {
+        description: "Admin who registered this walk-in guest at the booth",
+        condition: (data) => data?.sourceType === "walk-in",
       },
     },
     // Reminder tracking

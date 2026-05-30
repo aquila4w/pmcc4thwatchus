@@ -22,9 +22,11 @@ const REGISTRATION_CONCURRENCY = parseInt(process.env.REG_CONCURRENCY || "100", 
 const CHECKIN_CONCURRENCY = parseInt(process.env.CHECKIN_CONCURRENCY || "100", 10);
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "leo.marquez@pmcc4thwatch.us";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "REDACTED_PASSWORD";
-// Use multiple invite codes to simulate real scenario (200+ members each sharing their own code)
-// This avoids the 200/code rate limit bottleneck
-const INVITE_CODES = (process.env.INVITE_CODES || "TFKARJ-2AJD").split(",");
+// Number of simulated members (each gets a unique invite code).
+// 25 members × 200/code = 5,000 registration capacity per hour
+const NUM_TEST_MEMBERS = parseInt(process.env.NUM_TEST_MEMBERS || "25", 10);
+// Allow override with pre-existing invite codes
+const INVITE_CODES_ENV = process.env.INVITE_CODES || "";
 
 // ---- Helpers ----
 
@@ -94,7 +96,7 @@ function printStats(label, results) {
 
 // ---- Phase 1+2: Simultaneous Registration + Check-in ----
 
-async function phase_simultaneous(authToken) {
+async function phase_simultaneous(authToken, inviteCodes) {
   console.log("\n" + "=".repeat(60));
   console.log("  PHASE 1+2: SIMULTANEOUS REGISTRATION + CHECK-IN");
   console.log(`  Target: ${TOTAL_REGISTRATIONS} registrations + immediate check-ins`);
@@ -183,7 +185,7 @@ async function phase_simultaneous(authToken) {
     const phone = `+1555${String(index).padStart(7, "0")}`;
     const email = `voltest-${index}-${code.toLowerCase()}@test.pmcc4thwatch.us`;
     // Round-robin across invite codes to avoid single-code rate limit
-    const refCode = INVITE_CODES[index % INVITE_CODES.length];
+    const refCode = inviteCodes[index % inviteCodes.length];
 
     const reqStart = Date.now();
     try {
@@ -327,6 +329,109 @@ async function phase3_analytics(authToken) {
   return results;
 }
 
+// ---- Setup: Create test members with invite codes ----
+
+async function setupTestMembers(authToken) {
+  console.log("\n  ── SETUP: Creating test members ──");
+  console.log(`  Need ${NUM_TEST_MEMBERS} members (${TOTAL_REGISTRATIONS} regs ÷ 200/code = ${Math.ceil(TOTAL_REGISTRATIONS / 200)} codes needed)`);
+
+  // If env provided invite codes, use those
+  if (INVITE_CODES_ENV) {
+    const codes = INVITE_CODES_ENV.split(",").map(c => c.trim()).filter(Boolean);
+    console.log(`  Using ${codes.length} invite codes from INVITE_CODES env var`);
+    return codes;
+  }
+
+  // Create test members via Payload API
+  const createdUserIds = [];
+  const inviteCodes = [];
+
+  // Check for existing test members first
+  const existingRes = await fetch(
+    `${BASE_URL}/payload-api/users?where[name][contains]=VolTest&limit=100&depth=0`,
+    { headers: { "Cookie": `payload-token=${authToken}` } }
+  );
+  const existingData = await existingRes.json();
+  if (existingData.docs?.length > 0) {
+    for (const user of existingData.docs) {
+      if (user.inviteCode) {
+        inviteCodes.push(user.inviteCode);
+        createdUserIds.push(user.id);
+      }
+    }
+    console.log(`  Found ${inviteCodes.length} existing VolTest members`);
+  }
+
+  // Create more if needed
+  const needed = NUM_TEST_MEMBERS - inviteCodes.length;
+  if (needed > 0) {
+    console.log(`  Creating ${needed} new test members...`);
+    const batchSize = 10;
+    for (let i = 0; i < needed; i += batchSize) {
+      const batch = [];
+      for (let j = i; j < Math.min(i + batchSize, needed); j++) {
+        const idx = inviteCodes.length + j;
+        batch.push(
+          fetch(`${BASE_URL}/payload-api/users`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Cookie": `payload-token=${authToken}`,
+            },
+            body: JSON.stringify({
+              name: `VolTest Member ${idx}`,
+              email: `voltest-member-${idx}@test.pmcc4thwatch.us`,
+              password: `Vt${idx}!${generateCode()}@1`,
+              phone: `+1555${String(9000000 + idx).padStart(7, "0")}`,
+              role: "member",
+              status: "approved",
+            }),
+          }).then(async (res) => {
+            const data = await res.json();
+            if (data.doc?.inviteCode) {
+              inviteCodes.push(data.doc.inviteCode);
+              createdUserIds.push(data.doc.id);
+            } else {
+              console.error(`    ⚠️  Failed to create member ${idx}: ${data.errors?.[0]?.message || res.status}`);
+            }
+          }).catch(err => {
+            console.error(`    ⚠️  Error creating member: ${err.message}`);
+          })
+        );
+      }
+      await Promise.all(batch);
+    }
+  }
+
+  console.log(`  ✅ ${inviteCodes.length} invite codes ready (${createdUserIds.length} users)`);
+  console.log(`  Capacity: ${inviteCodes.length} codes × 200/code = ${inviteCodes.length * 200} registrations/hr\n`);
+  return inviteCodes;
+}
+
+async function cleanupTestMembers(authToken) {
+  console.log("\n  ── CLEANUP: Removing test data ──");
+  // Note: We don't delete the test registrations as they're useful for analytics testing.
+  // Only clean up the test member accounts.
+  const res = await fetch(
+    `${BASE_URL}/payload-api/users?where[name][contains]=VolTest&limit=100&depth=0`,
+    { headers: { "Cookie": `payload-token=${authToken}` } }
+  );
+  const data = await res.json();
+  let deleted = 0;
+  if (data.docs?.length > 0) {
+    for (const user of data.docs) {
+      try {
+        await fetch(`${BASE_URL}/payload-api/users/${user.id}`, {
+          method: "DELETE",
+          headers: { "Cookie": `payload-token=${authToken}` },
+        });
+        deleted++;
+      } catch {}
+    }
+  }
+  console.log(`  Deleted ${deleted} test member accounts`);
+}
+
 // ---- Main ----
 
 async function main() {
@@ -339,6 +444,7 @@ async function main() {
   console.log(`║  Volume: ${String(TOTAL_REGISTRATIONS).padEnd(46)}║`);
   console.log(`║  Reg concurrency: ${String(REGISTRATION_CONCURRENCY).padEnd(37)}║`);
   console.log(`║  Checkin concurrency: ${String(CHECKIN_CONCURRENCY).padEnd(34)}║`);
+  console.log(`║  Test members: ${String(NUM_TEST_MEMBERS).padEnd(40)}║`);
   console.log("╚══════════════════════════════════════════════════════════╝");
 
   // Login to get auth token
@@ -363,13 +469,23 @@ async function main() {
     console.error("  ❌ No auth token received");
     process.exit(1);
   }
-  console.log("  ✅ Authenticated as superAdmin\n");
+  console.log("  ✅ Authenticated as superAdmin");
+
+  // Setup: Create test members with unique invite codes
+  const inviteCodes = await setupTestMembers(authToken);
+  if (inviteCodes.length === 0) {
+    console.error("  ❌ No invite codes available. Cannot run test.");
+    process.exit(1);
+  }
 
   // Phase 1+2: Simultaneous registration + check-in
-  const combined = await phase_simultaneous(authToken);
+  const combined = await phase_simultaneous(authToken, inviteCodes);
 
   // Phase 3: Analytics under load
   const phase3 = await phase3_analytics(authToken);
+
+  // Cleanup test members
+  await cleanupTestMembers(authToken);
 
   // ---- Summary ----
   const totalTime = ((Date.now() - (combined.regResults[0]?.timestamp || Date.now())) / 1000).toFixed(1);
@@ -377,6 +493,7 @@ async function main() {
   console.log("  FINAL SUMMARY");
   console.log("=".repeat(60));
   console.log(`  Total time:            ${totalTime}s`);
+  console.log(`  Invite codes used:     ${inviteCodes.length} (${inviteCodes.length * 200} max capacity)`);
   console.log(`  Registration:          ${combined.regStats.success} success, ${combined.regStats.errors} errors (${combined.regStats.throughput.toFixed(1)} req/s)`);
   console.log(`  Check-in:              ${combined.checkinStats.success} success, ${combined.checkinStats.errors} errors (${combined.checkinStats.throughput.toFixed(1)} req/s)`);
   console.log(`  Analytics:             ${phase3.filter(r => r.success).length}/5 responded correctly`);

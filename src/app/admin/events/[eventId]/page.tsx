@@ -26,6 +26,7 @@ import {
   Megaphone,
   Download,
   Globe,
+  ClipboardCheck,
 } from "lucide-react";
 import QRCode from "qrcode";
 import { Button } from "@/components/ui/button";
@@ -191,8 +192,10 @@ export default function EventDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <ArrowLeft className="w-5 h-5" />
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/admin/events">
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
           </Button>
           <div>
             <h1 className="text-2xl font-bold">{event.title}</h1>
@@ -341,6 +344,14 @@ export default function EventDetailPage() {
             <QrCode className="w-5 h-5 text-slate-600 mb-2" />
             <p className="font-medium">Check-In</p>
             <p className="text-xs text-slate-500">QR scanner & check-in</p>
+          </Card>
+        </Link>
+
+        <Link href={`/admin/events/${eventId}/booth`}>
+          <Card className="bg-white p-4 hover:bg-slate-50 transition-colors cursor-pointer border-2 border-green-200">
+            <ClipboardCheck className="w-5 h-5 text-green-600 mb-2" />
+            <p className="font-medium">Registration Booth</p>
+            <p className="text-xs text-slate-500">Lookup, walk-in & print</p>
           </Card>
         </Link>
 

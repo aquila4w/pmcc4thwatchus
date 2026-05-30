@@ -103,6 +103,10 @@ export async function GET(
       spotsRemaining: event.maxAttendees
         ? Math.max(0, event.maxAttendees - totalRegistrations)
         : null,
+      // Booth page needs these
+      eventTitle: event.title || null,
+      walkInCode: event.walkInEnabled ? (event.walkInCode || null) : null,
+      hasBaptism: event.hasBaptism || false,
     });
   } catch (error) {
     console.error("Event stats error:", error);

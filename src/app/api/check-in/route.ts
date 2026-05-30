@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
       data: {
         status: "attended",
         attendedAt: new Date().toISOString(),
-        // checkedInBy could be set if we have authenticated user
+        checkedInBy: authUser.id,
       },
     });
 

@@ -57,6 +57,8 @@ export async function POST(request: NextRequest) {
     refCode,
     adCode,
     platformCode,
+    walkInCode,
+    eventId: bodyEventId,
     scanId,
     firstName,
     lastName,
@@ -64,6 +66,7 @@ export async function POST(request: NextRequest) {
     email,
     recaptchaToken,
     joinWaitlist,
+    sendNotification,
     // Legacy support
     guestName,
     guestEmail,
@@ -74,6 +77,8 @@ export async function POST(request: NextRequest) {
     refCode?: string;
     adCode?: string;
     platformCode?: string;
+    walkInCode?: string;
+    eventId?: string;
     scanId?: string;
     firstName?: string;
     lastName?: string;
@@ -81,6 +86,7 @@ export async function POST(request: NextRequest) {
     email?: string;
     recaptchaToken?: string;
     joinWaitlist?: boolean;
+    sendNotification?: boolean;
     guestName?: string;
     guestEmail?: string;
     guestPhone?: string;
@@ -117,7 +123,7 @@ export async function POST(request: NextRequest) {
   try {
     const [inviteRateLimit, ipRateLimit] = await Promise.all([
       rateLimitAsync(`register:${inviteKey}`, { windowMs: 60 * 60 * 1000, maxRequests: inviteMaxRequests }),
-      rateLimitAsync(`register-ip:${clientIp}`, { windowMs: 60 * 60 * 1000, maxRequests: 500 }),
+      rateLimitAsync(`register-ip:${clientIp}`, { windowMs: 60 * 60 * 1000, maxRequests: 5000 }),
     ]);
 
     if (!inviteRateLimit.allowed) {
@@ -149,6 +155,153 @@ export async function POST(request: NextRequest) {
   try {
     const payload = await getPayload({ config });
 
+    // ===== WALK-IN REGISTRATION =====
+    // Walk-in registrations are performed by admin staff at the registration booth.
+    // They bypass reCAPTCHA, capacity checks, and create the registration as "attended" immediately.
+    if (walkInCode && bodyEventId) {
+      // Walk-in requires admin auth (unlike public registration)
+      let authUser: { id: string; role: string } | null = null;
+      try {
+        const { getCurrentUser, isAdmin } = await import("@/lib/auth-helpers");
+        authUser = await getCurrentUser(request) as { id: string; role: string } | null;
+        if (!authUser || !isAdmin(authUser.role)) {
+          return NextResponse.json({ error: "Authentication required for walk-in registration" }, { status: 401 });
+        }
+      } catch {
+        return NextResponse.json({ error: "Authentication required for walk-in registration" }, { status: 401 });
+      }
+
+      // Verify event exists and has walk-in enabled
+      let walkInEvent: Record<string, unknown> | null = null;
+      try {
+        walkInEvent = await payload.findByID({
+          collection: "managed-events",
+          id: bodyEventId,
+          depth: 0,
+          overrideAccess: true,
+        }) as Record<string, unknown>;
+      } catch {
+        return NextResponse.json({ error: "Event not found" }, { status: 404 });
+      }
+
+      if (!walkInEvent.walkInEnabled) {
+        return NextResponse.json({ error: "Walk-in registration is not enabled for this event" }, { status: 400 });
+      }
+
+      if (walkInEvent.walkInCode !== walkInCode) {
+        return NextResponse.json({ error: "Invalid walk-in code" }, { status: 403 });
+      }
+
+      // Generate registration code
+      const registrationCode = generateRegistrationCode();
+      const qrData = registrationCode;
+      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrData)}`;
+
+      const emailForGuest = emailToUse || `guest-${registrationCode.toLowerCase()}@pmcc4thwatch.us`;
+
+      // Create guest user
+      let guestUserId: string | undefined;
+      try {
+        const existingGuests = await payload.find({
+          collection: "users",
+          where: { email: { equals: emailForGuest } },
+          limit: 1,
+          depth: 0,
+        });
+        if (existingGuests.docs.length > 0) {
+          guestUserId = String(existingGuests.docs[0].id);
+        } else {
+          const guestUser = await payload.create({
+            collection: "users",
+            data: {
+              name: fullName,
+              email: emailForGuest,
+              phone: phoneToUse || undefined,
+              role: "guest",
+              status: "approved",
+            },
+            depth: 0,
+          });
+          guestUserId = String(guestUser.id);
+        }
+      } catch (err) {
+        console.error("Failed to create walk-in guest user");
+      }
+
+      const now = new Date().toISOString();
+
+      // Create registration — status is "attended" immediately (bypass check-in step)
+      const registration = await payload.create({
+        collection: "event-registrations",
+        data: {
+          inviteCode: registrationCode,
+          event: bodyEventId,
+          sourceType: "walk-in",
+          guest: guestUserId,
+          guestInfo: {
+            name: fullName,
+            email: emailToUse || undefined,
+            phone: phoneToUse || undefined,
+          },
+          qrCodeUrl,
+          qrCodeData: qrData,
+          status: "attended",
+          registeredAt: now,
+          attendedAt: now,
+          registeredBy: authUser.id,
+          checkedInBy: authUser.id,
+          notes: (body as Record<string, unknown>).notes as string || undefined,
+        },
+      });
+
+      // Optionally send email/SMS
+      if (sendNotification) {
+        const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || "https://pmcc4thwatch.us";
+        const ticketUrl = `${baseUrl}/ticket/${registrationCode}`;
+        const shortUrl = `${baseUrl}/t/${registrationCode}`;
+        const eventDate = (walkInEvent as Record<string, unknown>).startDate
+          ? `${formatEventDate((walkInEvent as Record<string, unknown>).startDate as string)} at ${formatEventTime((walkInEvent as Record<string, unknown>).startDate as string)}`
+          : "TBD";
+
+        if (emailToUse) {
+          sendRegistrationEmail({
+            to: emailToUse,
+            guestName: fullName,
+            eventTitle: ((walkInEvent as Record<string, unknown>).title as string) || "Upcoming Event",
+            eventDate,
+            eventLocation: ((walkInEvent as Record<string, unknown>).location as string) || "TBD",
+            registrationCode,
+            qrCodeUrl,
+            ticketUrl,
+          }).catch((err) => console.error("Walk-in email failed:", err));
+        }
+
+        if (phoneToUse) {
+          sendRegistrationSMS({
+            to: phoneToUse,
+            guestName: fullName,
+            eventTitle: ((walkInEvent as Record<string, unknown>).title as string) || "Upcoming Event",
+            ticketUrl: shortUrl,
+          }).catch((err) => console.error("Walk-in SMS failed:", err));
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        registration: {
+          id: registration.id,
+          code: registrationCode,
+          qrCodeUrl,
+          status: "attended",
+        },
+        event: {
+          id: bodyEventId,
+          title: (walkInEvent as Record<string, unknown>).title,
+        },
+      });
+    }
+
+    // ===== ONLINE REGISTRATION (existing flow) =====
     // Find the event invite — support UUID code, ref-based lookup, or church ad code
     let eventInvite: Record<string, unknown> | null = null;
     let churchInvite: Record<string, unknown> | null = null;
@@ -156,7 +309,7 @@ export async function POST(request: NextRequest) {
     let event: Record<string, unknown> | null = null;
     let invitingMember: Record<string, unknown> | null = null;
     let churchContact: { name?: string; email?: string; phone?: string } | null = null;
-    let sourceType: "member" | "church" | "platform" = "member";
+    let sourceType: "member" | "church" | "platform" | "walk-in" = "member";
 
     if (refCode && eventSlug) {
       // Look up member + event in parallel (was sequential — 2 DB round-trips → 1)
@@ -454,15 +607,28 @@ export async function POST(request: NextRequest) {
       })(),
       // Get inviter church ID and name
       (async () => {
-        if (!invitingMember?.church) return { id: undefined, name: undefined };
         try {
-          const church = typeof invitingMember.church === "object"
-            ? invitingMember.church as { id?: string; name?: string }
-            : await payload.findByID({ collection: "churches", id: String(invitingMember.church), depth: 0 });
-          return {
-            id: String((church as { id?: string }).id || invitingMember.church),
-            name: (church as { name?: string })?.name,
-          };
+          // For member invites, get church from the inviting member
+          if (invitingMember?.church) {
+            const church = typeof invitingMember.church === "object"
+              ? invitingMember.church as { id?: string; name?: string }
+              : await payload.findByID({ collection: "churches", id: String(invitingMember.church), depth: 0 });
+            return {
+              id: String((church as { id?: string }).id || invitingMember.church),
+              name: (church as { name?: string })?.name,
+            };
+          }
+          // For church QR codes, get church from the church invite
+          if (churchInvite?.church) {
+            const church = typeof churchInvite.church === "object"
+              ? churchInvite.church as { id?: string; name?: string }
+              : await payload.findByID({ collection: "churches", id: String(churchInvite.church), depth: 0 });
+            return {
+              id: String((church as { id?: string }).id || churchInvite.church),
+              name: (church as { name?: string })?.name,
+            };
+          }
+          return { id: undefined, name: undefined };
         } catch {
           return { id: undefined, name: undefined };
         }
@@ -571,7 +737,7 @@ export async function POST(request: NextRequest) {
           name: churchContact.name || null,
           phone: churchContact.phone || null,
           email: churchContact.email || null,
-          church: null,
+          church: inviterChurchName || null,
         }
       : {
           name: invitingMember?.name,

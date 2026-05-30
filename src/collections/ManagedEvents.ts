@@ -579,6 +579,37 @@ export const ManagedEvents: CollectionConfig = {
                 description: "When check-in opens (defaults to event start)",
               },
             },
+            {
+              name: "walkInEnabled",
+              type: "checkbox",
+              defaultValue: false,
+              admin: {
+                description: "Allow walk-in registrations at the registration booth",
+              },
+            },
+            {
+              name: "walkInCode",
+              type: "text",
+              admin: {
+                description: "Special code for walk-in registrations (auto-generated if blank when walk-in is enabled)",
+                condition: (data) => data?.walkInEnabled,
+              },
+              hooks: {
+                beforeChange: [
+                  ({ data, operation }) => {
+                    if (operation === "create" && data?.walkInEnabled && !data?.walkInCode) {
+                      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+                      let code = "WI-";
+                      for (let i = 0; i < 6; i++) {
+                        code += chars[Math.floor(Math.random() * chars.length)];
+                      }
+                      data.walkInCode = code;
+                    }
+                    return data;
+                  },
+                ],
+              },
+            },
           ],
         },
       ],
