@@ -1,14 +1,14 @@
 import { getPayload } from "payload";
 import config from "@payload-config";
-import { getCollection, toObjectId } from "./get-model";
+import { getModel, toObjectId } from "./get-model";
 import { buildDateMatch } from "./date-filter";
 
 interface PlacementData { placementId: string; placementName: string; scans: number; registrations: number; conversionRate: number }
 
 export async function getPlacements(eventId: string, from?: string | null, to?: string | null): Promise<PlacementData[]> {
   const payload = await getPayload({ config });
-  const scansCol = await getCollection("invite-scans");
-  const regsCol = await getCollection("event-registrations");
+  const ScanModel = await getModel("invite-scans");
+  const RegModel = await getModel("event-registrations");
   const eventOid = toObjectId(eventId);
   const scanDateMatch = buildDateMatch("scannedAt", from, to);
   const regDateMatch = buildDateMatch("createdAt", from, to);
@@ -21,24 +21,23 @@ export async function getPlacements(eventId: string, from?: string | null, to?: 
   }
 
   const [scanByPlacement, regByChurchInvite] = await Promise.all([
-    scansCol.aggregate([
+    ScanModel.aggregate([
       { $match: { event: eventOid, inviteType: "church", adPlacement: { $exists: true, $ne: null }, ...scanDateMatch } },
       { $group: { _id: "$adPlacement", scans: { $sum: 1 } } },
       { $project: { _id: 0, placementId: "$_id", scans: 1 } },
-    ]).toArray(),
-    regsCol.aggregate([
+    ]),
+    RegModel.aggregate([
       { $match: { event: eventOid, sourceType: "church", churchEventInvite: { $exists: true, $ne: null }, ...regDateMatch } },
       { $group: { _id: "$churchEventInvite", count: { $sum: 1 } } },
-    ]).toArray(),
+    ]),
   ]);
 
   const scanMap = new Map<string, number>();
   for (const s of scanByPlacement) scanMap.set(String(s.placementId), s.scans);
-
   const regMap = new Map<string, number>();
   for (const r of regByChurchInvite) {
-    const placementId = ciToPlacement.get(String(r._id));
-    if (placementId) regMap.set(placementId, (regMap.get(placementId) || 0) + r.count);
+    const pid = ciToPlacement.get(String(r._id));
+    if (pid) regMap.set(pid, (regMap.get(pid) || 0) + r.count);
   }
 
   const allIds = new Set([...scanMap.keys(), ...regMap.keys()]);
@@ -48,9 +47,9 @@ export async function getPlacements(eventId: string, from?: string | null, to?: 
     for (const doc of docs.docs) nameMap.set(String(doc.id), doc.name || String(doc.id));
   }
 
-  return Array.from(allIds).map((id) => {
-    const scans = scanMap.get(id) || 0;
-    const registrations = regMap.get(id) || 0;
-    return { placementId: id, placementName: nameMap.get(id) || id, scans, registrations, conversionRate: scans > 0 ? Math.round((registrations / scans) * 100) : 0 };
-  }).sort((a, b) => b.scans - a.scans);
+  return Array.from(allIds).map((id) => ({
+    placementId: id, placementName: nameMap.get(id) || id,
+    scans: scanMap.get(id) || 0, registrations: regMap.get(id) || 0,
+    conversionRate: (scanMap.get(id) || 0) > 0 ? Math.round(((regMap.get(id) || 0) / (scanMap.get(id) || 0)) * 100) : 0,
+  })).sort((a, b) => b.scans - a.scans);
 }

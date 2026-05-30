@@ -1,14 +1,14 @@
 import { getPayload } from "payload";
 import config from "@payload-config";
-import { getCollection, toObjectId } from "./get-model";
+import { getModel, toObjectId } from "./get-model";
 import { buildDateMatch } from "./date-filter";
 
 interface PlatformData { platformId: string; platformName: string; scans: number; registrations: number; conversionRate: number }
 
 export async function getPlatforms(eventId: string, from?: string | null, to?: string | null): Promise<PlatformData[]> {
   const payload = await getPayload({ config });
-  const scansCol = await getCollection("invite-scans");
-  const regsCol = await getCollection("event-registrations");
+  const ScanModel = await getModel("invite-scans");
+  const RegModel = await getModel("event-registrations");
   const eventOid = toObjectId(eventId);
   const scanDateMatch = buildDateMatch("scannedAt", from, to);
   const regDateMatch = buildDateMatch("createdAt", from, to);
@@ -21,14 +21,14 @@ export async function getPlatforms(eventId: string, from?: string | null, to?: s
   }
 
   const [scanByLink, regByLink] = await Promise.all([
-    scansCol.aggregate([
+    ScanModel.aggregate([
       { $match: { event: eventOid, inviteType: "platform", platformEventLink: { $exists: true, $ne: null }, ...scanDateMatch } },
       { $group: { _id: "$platformEventLink", scans: { $sum: 1 } } },
-    ]).toArray(),
-    regsCol.aggregate([
+    ]),
+    RegModel.aggregate([
       { $match: { event: eventOid, platformEventLink: { $exists: true, $ne: null }, ...regDateMatch } },
       { $group: { _id: "$platformEventLink", count: { $sum: 1 } } },
-    ]).toArray(),
+    ]),
   ]);
 
   const scanMap = new Map<string, number>();
@@ -43,9 +43,9 @@ export async function getPlatforms(eventId: string, from?: string | null, to?: s
     for (const doc of docs.docs) nameMap.set(String(doc.id), doc.name || String(doc.id));
   }
 
-  return Array.from(allIds).map((id) => {
-    const scans = scanMap.get(id) || 0;
-    const registrations = regMap.get(id) || 0;
-    return { platformId: id, platformName: nameMap.get(id) || id, scans, registrations, conversionRate: scans > 0 ? Math.round((registrations / scans) * 100) : 0 };
-  }).sort((a, b) => b.scans - a.scans);
+  return Array.from(allIds).map((id) => ({
+    platformId: id, platformName: nameMap.get(id) || id,
+    scans: scanMap.get(id) || 0, registrations: regMap.get(id) || 0,
+    conversionRate: (scanMap.get(id) || 0) > 0 ? Math.round(((regMap.get(id) || 0) / (scanMap.get(id) || 0)) * 100) : 0,
+  })).sort((a, b) => b.scans - a.scans);
 }

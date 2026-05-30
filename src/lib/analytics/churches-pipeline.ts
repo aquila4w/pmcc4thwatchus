@@ -1,46 +1,37 @@
 import { getPayload } from "payload";
 import config from "@payload-config";
-import { getCollection, toObjectId } from "./get-model";
+import { getModel, toObjectId } from "./get-model";
 import { buildDateMatch } from "./date-filter";
 
 interface ChurchData {
-  churchId: string;
-  churchName: string;
-  registrations: number;
-  scans: number;
-  conversionRate: number;
-  attendedCount: number;
-  baptizedCount: number;
+  churchId: string; churchName: string; registrations: number; scans: number; conversionRate: number; attendedCount: number; baptizedCount: number;
   members: { memberId: string; memberName: string; inviteCode: string; scans: number; registrations: number; conversionRate: number }[];
 }
 
 export async function getChurches(eventId: string, from?: string | null, to?: string | null): Promise<ChurchData[]> {
   const payload = await getPayload({ config });
-  const scansCol = await getCollection("invite-scans");
-  const regsCol = await getCollection("event-registrations");
+  const ScanModel = await getModel("invite-scans");
+  const RegModel = await getModel("event-registrations");
   const eventOid = toObjectId(eventId);
   const scanDateMatch = buildDateMatch("scannedAt", from, to);
   const regDateMatch = buildDateMatch("createdAt", from, to);
 
   const [scanByChurch, regByChurch, memberScansByInvite, eventInvites] = await Promise.all([
-    scansCol.aggregate([
+    ScanModel.aggregate([
       { $match: { event: eventOid, inviteType: { $in: ["member", "church"] }, church: { $exists: true, $ne: null }, ...scanDateMatch } },
       { $group: { _id: "$church", totalScans: { $sum: 1 } } },
       { $project: { _id: 0, churchId: "$_id", totalScans: 1 } },
-    ]).toArray(),
-
-    regsCol.aggregate([
+    ]),
+    RegModel.aggregate([
       { $match: { event: eventOid, invitedByChurch: { $exists: true, $ne: null }, ...regDateMatch } },
       { $group: { _id: "$invitedByChurch", total: { $sum: 1 }, attended: { $sum: { $cond: [{ $in: ["$status", ["attended", "baptized"]] }, 1, 0] } }, baptized: { $sum: { $cond: [{ $eq: ["$status", "baptized"] }, 1, 0] } } } },
       { $project: { _id: 0, churchId: "$_id", total: 1, attended: 1, baptized: 1 } },
-    ]).toArray(),
-
-    scansCol.aggregate([
+    ]),
+    ScanModel.aggregate([
       { $match: { event: eventOid, inviteType: "member", eventInvite: { $exists: true, $ne: null }, ...scanDateMatch } },
       { $group: { _id: "$eventInvite", scans: { $sum: 1 } } },
       { $project: { _id: 0, eventInviteId: "$_id", scans: 1 } },
-    ]).toArray(),
-
+    ]),
     payload.find({ collection: "event-invites", where: { event: { equals: eventId } }, limit: 1000, depth: 0, overrideAccess: true }),
   ]);
 
@@ -61,14 +52,12 @@ export async function getChurches(eventId: string, from?: string | null, to?: st
   for (const ei of eventInvites.docs) {
     const churchId = String((ei as Record<string, unknown>).church || "unknown");
     const inviteDocId = String(ei.id);
-    const scans = memberScanMap.get(inviteDocId) || 0;
     inviteDocIds.push(inviteDocId);
-
     const member: ChurchData["members"][0] = {
       memberId: String((ei as Record<string, unknown>).invitedBy || ei.id),
       memberName: ((ei as Record<string, unknown>).memberContactName as string) || "Unknown Member",
       inviteCode: (ei as Record<string, unknown>).inviteCode as string,
-      scans, registrations: 0, conversionRate: 0,
+      scans: memberScanMap.get(inviteDocId) || 0, registrations: 0, conversionRate: 0,
     };
     memberByInviteDocId.set(inviteDocId, member);
     if (!membersByChurch.has(churchId)) membersByChurch.set(churchId, []);
@@ -77,10 +66,10 @@ export async function getChurches(eventId: string, from?: string | null, to?: st
 
   // Batch-fill registration counts
   if (inviteDocIds.length > 0) {
-    const regByInvite = await regsCol.aggregate([
+    const regByInvite = await RegModel.aggregate([
       { $match: { event: eventOid, eventInvite: { $in: inviteDocIds.map(toObjectId) }, ...regDateMatch } },
       { $group: { _id: "$eventInvite", count: { $sum: 1 } } },
-    ]).toArray();
+    ]);
     for (const r of regByInvite) {
       const m = memberByInviteDocId.get(String(r._id));
       if (m) { m.registrations = r.count; m.conversionRate = m.scans > 0 ? Math.round((m.registrations / m.scans) * 100) : 0; }

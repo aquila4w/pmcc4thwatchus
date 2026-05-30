@@ -12,12 +12,10 @@ export function toObjectId(id: string) {
 }
 
 /**
- * Get the native MongoDB collection for a Payload slug.
- * Uses the underlying connection for reliable .aggregate() support.
+ * Get the Mongoose model for a Payload collection slug.
+ * The model has .aggregate() available for running pipelines.
  */
-export async function getCollection(slug: string) {
+export async function getModel(slug: string) {
   const payload = await getPayload({ config });
-  const db = payload.db.connection.db;
-  if (!db) throw new Error("MongoDB connection not established");
-  return db.collection(slug);
+  return payload.db.collections[slug];
 }

@@ -101,7 +101,8 @@ export async function GET(
 
     return NextResponse.json(overviewResult);
   } catch (error) {
-    console.error("Analytics API error:", error);
+    console.error("Analytics API error:", error instanceof Error ? error.message : error);
+    console.error("Stack:", error instanceof Error ? error.stack : "N/A");
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

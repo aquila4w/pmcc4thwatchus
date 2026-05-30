@@ -1,4 +1,4 @@
-import { getCollection, toObjectId } from "./get-model";
+import { getModel, toObjectId } from "./get-model";
 import { buildDateMatch } from "./date-filter";
 
 interface TechnicalResult {
@@ -10,12 +10,12 @@ interface TechnicalResult {
 }
 
 export async function getTechnical(eventId: string, from?: string | null, to?: string | null): Promise<TechnicalResult> {
-  const col = await getCollection("invite-scans");
+  const model = await getModel("invite-scans");
   const dateMatch = buildDateMatch("scannedAt", from, to);
   const toRate = (s: { scans: number; registered: number }) => (s.scans > 0 ? Math.round((s.registered / s.scans) * 100) : 0);
   const roundOrNull = (v: number | undefined) => (v != null ? Math.round(v) : null);
 
-  const result = await col.aggregate([
+  const result = await model.aggregate([
     { $match: { event: toObjectId(eventId), ...dateMatch } },
     { $facet: {
       deviceBreakdown: [
@@ -43,10 +43,10 @@ export async function getTechnical(eventId: string, from?: string | null, to?: s
       rageClicks: [{ $match: { rageClickDetected: true } }, { $count: "count" }],
       adBlockers: [{ $match: { adBlockerDetected: true } }, { $count: "count" }],
     } },
-  ]).toArray();
+  ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const f = result[0] || {} as any;
+  const f: any = result[0] || {};
   const b = f.behavioral?.[0] || {} as Record<string, number>;
   type BD = { name: string; scans: number; registered: number };
   type LD = { city: string; region: string; country: string; scans: number; registered: number };
