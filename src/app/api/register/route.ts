@@ -4,7 +4,7 @@ import config from "@payload-config";
 import { sendRegistrationEmail } from "@/lib/email";
 import { sendRegistrationSMS } from "@/lib/sms";
 import { formatEventDate, formatEventTime } from "@/lib/event-date";
-import { rateLimit } from "@/lib/rate-limit";
+import { rateLimitAsync } from "@/lib/rate-limit";
 import { randomInt } from "crypto";
 
 function generateRegistrationCode(): string {
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
 
     // Rate limit by invite code: 5 registrations per invite code per hour
     const inviteKey = eventInviteCode || refCode || adCode || platformCode || "anonymous";
-    const inviteRateLimit = rateLimit(`register:${inviteKey}`, { windowMs: 60 * 60 * 1000, maxRequests: 5 });
+    const inviteRateLimit = await rateLimitAsync(`register:${inviteKey}`, { windowMs: 60 * 60 * 1000, maxRequests: 200 });
     if (!inviteRateLimit.allowed) {
       return NextResponse.json(
         { error: "Too many registrations for this invite. Please try again later." },

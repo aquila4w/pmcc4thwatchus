@@ -130,19 +130,70 @@ export default function EventAnalyticsPage() {
 
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sectionLoading, setSectionLoading] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<{ from?: string; to?: string; label: string }>({
     label: "All Time",
   });
   const [expandedChurchId, setExpandedChurchId] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
+  // Fetch overview (lightweight) on mount / date range change
+  const fetchOverview = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (dateRange.from) params.set("from", dateRange.from);
-      if (dateRange.to) params.set("to", dateRange.to);
+      const p = new URLSearchParams();
+      if (dateRange.from) p.set("from", dateRange.from);
+      if (dateRange.to) p.set("to", dateRange.to);
+      p.set("section", "overview");
 
-      const res = await fetch(`/api/events/${eventId}/analytics?${params.toString()}`);
+      const res = await fetch(`/api/events/${eventId}/analytics?${p.toString()}`);
+      if (res.ok) {
+        const sectionData = await res.json();
+        setData((prev) => prev ? { ...prev, ...sectionData } : sectionData as AnalyticsData);
+      }
+    } catch (error) {
+      console.error("Failed to fetch overview:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [eventId, dateRange]);
+
+  // Fetch a specific section lazily when a tab is activated
+  const fetchSection = useCallback(async (section: string) => {
+    if (!data) return;
+    // Skip if already loaded
+    if (section === "churches" && data?.byChurch?.length > 0) return;
+    if (section === "placements" && data?.byPlacement?.length > 0) return;
+    if (section === "platforms" && data?.byPlatform?.length > 0) return;
+    if (section === "technical" && data?.deviceBreakdown?.length > 0) return;
+
+    setSectionLoading(section);
+    try {
+      const p = new URLSearchParams();
+      if (dateRange.from) p.set("from", dateRange.from);
+      if (dateRange.to) p.set("to", dateRange.to);
+      p.set("section", section);
+
+      const res = await fetch(`/api/events/${eventId}/analytics?${p.toString()}`);
+      if (res.ok) {
+        const sectionData = await res.json();
+        setData((prev) => prev ? { ...prev, ...sectionData } : sectionData as AnalyticsData);
+      }
+    } catch (error) {
+      console.error(`Failed to fetch ${section}:`, error);
+    } finally {
+      setSectionLoading(null);
+    }
+  }, [eventId, dateRange, data]);
+
+  // Full refresh (overview + current tab)
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const p = new URLSearchParams();
+      if (dateRange.from) p.set("from", dateRange.from);
+      if (dateRange.to) p.set("to", dateRange.to);
+
+      const res = await fetch(`/api/events/${eventId}/analytics?${p.toString()}`);
       if (res.ok) {
         setData(await res.json());
       }
@@ -154,8 +205,8 @@ export default function EventAnalyticsPage() {
   }, [eventId, dateRange]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchOverview();
+  }, [fetchOverview]);
 
   if (loading) {
     return (
@@ -175,8 +226,22 @@ export default function EventAnalyticsPage() {
 
   const { overview } = data;
 
+  // Ensure arrays exist for lazy-load checks (may be missing on initial overview fetch)
+  const byChurch = data.byChurch || [];
+  const byPlacement = data.byPlacement || [];
+  const byPlatform = data.byPlatform || [];
+  const scanTimeline = data.scanTimeline || [];
+  const deviceBreakdown = data.deviceBreakdown || [];
+  const browserBreakdown = data.browserBreakdown || [];
+  const osBreakdown = data.osBreakdown || [];
+  const locationBreakdown = data.locationBreakdown || [];
+  const behavioralMetrics = data.behavioralMetrics || {
+    avgTimeOnPage: null, avgScrollDepth: null, avgFormStartDelay: null,
+    rageClickCount: 0, adBlockerDetectedCount: 0, sampleSize: 0,
+  };
+
   // Column definitions
-  const churchColumns: Column<(typeof data.byChurch)[0]>[] = [
+  const churchColumns: Column<(typeof byChurch)[0]>[] = [
     {
       key: "churchName",
       label: "Church",
@@ -199,14 +264,14 @@ export default function EventAnalyticsPage() {
     { key: "baptizedCount", label: "Baptized", compare: (a, b) => a.baptizedCount - b.baptizedCount },
   ];
 
-  const placementColumns: Column<(typeof data.byPlacement)[0]>[] = [
+  const placementColumns: Column<(typeof byPlacement)[0]>[] = [
     { key: "placementName", label: "Placement" },
     { key: "scans", label: "Scans", compare: (a, b) => a.scans - b.scans },
     { key: "registrations", label: "Registrations", compare: (a, b) => a.registrations - b.registrations },
     { key: "conversionRate", label: "Conv %", render: (row) => `${row.conversionRate}%`, compare: (a, b) => a.conversionRate - b.conversionRate },
   ];
 
-  const platformColumns: Column<(typeof data.byPlatform)[0]>[] = [
+  const platformColumns: Column<(typeof byPlatform)[0]>[] = [
     { key: "platformName", label: "Platform" },
     { key: "scans", label: "Scans", compare: (a, b) => a.scans - b.scans },
     { key: "registrations", label: "Registrations", compare: (a, b) => a.registrations - b.registrations },
@@ -214,7 +279,7 @@ export default function EventAnalyticsPage() {
   ];
 
   // CSV export data
-  const churchCsvData = data.byChurch.map((c) => ({
+  const churchCsvData = byChurch.map((c) => ({
     Church: c.churchName,
     Registrations: c.registrations,
     Scans: c.scans,
@@ -224,14 +289,14 @@ export default function EventAnalyticsPage() {
     Members: c.members.length,
   }));
 
-  const placementCsvData = data.byPlacement.map((p) => ({
+  const placementCsvData = byPlacement.map((p) => ({
     Placement: p.placementName,
     Scans: p.scans,
     Registrations: p.registrations,
     "Conv %": p.conversionRate,
   }));
 
-  const platformCsvData = data.byPlatform.map((p) => ({
+  const platformCsvData = byPlatform.map((p) => ({
     Platform: p.platformName,
     Scans: p.scans,
     Registrations: p.registrations,
@@ -262,7 +327,7 @@ export default function EventAnalyticsPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={fetchData}>
+          <Button variant="outline" size="sm" onClick={fetchAll}>
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
@@ -276,7 +341,17 @@ export default function EventAnalyticsPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="overview">
+      <Tabs defaultValue="overview" onValueChange={(tab) => {
+        const sectionMap: Record<string, string> = {
+          overview: "overview",
+          churches: "churches",
+          placements: "placements",
+          platforms: "platforms",
+          technical: "technical",
+        };
+        const section = sectionMap[tab];
+        if (section) fetchSection(section);
+      }}>
         <TabsList className="flex-wrap">
           <TabsTrigger value="overview">
             <BarChart3 className="w-4 h-4 mr-1" />
@@ -331,11 +406,11 @@ export default function EventAnalyticsPage() {
           {/* Scan Timeline */}
           <Card className="bg-white p-6">
             <h3 className="font-semibold mb-4">Scan Timeline</h3>
-            {data.scanTimeline.length === 0 ? (
+            {scanTimeline.length === 0 ? (
               <p className="text-slate-500 text-center py-4">Timeline data will appear as scans are recorded.</p>
             ) : (
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={data.scanTimeline}>
+                <BarChart data={scanTimeline}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="date"
@@ -407,10 +482,10 @@ export default function EventAnalyticsPage() {
         <TabsContent value="churches" className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-slate-500">
-              {data.byChurch.length} churches &middot; Click a row to see member breakdown
+              {byChurch.length} churches &middot; Click a row to see member breakdown
             </p>
             <CsvExport
-              data={data.byChurch.flatMap((c) =>
+              data={byChurch.flatMap((c) =>
                 c.members.length > 0
                   ? c.members.map((m) => ({
                       Church: c.churchName,
@@ -429,7 +504,7 @@ export default function EventAnalyticsPage() {
           <Card className="bg-white">
             <div className="p-4">
               <SortableTable
-                data={data.byChurch.map((c) => ({ ...c, id: c.churchId }))}
+                data={byChurch.map((c) => ({ ...c, id: c.churchId }))}
                 columns={churchColumns}
                 searchPlaceholder="Search churches..."
                 searchKeys={["churchName"]}
@@ -482,14 +557,14 @@ export default function EventAnalyticsPage() {
         <TabsContent value="placements" className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-slate-500">
-              {data.byPlacement.length} ad placements (billboard, bus, flyer, etc.)
+              {byPlacement.length} ad placements (billboard, bus, flyer, etc.)
             </p>
             <CsvExport data={placementCsvData} filename={`placement-analytics-${eventId}.csv`} label="Export Placements" />
           </div>
           <Card className="bg-white">
             <div className="p-4">
               <SortableTable
-                data={data.byPlacement.map((p) => ({ ...p, id: p.placementId }))}
+                data={byPlacement.map((p) => ({ ...p, id: p.placementId }))}
                 columns={placementColumns}
                 searchPlaceholder="Search placements..."
                 searchKeys={["placementName"]}
@@ -503,14 +578,14 @@ export default function EventAnalyticsPage() {
         <TabsContent value="platforms" className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-slate-500">
-              {data.byPlatform.length} online platforms (Meta, TikTok, YouTube, etc.)
+              {byPlatform.length} online platforms (Meta, TikTok, YouTube, etc.)
             </p>
             <CsvExport data={platformCsvData} filename={`platform-analytics-${eventId}.csv`} label="Export Platforms" />
           </div>
           <Card className="bg-white">
             <div className="p-4">
               <SortableTable
-                data={data.byPlatform.map((p) => ({ ...p, id: p.platformId }))}
+                data={byPlatform.map((p) => ({ ...p, id: p.platformId }))}
                 columns={platformColumns}
                 searchPlaceholder="Search platforms..."
                 searchKeys={["platformName"]}
@@ -529,7 +604,7 @@ export default function EventAnalyticsPage() {
                 <Monitor className="w-4 h-4" /> Device Breakdown
               </h3>
               <BreakdownBars
-                items={data.deviceBreakdown.map((d) => ({ ...d, device: d.name }))}
+                items={deviceBreakdown.map((d) => ({ ...d, device: d.name }))}
                 labelKey="device"
               />
             </Card>
@@ -538,7 +613,7 @@ export default function EventAnalyticsPage() {
                 <Globe className="w-4 h-4" /> Browser Breakdown
               </h3>
               <BreakdownBars
-                items={data.browserBreakdown.map((d) => ({ ...d, browser: d.name }))}
+                items={browserBreakdown.map((d) => ({ ...d, browser: d.name }))}
                 labelKey="browser"
               />
             </Card>
@@ -547,7 +622,7 @@ export default function EventAnalyticsPage() {
                 <Monitor className="w-4 h-4" /> OS Breakdown
               </h3>
               <BreakdownBars
-                items={data.osBreakdown.map((d) => ({ ...d, os: d.name }))}
+                items={osBreakdown.map((d) => ({ ...d, os: d.name }))}
                 labelKey="os"
               />
             </Card>
@@ -558,7 +633,7 @@ export default function EventAnalyticsPage() {
             <h3 className="font-semibold mb-4 flex items-center gap-2">
               <MapPin className="w-4 h-4" /> Location Demographics
             </h3>
-            {data.locationBreakdown.length === 0 ? (
+            {locationBreakdown.length === 0 ? (
               <p className="text-slate-500 text-center py-4">
                 Location data will appear as new scans are recorded.
               </p>
@@ -576,7 +651,7 @@ export default function EventAnalyticsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.locationBreakdown.map((loc, i) => (
+                    {locationBreakdown.map((loc, i) => (
                       <tr key={i} className="border-b last:border-0">
                         <td className="py-2 px-2">{loc.city || "—"}</td>
                         <td className="py-2 px-2">{loc.region || "—"}</td>
@@ -598,40 +673,40 @@ export default function EventAnalyticsPage() {
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
               <div>
                 <p className="text-2xl font-bold">
-                  {data.behavioralMetrics.avgTimeOnPage !== null
-                    ? `${data.behavioralMetrics.avgTimeOnPage}s`
+                  {behavioralMetrics.avgTimeOnPage !== null
+                    ? `${behavioralMetrics.avgTimeOnPage}s`
                     : "—"}
                 </p>
                 <p className="text-xs text-slate-500">Avg Time on Page</p>
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {data.behavioralMetrics.avgScrollDepth !== null
-                    ? `${data.behavioralMetrics.avgScrollDepth}%`
+                  {behavioralMetrics.avgScrollDepth !== null
+                    ? `${behavioralMetrics.avgScrollDepth}%`
                     : "—"}
                 </p>
                 <p className="text-xs text-slate-500">Avg Scroll Depth</p>
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {data.behavioralMetrics.avgFormStartDelay !== null
-                    ? `${data.behavioralMetrics.avgFormStartDelay}s`
+                  {behavioralMetrics.avgFormStartDelay !== null
+                    ? `${behavioralMetrics.avgFormStartDelay}s`
                     : "—"}
                 </p>
                 <p className="text-xs text-slate-500">Avg Form Start</p>
               </div>
               <div>
-                <p className="text-2xl font-bold">{data.behavioralMetrics.rageClickCount}</p>
+                <p className="text-2xl font-bold">{behavioralMetrics.rageClickCount}</p>
                 <p className="text-xs text-slate-500">Rage Clicks</p>
               </div>
               <div>
-                <p className="text-2xl font-bold">{data.behavioralMetrics.adBlockerDetectedCount}</p>
+                <p className="text-2xl font-bold">{behavioralMetrics.adBlockerDetectedCount}</p>
                 <p className="text-xs text-slate-500">Ad Blockers</p>
               </div>
             </div>
-            {data.behavioralMetrics.sampleSize > 0 && (
+            {behavioralMetrics.sampleSize > 0 && (
               <p className="text-xs text-slate-400 mt-3 text-center">
-                Based on {data.behavioralMetrics.sampleSize} registered user interactions
+                Based on {behavioralMetrics.sampleSize} registered user interactions
               </p>
             )}
           </Card>

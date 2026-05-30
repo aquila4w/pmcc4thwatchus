@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
 import { getCurrentUser, isAdmin } from "@/lib/auth-helpers";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { rateLimitAsync, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   // Rate limit by IP: 20 requests per minute
   const clientIp = getClientIp(request);
-  const { allowed, resetIn } = rateLimit(`baptism:${clientIp}`, { windowMs: 60 * 1000, maxRequests: 20 });
+  const { allowed, resetIn } = await rateLimitAsync(`baptism:${clientIp}`, { windowMs: 60 * 1000, maxRequests: 20 });
   if (!allowed) {
     return NextResponse.json(
       { error: "Too many requests" },

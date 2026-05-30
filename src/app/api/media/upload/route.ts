@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
 import { getCurrentUser, isAdmin } from "@/lib/auth-helpers";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { rateLimitAsync, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   // Rate limit by IP: 10 uploads per 15 minutes
   const clientIp = getClientIp(request);
-  const { allowed, resetIn } = rateLimit(`media-upload:${clientIp}`, { windowMs: 15 * 60 * 1000, maxRequests: 10 });
+  const { allowed, resetIn } = await rateLimitAsync(`media-upload:${clientIp}`, { windowMs: 15 * 60 * 1000, maxRequests: 10 });
   if (!allowed) {
     return NextResponse.json(
       { error: "Too many upload requests" },

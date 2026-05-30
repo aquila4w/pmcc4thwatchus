@@ -4,6 +4,9 @@ import type { Where } from "payload";
 import config from "@payload-config";
 import { getCurrentUser, isAdmin } from "@/lib/auth-helpers";
 
+// Allow up to 60s for analytics aggregation under heavy load (Vercel Pro)
+export const maxDuration = 60;
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
@@ -23,6 +26,7 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const from = searchParams.get("from");
     const to = searchParams.get("to");
+    const section = searchParams.get("section"); // overview|churches|placements|platforms|technical
 
     // Build where clauses with optional date filters
     const scanWhere: Where = { event: { equals: eventId } };
@@ -153,28 +157,37 @@ export async function GET(
     const placementNameMap: Record<string, string> = {};
     const platformNameMap: Record<string, string> = {};
 
-    // Resolve church names and placement names from church-event-invites
+    // Resolve church names and placement names via bulk queries (not N+1)
     const churchIds = [...new Set(churchInvites.map((ci) => ci.church as string).filter(Boolean))];
     const placementIds = [...new Set(churchInvites.map((ci) => ci.adPlacement as string).filter(Boolean))];
     const platformIds = [...new Set(platformLinks.map((pl) => pl.platform as string).filter(Boolean))];
 
-    const [churchDocs, placementDocs, platformDocs] = await Promise.all([
-      Promise.all(churchIds.map((id) =>
-        payload.findByID({ collection: "churches", id, depth: 0, overrideAccess: true })
-          .then((c) => { churchNameMap[id] = c?.name || id; })
-          .catch(() => { churchNameMap[id] = id; })
-      )),
-      Promise.all(placementIds.map((id) =>
-        payload.findByID({ collection: "ad-placements", id, depth: 0, overrideAccess: true })
-          .then((p) => { placementNameMap[id] = p?.name || id; })
-          .catch(() => { placementNameMap[id] = id; })
-      )),
-      Promise.all(platformIds.map((id) =>
-        payload.findByID({ collection: "online-platforms", id, depth: 0, overrideAccess: true })
-          .then((p) => { platformNameMap[id] = p?.name || id; })
-          .catch(() => { platformNameMap[id] = id; })
-      )),
+    // Also include church IDs from registrations (invitedByChurch) and event invites
+    const regChurchIds = [...new Set(registrations.map((r) => r.invitedByChurch as string).filter(Boolean))];
+    const inviteChurchIds = [...new Set(eventInvites.map((ei) => ei.church as string).filter(Boolean))];
+    const allChurchIds = [...new Set([...churchIds, ...regChurchIds, ...inviteChurchIds])];
+
+    const [churchDocsResult, placementDocsResult, platformDocsResult] = await Promise.all([
+      allChurchIds.length > 0
+        ? payload.find({ collection: "churches", where: { id: { in: allChurchIds } }, limit: 0, depth: 0, overrideAccess: true })
+        : Promise.resolve({ docs: [] }),
+      placementIds.length > 0
+        ? payload.find({ collection: "ad-placements", where: { id: { in: placementIds } }, limit: 0, depth: 0, overrideAccess: true })
+        : Promise.resolve({ docs: [] }),
+      platformIds.length > 0
+        ? payload.find({ collection: "online-platforms", where: { id: { in: platformIds } }, limit: 0, depth: 0, overrideAccess: true })
+        : Promise.resolve({ docs: [] }),
     ]);
+
+    for (const doc of churchDocsResult.docs) {
+      churchNameMap[doc.id] = doc.name || doc.id;
+    }
+    for (const doc of placementDocsResult.docs) {
+      placementNameMap[doc.id] = doc.name || doc.id;
+    }
+    for (const doc of platformDocsResult.docs) {
+      platformNameMap[doc.id] = doc.name || doc.id;
+    }
 
     // Group registrations by church (via invitedByChurch)
     const regsByChurch: Record<string, { total: number; attended: number; baptized: number; waitlisted: number }> = {};
@@ -264,14 +277,14 @@ export async function GET(
     }
 
     // Assemble byChurch
-    const allChurchIds = new Set([
+    const assembledChurchIds = new Set([
       ...Object.keys(regsByChurch),
       ...Object.keys(scansByChurch),
       ...Object.keys(memberScansByChurch),
       ...Object.keys(membersByChurch),
     ]);
 
-    const byChurch = Array.from(allChurchIds).map((churchId) => {
+    const byChurch = Array.from(assembledChurchIds).map((churchId) => {
       const regData = regsByChurch[churchId] || { total: 0, attended: 0, baptized: 0, waitlisted: 0 };
       const churchScanCount = scansByChurch[churchId] || 0;
       const memberScanCount = memberScansByChurch[churchId] || 0;
@@ -427,27 +440,48 @@ export async function GET(
       sampleSize: timeOnPageValues.length,
     };
 
+    // Build the overview object (always needed)
+    const overview = {
+      totalRegistrations,
+      attendedCount,
+      baptizedCount,
+      waitlistedCount,
+      totalScans: scans.length,
+      memberScans: memberScans.length,
+      churchScans: churchScans.length,
+      platformScans: platformScans.length,
+      overallConversionRate,
+      attendanceRate,
+      baptismRate,
+      statusDistribution,
+      spotsRemaining: (event?.maxAttendees as number | undefined)
+        ? Math.max(0, (event.maxAttendees as number) - totalRegistrations)
+        : null,
+      eventTitle: event?.title || null,
+      eventStartDate: event?.startDate || null,
+      eventLocation: event?.location || null,
+    };
+
+    // Return only the requested section for lazy-loading
+    if (section === "overview") {
+      return NextResponse.json({ overview, scanTimeline });
+    }
+    if (section === "churches") {
+      return NextResponse.json({ overview, byChurch });
+    }
+    if (section === "placements") {
+      return NextResponse.json({ overview, byPlacement });
+    }
+    if (section === "platforms") {
+      return NextResponse.json({ overview, byPlatform });
+    }
+    if (section === "technical") {
+      return NextResponse.json({ overview, deviceBreakdown, browserBreakdown, osBreakdown, locationBreakdown, behavioralMetrics });
+    }
+
+    // No section param — return everything (backward compatible)
     return NextResponse.json({
-      overview: {
-        totalRegistrations,
-        attendedCount,
-        baptizedCount,
-        waitlistedCount,
-        totalScans: scans.length,
-        memberScans: memberScans.length,
-        churchScans: churchScans.length,
-        platformScans: platformScans.length,
-        overallConversionRate,
-        attendanceRate,
-        baptismRate,
-        statusDistribution,
-        spotsRemaining: event?.maxAttendees
-          ? Math.max(0, event.maxAttendees - totalRegistrations)
-          : null,
-        eventTitle: event?.title || null,
-        eventStartDate: event?.startDate || null,
-        eventLocation: event?.location || null,
-      },
+      overview,
       byChurch,
       byPlacement,
       byPlatform,

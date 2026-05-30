@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { rateLimitAsync, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   // Rate limit by IP: 20 requests per 15 minutes
   const clientIp = getClientIp(request);
-  const ipRateLimit = rateLimit(clientIp, { windowMs: 15 * 60 * 1000, maxRequests: 20 });
+  const ipRateLimit = await rateLimitAsync(clientIp, { windowMs: 15 * 60 * 1000, maxRequests: 20 });
   if (!ipRateLimit.allowed) {
     return NextResponse.json(
       { error: "Too many requests" },
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Rate limit by email: 5 attempts per 15 minutes
-    const emailRateLimit = rateLimit(`login:${email.toLowerCase()}`, { windowMs: 15 * 60 * 1000, maxRequests: 5 });
+    const emailRateLimit = await rateLimitAsync(`login:${email.toLowerCase()}`, { windowMs: 15 * 60 * 1000, maxRequests: 5 });
     if (!emailRateLimit.allowed) {
       return NextResponse.json(
         { error: "Too many login attempts for this account" },

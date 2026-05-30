@@ -101,8 +101,8 @@ export default buildConfig({
   db: mongooseAdapter({
     url: process.env.MONGODB_URI || process.env.DATABASE_URI || "",
     connectOptions: {
-      maxPoolSize: 10,
-      minPoolSize: 2,
+      maxPoolSize: process.env.NODE_ENV === "production" ? 50 : 10,
+      minPoolSize: process.env.NODE_ENV === "production" ? 5 : 2,
       maxIdleTimeMS: 30000,
       serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 30000,
