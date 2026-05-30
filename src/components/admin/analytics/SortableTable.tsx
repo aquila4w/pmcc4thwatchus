@@ -72,6 +72,11 @@ export function SortableTable<T extends { id?: string }>({
     });
   }, [filtered, sortKey, sortDir, columns]);
 
+  const getAlignClass = (align?: "left" | "right" | "center") => {
+    const a = align || "left";
+    return a === "right" ? "text-right" : a === "center" ? "text-center" : "text-left";
+  };
+
   return (
     <div>
       {searchKeys.length > 0 && (
@@ -89,34 +94,43 @@ export function SortableTable<T extends { id?: string }>({
       )}
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
+          <colgroup>
+            {columns.map((col, i) => (
+              <col
+                key={col.key}
+                style={{
+                  width: i === 0 ? "auto" : "120px",
+                }}
+              />
+            ))}
+          </colgroup>
           <thead>
             <tr className="border-b bg-slate-50">
-              {columns.map((col) => {
-                const align = col.align || "left";
-                return (
-                  <th
-                    key={col.key}
-                    className={`py-3 px-4 font-medium text-slate-500 ${
-                      align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left"
-                    } ${col.sortable !== false ? "cursor-pointer select-none hover:text-slate-700" : ""}`}
-                    onClick={col.sortable !== false ? () => handleSort(col.key) : undefined}
-                  >
-                    <span className={`inline-flex items-center gap-1 ${align === "right" ? "flex-row-reverse" : ""}`}>
-                      {col.label}
+              {columns.map((col) => (
+                <th
+                  key={col.key}
+                  className={`relative py-3 px-4 pr-9 font-medium text-slate-500 ${getAlignClass(col.align)} ${
+                    col.sortable !== false ? "cursor-pointer select-none hover:text-slate-700" : ""
+                  }`}
+                  onClick={col.sortable !== false ? () => handleSort(col.key) : undefined}
+                >
+                  {col.label}
+                  {col.sortable !== false && (
+                    <span className="absolute top-1/2 -translate-y-1/2 right-3">
                       {sortKey === col.key ? (
                         sortDir === "asc" ? (
-                          <ChevronUp className="w-3.5 h-3.5 flex-shrink-0" />
+                          <ChevronUp className="w-3.5 h-3.5" />
                         ) : (
-                          <ChevronDown className="w-3.5 h-3.5 flex-shrink-0" />
+                          <ChevronDown className="w-3.5 h-3.5" />
                         )
                       ) : (
-                        col.sortable !== false && <ChevronDown className="w-3.5 h-3.5 opacity-30 flex-shrink-0" />
+                        <ChevronDown className="w-3.5 h-3.5 opacity-30" />
                       )}
                     </span>
-                  </th>
-                );
-              })}
+                  )}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -131,19 +145,11 @@ export function SortableTable<T extends { id?: string }>({
                     } ${isExpanded ? "bg-slate-50" : ""}`}
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
                   >
-                    {columns.map((col) => {
-                      const align = col.align || "left";
-                      return (
-                        <td
-                          key={col.key}
-                          className={`py-3 px-4 ${
-                            align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left"
-                          }`}
-                        >
-                          {col.render ? col.render(row) : String((row as Record<string, unknown>)[col.key] ?? "—")}
-                        </td>
-                      );
-                    })}
+                    {columns.map((col) => (
+                      <td key={col.key} className={`py-3 px-4 pr-9 ${getAlignClass(col.align)}`}>
+                        {col.render ? col.render(row) : String((row as Record<string, unknown>)[col.key] ?? "—")}
+                      </td>
+                    ))}
                   </tr>
                   {isExpanded && expandedRow && (
                     <tr className="bg-slate-50/50">
