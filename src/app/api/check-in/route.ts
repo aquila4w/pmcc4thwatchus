@@ -5,9 +5,9 @@ import { getCurrentUser, isAdmin } from "@/lib/auth-helpers";
 import { rateLimitAsync, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
-  // Rate limit by IP: 20 requests per minute
+  // Rate limit by IP: 200 requests per minute (event-day capacity for scanner stations)
   const clientIp = getClientIp(request);
-  const { allowed, resetIn } = await rateLimitAsync(`check-in:${clientIp}`, { windowMs: 60 * 1000, maxRequests: 20 });
+  const { allowed, resetIn } = await rateLimitAsync(`check-in:${clientIp}`, { windowMs: 60 * 1000, maxRequests: 200 });
   if (!allowed) {
     return NextResponse.json(
       { error: "Too many requests" },
@@ -140,9 +140,9 @@ export async function POST(request: NextRequest) {
 
 // GET endpoint to lookup a registration without checking in
 export async function GET(request: NextRequest) {
-  // Rate limit by IP: 20 requests per minute
+  // Rate limit by IP: 200 requests per minute (event-day capacity for scanner stations)
   const clientIp = getClientIp(request);
-  const { allowed, resetIn } = await rateLimitAsync(`check-in-get:${clientIp}`, { windowMs: 60 * 1000, maxRequests: 20 });
+  const { allowed, resetIn } = await rateLimitAsync(`check-in-get:${clientIp}`, { windowMs: 60 * 1000, maxRequests: 200 });
   if (!allowed) {
     return NextResponse.json(
       { error: "Too many requests" },

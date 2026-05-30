@@ -72,7 +72,7 @@ export function SortableTable<T extends { id?: string }>({
     });
   }, [filtered, sortKey, sortDir, columns]);
 
-  const getAlignClass = (align?: "left" | "right" | "center") => {
+  const alignClass = (align?: "left" | "right" | "center") => {
     const a = align || "left";
     return a === "right" ? "text-right" : a === "center" ? "text-center" : "text-left";
   };
@@ -94,38 +94,28 @@ export function SortableTable<T extends { id?: string }>({
       )}
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
-          <colgroup>
-            {columns.map((col, i) => (
-              <col
-                key={col.key}
-                style={{
-                  width: i === 0 ? "auto" : "120px",
-                }}
-              />
-            ))}
-          </colgroup>
+        <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-slate-50">
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  className={`relative py-3 px-4 pr-9 font-medium text-slate-500 ${getAlignClass(col.align)} ${
+                  className={`relative py-3 pl-4 pr-8 font-medium text-slate-500 ${alignClass(col.align)} ${
                     col.sortable !== false ? "cursor-pointer select-none hover:text-slate-700" : ""
                   }`}
                   onClick={col.sortable !== false ? () => handleSort(col.key) : undefined}
                 >
                   {col.label}
                   {col.sortable !== false && (
-                    <span className="absolute top-1/2 -translate-y-1/2 right-3">
+                    <span className="inline-block ml-1 align-middle">
                       {sortKey === col.key ? (
                         sortDir === "asc" ? (
-                          <ChevronUp className="w-3.5 h-3.5" />
+                          <ChevronUp className="w-3 h-3" />
                         ) : (
-                          <ChevronDown className="w-3.5 h-3.5" />
+                          <ChevronDown className="w-3 h-3" />
                         )
                       ) : (
-                        <ChevronDown className="w-3.5 h-3.5 opacity-30" />
+                        <ChevronDown className="w-3 h-3 opacity-30" />
                       )}
                     </span>
                   )}
@@ -133,8 +123,16 @@ export function SortableTable<T extends { id?: string }>({
               ))}
             </tr>
           </thead>
-          <tbody>
-            {sorted.map((row, i) => {
+          {sorted.length === 0 ? (
+            <tbody>
+              <tr>
+                <td colSpan={columns.length} className="text-center py-8 text-slate-500">
+                  {emptyMessage}
+                </td>
+              </tr>
+            </tbody>
+          ) : (
+            sorted.map((row, i) => {
               const rowId = row.id ?? `row-${i}`;
               const isExpanded = expandedId === rowId;
               return (
@@ -146,8 +144,13 @@ export function SortableTable<T extends { id?: string }>({
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
                   >
                     {columns.map((col) => (
-                      <td key={col.key} className={`py-3 px-4 pr-9 ${getAlignClass(col.align)}`}>
-                        {col.render ? col.render(row) : String((row as Record<string, unknown>)[col.key] ?? "—")}
+                      <td
+                        key={col.key}
+                        className={`py-3 pl-4 pr-8 ${alignClass(col.align)}`}
+                      >
+                        {col.render
+                          ? col.render(row)
+                          : String((row as Record<string, unknown>)[col.key] ?? "—")}
                       </td>
                     ))}
                   </tr>
@@ -160,12 +163,9 @@ export function SortableTable<T extends { id?: string }>({
                   )}
                 </tbody>
               );
-            })}
-          </tbody>
+            })
+          )}
         </table>
-        {sorted.length === 0 && (
-          <div className="text-center py-8 text-slate-500">{emptyMessage}</div>
-        )}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -136,7 +136,8 @@ export default function EventAnalyticsPage() {
     label: "All Time",
   });
   const [expandedChurchId, setExpandedChurchId] = useState<string | null>(null);
-  const [loadedSections, setLoadedSections] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState("overview");
+  const loadedSectionsRef = useRef<Set<string>>(new Set());
 
   // Fetch overview (lightweight) on mount / date range change
   const fetchOverview = useCallback(async () => {
@@ -161,9 +162,7 @@ export default function EventAnalyticsPage() {
 
   // Fetch a specific section lazily when a tab is activated
   const fetchSection = useCallback(async (section: string) => {
-    if (!data) return;
-    // Skip if already loaded
-    if (loadedSections.has(section)) return;
+    if (loadedSectionsRef.current.has(section)) return;
 
     setSectionLoading(section);
     try {
@@ -176,14 +175,21 @@ export default function EventAnalyticsPage() {
       if (res.ok) {
         const sectionData = await res.json();
         setData((prev) => prev ? { ...prev, ...sectionData } : sectionData as AnalyticsData);
-        setLoadedSections((prev) => new Set(prev).add(section));
+        loadedSectionsRef.current = new Set(loadedSectionsRef.current).add(section);
       }
     } catch (error) {
       console.error(`Failed to fetch ${section}:`, error);
     } finally {
       setSectionLoading(null);
     }
-  }, [eventId, dateRange, data, loadedSections]);
+  }, [eventId, dateRange]);
+
+  // When active tab changes, fetch that section if not yet loaded
+  useEffect(() => {
+    if (activeTab !== "overview") {
+      fetchSection(activeTab);
+    }
+  }, [activeTab, fetchSection]);
 
   // Full refresh (overview + current tab)
   const fetchAll = useCallback(async () => {
@@ -205,6 +211,7 @@ export default function EventAnalyticsPage() {
   }, [eventId, dateRange]);
 
   useEffect(() => {
+    loadedSectionsRef.current = new Set(); // reset on date range change
     fetchOverview();
   }, [fetchOverview]);
 
@@ -305,7 +312,7 @@ export default function EventAnalyticsPage() {
 
   // Helper: show loading skeleton for a section that hasn't loaded yet
   const sectionIsLoading = (section: string) =>
-    sectionLoading === section || !loadedSections.has(section);
+    sectionLoading === section || !loadedSectionsRef.current.has(section);
 
   const LoadingSkeleton = () => (
     <div className="flex flex-col items-center justify-center py-16 gap-3">
@@ -352,17 +359,7 @@ export default function EventAnalyticsPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="overview" onValueChange={(tab) => {
-        const sectionMap: Record<string, string> = {
-          overview: "overview",
-          churches: "churches",
-          placements: "placements",
-          platforms: "platforms",
-          technical: "technical",
-        };
-        const section = sectionMap[tab];
-        if (section) fetchSection(section);
-      }}>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex-wrap">
           <TabsTrigger value="overview">
             <BarChart3 className="w-4 h-4 mr-1" />

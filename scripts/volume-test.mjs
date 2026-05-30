@@ -1,18 +1,14 @@
 /**
- * Volume test: simulates 5,000 concurrent registrations + check-in scans
+ * Volume test: simulates 5,000 simultaneous registrations + check-in scans
  * for a large event. Tests both API throughput and database write capacity.
  *
  * Run: node scripts/volume-test.mjs
  *
  * Phases:
- *   Phase 1: REGISTRATION BURST — 5,000 registrations in 60 seconds
- *     - Each uses a unique invite code (bypasses 5/hr rate limit per code)
- *     - Measures throughput, p50/p95/p99 latency, error rate
- *
- *   Phase 2: CHECK-IN SCAN — 5,000 scans over 10 minutes (simulated)
- *     - Uses the registration codes from Phase 1
- *     - Measures scan throughput and latency
- *     - Tests the check-in API under load
+ *   Phase 1+2 COMBINED: SIMULTANEOUS REGISTRATION + CHECK-IN
+ *     - 5,000 registrations burst with unique invite codes
+ *     - As registrations succeed, check-in scans start immediately
+ *     - Simulates real event traffic where registration and scanning happen at once
  *
  *   Phase 3: ANALYTICS — load the analytics page during heavy write traffic
  *     - Verifies analytics API still responds under load
@@ -20,11 +16,15 @@
 
 const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
 const EVENT_ID = process.env.EVENT_ID || "69e0043632042a9df05641a5"; // Home Free Global Crusade
+const EVENT_SLUG = process.env.EVENT_SLUG || "home-free-global-crusade-new-york-2026";
 const TOTAL_REGISTRATIONS = parseInt(process.env.VOLUME || "5000", 10);
 const REGISTRATION_CONCURRENCY = parseInt(process.env.REG_CONCURRENCY || "100", 10);
-const CHECKIN_CONCURRENCY = parseInt(process.env.CHECKIN_CONCURRENCY || "50", 10);
+const CHECKIN_CONCURRENCY = parseInt(process.env.CHECKIN_CONCURRENCY || "100", 10);
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "leo.marquez@pmcc4thwatch.us";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "REDACTED_PASSWORD";
+// Use multiple invite codes to simulate real scenario (200+ members each sharing their own code)
+// This avoids the 200/code rate limit bottleneck
+const INVITE_CODES = (process.env.INVITE_CODES || "TFKARJ-2AJD").split(",");
 
 // ---- Helpers ----
 
@@ -55,14 +55,19 @@ function printStats(label, results) {
     statusCodes[r.status] = (statusCodes[r.status] || 0) + 1;
   }
 
+  const elapsed = results.length > 1
+    ? (results[results.length - 1]?.timestamp - results[0]?.timestamp) / 1000
+    : 1;
+  const throughput = elapsed > 0 ? (success.length / elapsed) : 0;
+
   console.log(`\n  ╔══════════════════════════════════════════╗`);
   console.log(`  ║  ${label.padEnd(38)}║`);
   console.log(`  ╠══════════════════════════════════════════╣`);
-  console.log(`  ║  Total requests:    ${(results.length + " vs target " + TOTAL_REGISTRATIONS).padEnd(21)}║`);
+  console.log(`  ║  Total requests:    ${(results.length + " / " + TOTAL_REGISTRATIONS).padEnd(21)}║`);
   console.log(`  ║  Successful:        ${String(success.length).padEnd(21)}║`);
   console.log(`  ║  Errors:            ${String(errors.length).padEnd(21)}║`);
-  console.log(`  ║  Error rate:        ${((errors.length / results.length) * 100).toFixed(1).padEnd(18)}% ║`);
-  console.log(`  ║  Throughput:        ${((success.length / ((results[results.length - 1]?.timestamp - results[0]?.timestamp) / 1000)) || 0).toFixed(1).padEnd(14)} req/s ║`);
+  console.log(`  ║  Error rate:        ${((errors.length / Math.max(results.length, 1)) * 100).toFixed(1).padEnd(18)}% ║`);
+  console.log(`  ║  Throughput:        ${throughput.toFixed(1).padEnd(14)} req/s ║`);
   if (times.length > 0) {
     console.log(`  ║  p50 latency:       ${formatMs(percentile(times, 50)).padEnd(21)}║`);
     console.log(`  ║  p95 latency:       ${formatMs(percentile(times, 95)).padEnd(21)}║`);
@@ -71,129 +76,44 @@ function printStats(label, results) {
     console.log(`  ║  Min latency:       ${formatMs(Math.min(...times)).padEnd(21)}║`);
   }
   console.log(`  ║  Status codes:      ${JSON.stringify(statusCodes).padEnd(21).substring(0, 21)}║`);
-  if (errors.length > 0 && errors.length <= 10) {
+  if (errors.length > 0) {
     const errTypes = {};
     for (const e of errors) {
       const key = `${e.status}: ${e.error || "unknown"}`;
       errTypes[key] = (errTypes[key] || 0) + 1;
     }
-    console.log(`  ║  Error details:     ${JSON.stringify(errTypes).substring(0, 60).padEnd(21)}║`);
+    const errStr = JSON.stringify(errTypes);
+    // Print error details on multiple lines if needed
+    for (let i = 0; i < errStr.length; i += 38) {
+      console.log(`  ║  ${i === 0 ? "Error breakdown:" : "                "}${errStr.substring(i, i + 38).padEnd(24)}║`);
+    }
   }
   console.log(`  ╚══════════════════════════════════════════╝\n`);
-  return { success: success.length, errors: errors.length, times };
+  return { success: success.length, errors: errors.length, times, throughput };
 }
 
-// ---- Phase 1: Registration Burst ----
+// ---- Phase 1+2: Simultaneous Registration + Check-in ----
 
-async function phase1_registration() {
+async function phase_simultaneous(authToken) {
   console.log("\n" + "=".repeat(60));
-  console.log("  PHASE 1: REGISTRATION BURST");
-  console.log(`  Target: ${TOTAL_REGISTRATIONS} registrations`);
-  console.log(`  Concurrency: ${REGISTRATION_CONCURRENCY} simultaneous`);
-  console.log(`  Duration target: ~60 seconds`);
+  console.log("  PHASE 1+2: SIMULTANEOUS REGISTRATION + CHECK-IN");
+  console.log(`  Target: ${TOTAL_REGISTRATIONS} registrations + immediate check-ins`);
+  console.log(`  Reg concurrency: ${REGISTRATION_CONCURRENCY} simultaneous`);
+  console.log(`  Check-in concurrency: ${CHECKIN_CONCURRENCY} simultaneous`);
   console.log("=".repeat(60));
 
-  const results = [];
+  const regResults = [];
+  const checkinResults = [];
   const registrationCodes = [];
-  let completed = 0;
+  let regCompleted = 0;
+  let checkinCompleted = 0;
   const startTime = Date.now();
 
-  async function registerOne(index) {
-    const code = generateCode();
-    const firstName = `Guest`;
-    const lastName = `Test${index}`;
-    const phone = `+1555${String(index).padStart(7, "0")}`;
-    const email = `voltest-${index}-${code.toLowerCase()}@test.pmcc4thwatch.us`;
+  // Check-in worker — continuously processes codes as they come in
+  const checkinQueue = [];
+  let checkinWorkersRunning = 0;
 
-    const reqStart = Date.now();
-    try {
-      const res = await fetch(`${BASE_URL}/api/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          eventSlug: "home-free-global-crusade-new-york-2026",
-          refCode: "TFKARJ-2AJD", // admin's invite code
-          firstName,
-          lastName,
-          phone,
-          email,
-        }),
-      });
-
-      const duration = Date.now() - reqStart;
-      let body;
-      try { body = await res.json(); } catch { body = {}; }
-
-      const success = res.status === 200 && body.success;
-      if (success && body.registration?.code) {
-        registrationCodes.push(body.registration.code);
-      }
-
-      results.push({
-        success,
-        status: res.status,
-        duration,
-        error: success ? null : (body.error || `HTTP ${res.status}`),
-        timestamp: Date.now(),
-      });
-    } catch (err) {
-      results.push({
-        success: false,
-        status: 0,
-        duration: Date.now() - reqStart,
-        error: err.message?.substring(0, 80) || "fetch error",
-        timestamp: Date.now(),
-      });
-    }
-
-    completed++;
-    if (completed % 100 === 0) {
-      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-      const rate = (completed / ((Date.now() - startTime) / 1000)).toFixed(1);
-      process.stdout.write(`    [${completed}/${TOTAL_REGISTRATIONS}] ${elapsed}s elapsed, ${rate} req/s\n`);
-    }
-  }
-
-  // Run in batches with controlled concurrency
-  const batches = [];
-  for (let i = 0; i < TOTAL_REGISTRATIONS; i += REGISTRATION_CONCURRENCY) {
-    const batch = [];
-    for (let j = i; j < Math.min(i + REGISTRATION_CONCURRENCY, TOTAL_REGISTRATIONS); j++) {
-      batch.push(registerOne(j));
-    }
-    batches.push(batch);
-  }
-
-  // Execute batches
-  for (const batch of batches) {
-    await Promise.all(batch);
-  }
-
-  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  console.log(`\n  Phase 1 completed in ${elapsed}s`);
-  const stats = printStats("REGISTRATION RESULTS", results);
-  return { results, registrationCodes, stats };
-}
-
-// ---- Phase 2: Check-in Scans ----
-
-async function phase2_checkin(registrationCodes, authToken) {
-  console.log("\n" + "=".repeat(60));
-  console.log("  PHASE 2: CHECK-IN SCANS");
-  console.log(`  Target: ${registrationCodes.length} check-ins`);
-  console.log(`  Concurrency: ${CHECKIN_CONCURRENCY} simultaneous`);
-  console.log("=".repeat(60));
-
-  if (registrationCodes.length === 0) {
-    console.log("  ⚠️  No registration codes to check in. Skipping.");
-    return { results: [], stats: null };
-  }
-
-  const results = [];
-  let completed = 0;
-  const startTime = Date.now();
-
-  async function checkInOne(code, index) {
+  async function runCheckin(code, index) {
     const reqStart = Date.now();
     try {
       const res = await fetch(`${BASE_URL}/api/check-in`, {
@@ -213,7 +133,7 @@ async function phase2_checkin(registrationCodes, authToken) {
       try { body = await res.json(); } catch { body = {}; }
 
       const success = res.status === 200 && body.success;
-      results.push({
+      checkinResults.push({
         success,
         status: res.status,
         duration,
@@ -221,7 +141,7 @@ async function phase2_checkin(registrationCodes, authToken) {
         timestamp: Date.now(),
       });
     } catch (err) {
-      results.push({
+      checkinResults.push({
         success: false,
         status: 0,
         duration: Date.now() - reqStart,
@@ -230,30 +150,116 @@ async function phase2_checkin(registrationCodes, authToken) {
       });
     }
 
-    completed++;
-    if (completed % 50 === 0) {
+    checkinCompleted++;
+    checkinWorkersRunning--;
+    if (checkinCompleted % 100 === 0) {
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-      const rate = (completed / ((Date.now() - startTime) / 1000)).toFixed(1);
-      process.stdout.write(`    [${completed}/${registrationCodes.length}] ${elapsed}s elapsed, ${rate} req/s\n`);
+      const rate = (checkinCompleted / ((Date.now() - startTime) / 1000)).toFixed(1);
+      process.stdout.write(`    [check-in ${checkinCompleted}] ${elapsed}s, ${rate} check-ins/s\n`);
+    }
+
+    // Process next in queue
+    if (checkinQueue.length > 0 && checkinWorkersRunning < CHECKIN_CONCURRENCY) {
+      const next = checkinQueue.shift();
+      checkinWorkersRunning++;
+      runCheckin(next.code, next.index);
     }
   }
 
-  // Run in batches
-  for (let i = 0; i < registrationCodes.length; i += CHECKIN_CONCURRENCY) {
-    const batch = registrationCodes.slice(i, i + CHECKIN_CONCURRENCY).map((code, j) =>
-      checkInOne(code, i + j)
-    );
-    await Promise.all(batch);
-    // Small delay between batches to avoid overwhelming
-    if (i + CHECKIN_CONCURRENCY < registrationCodes.length) {
-      await new Promise(r => setTimeout(r, 50));
+  function enqueueCheckin(code, index) {
+    if (checkinWorkersRunning < CHECKIN_CONCURRENCY) {
+      checkinWorkersRunning++;
+      runCheckin(code, index);
+    } else {
+      checkinQueue.push({ code, index });
     }
+  }
+
+  // Registration worker — distributes across invite codes to simulate real scenario
+  async function registerOne(index) {
+    const code = generateCode();
+    const firstName = `Guest`;
+    const lastName = `Test${index}`;
+    const phone = `+1555${String(index).padStart(7, "0")}`;
+    const email = `voltest-${index}-${code.toLowerCase()}@test.pmcc4thwatch.us`;
+    // Round-robin across invite codes to avoid single-code rate limit
+    const refCode = INVITE_CODES[index % INVITE_CODES.length];
+
+    const reqStart = Date.now();
+    try {
+      const res = await fetch(`${BASE_URL}/api/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventSlug: EVENT_SLUG,
+          refCode,
+          firstName,
+          lastName,
+          phone,
+          email,
+        }),
+      });
+
+      const duration = Date.now() - reqStart;
+      let body;
+      try { body = await res.json(); } catch { body = {}; }
+
+      const success = res.status === 200 && body.success;
+      if (success && body.registration?.code) {
+        registrationCodes.push(body.registration.code);
+        // Immediately enqueue check-in for this registration
+        enqueueCheckin(body.registration.code, index);
+      }
+
+      regResults.push({
+        success,
+        status: res.status,
+        duration,
+        error: success ? null : (body.error || `HTTP ${res.status}`),
+        timestamp: Date.now(),
+      });
+    } catch (err) {
+      regResults.push({
+        success: false,
+        status: 0,
+        duration: Date.now() - reqStart,
+        error: err.message?.substring(0, 80) || "fetch error",
+        timestamp: Date.now(),
+      });
+    }
+
+    regCompleted++;
+    if (regCompleted % 100 === 0) {
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      const rate = (regCompleted / ((Date.now() - startTime) / 1000)).toFixed(1);
+      process.stdout.write(`    [reg ${regCompleted}/${TOTAL_REGISTRATIONS}] ${elapsed}s, ${rate} reg/s\n`);
+    }
+  }
+
+  // Run registrations in batches with controlled concurrency
+  for (let i = 0; i < TOTAL_REGISTRATIONS; i += REGISTRATION_CONCURRENCY) {
+    const batch = [];
+    for (let j = i; j < Math.min(i + REGISTRATION_CONCURRENCY, TOTAL_REGISTRATIONS); j++) {
+      batch.push(registerOne(j));
+    }
+    await Promise.all(batch);
+  }
+
+  // Wait for all check-ins to complete
+  const checkinWaitStart = Date.now();
+  while ((checkinQueue.length > 0 || checkinWorkersRunning > 0) && Date.now() - checkinWaitStart < 120000) {
+    await new Promise(r => setTimeout(r, 500));
   }
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  console.log(`\n  Phase 2 completed in ${elapsed}s`);
-  const stats = printStats("CHECK-IN RESULTS", results);
-  return { results, stats };
+  console.log(`\n  Simultaneous phase completed in ${elapsed}s`);
+
+  const regStats = printStats("REGISTRATION RESULTS", regResults);
+  const checkinStats = checkinResults.length > 0
+    ? printStats("CHECK-IN RESULTS", checkinResults)
+    : { success: 0, errors: 0, times: [], throughput: 0 };
+
+  return { regResults, checkinResults, registrationCodes, regStats, checkinStats };
 }
 
 // ---- Phase 3: Analytics Under Load ----
@@ -267,10 +273,19 @@ async function phase3_analytics(authToken) {
   const results = [];
   const startTime = Date.now();
 
-  const analyticsPromises = Array.from({ length: 5 }, async (_, i) => {
+  // Test both overview-only and full analytics
+  const endpoints = [
+    { url: `${BASE_URL}/api/events/${EVENT_ID}/analytics?section=overview`, label: "overview" },
+    { url: `${BASE_URL}/api/events/${EVENT_ID}/analytics?section=churches`, label: "churches" },
+    { url: `${BASE_URL}/api/events/${EVENT_ID}/analytics?section=technical`, label: "technical" },
+    { url: `${BASE_URL}/api/events/${EVENT_ID}/analytics`, label: "full" },
+    { url: `${BASE_URL}/api/events/${EVENT_ID}/analytics?section=overview`, label: "overview-2" },
+  ];
+
+  const analyticsPromises = endpoints.map(async ({ url, label }, i) => {
     const reqStart = Date.now();
     try {
-      const res = await fetch(`${BASE_URL}/api/events/${EVENT_ID}/analytics`, {
+      const res = await fetch(url, {
         headers: { "Cookie": `payload-token=${authToken}` },
       });
       const duration = Date.now() - reqStart;
@@ -283,6 +298,7 @@ async function phase3_analytics(authToken) {
         duration,
         error: res.status === 200 ? null : (body.error || `HTTP ${res.status}`),
         timestamp: Date.now(),
+        label,
       });
     } catch (err) {
       results.push({
@@ -291,6 +307,7 @@ async function phase3_analytics(authToken) {
         duration: Date.now() - reqStart,
         error: err.message?.substring(0, 80) || "fetch error",
         timestamp: Date.now(),
+        label,
       });
     }
   });
@@ -298,7 +315,15 @@ async function phase3_analytics(authToken) {
   await Promise.all(analyticsPromises);
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log(`\n  Phase 3 completed in ${elapsed}s`);
-  printStats("ANALYTICS UNDER LOAD", results);
+
+  // Print per-endpoint results
+  console.log(`\n  Analytics endpoint latency:`);
+  for (const r of results) {
+    const status = r.success ? "✅" : "❌";
+    console.log(`    ${status} ${r.label}: ${formatMs(r.duration)} (HTTP ${r.status})`);
+  }
+  console.log("");
+
   return results;
 }
 
@@ -306,12 +331,14 @@ async function phase3_analytics(authToken) {
 
 async function main() {
   console.log("╔══════════════════════════════════════════════════════════╗");
-  console.log("║  PMCC 4TH WATCH — VOLUME TEST                           ║");
-  console.log("║  Simulating large event with 5,000 registrations        ║");
+  console.log("║  PMCC 4TH WATCH — VOLUME TEST v2                        ║");
+  console.log("║  Simultaneous registration + check-in for 5,000 users   ║");
   console.log("╠══════════════════════════════════════════════════════════╣");
   console.log(`║  Target: ${BASE_URL.padEnd(46)}║`);
   console.log(`║  Event:  ${EVENT_ID.padEnd(46)}║`);
   console.log(`║  Volume: ${String(TOTAL_REGISTRATIONS).padEnd(46)}║`);
+  console.log(`║  Reg concurrency: ${String(REGISTRATION_CONCURRENCY).padEnd(37)}║`);
+  console.log(`║  Checkin concurrency: ${String(CHECKIN_CONCURRENCY).padEnd(34)}║`);
   console.log("╚══════════════════════════════════════════════════════════╝");
 
   // Login to get auth token
@@ -338,34 +365,45 @@ async function main() {
   }
   console.log("  ✅ Authenticated as superAdmin\n");
 
-  // Phase 1: Registration burst
-  const phase1 = await phase1_registration();
-
-  // Phase 2: Check-in scans (only for successful registrations)
-  const codes = phase1.registrationCodes;
-  console.log(`  Proceeding with ${codes.length} registration codes for check-in...`);
-  const phase2 = await phase2_checkin(codes, authToken);
+  // Phase 1+2: Simultaneous registration + check-in
+  const combined = await phase_simultaneous(authToken);
 
   // Phase 3: Analytics under load
   const phase3 = await phase3_analytics(authToken);
 
   // ---- Summary ----
+  const totalTime = ((Date.now() - (combined.regResults[0]?.timestamp || Date.now())) / 1000).toFixed(1);
   console.log("\n" + "=".repeat(60));
   console.log("  FINAL SUMMARY");
   console.log("=".repeat(60));
-  console.log(`  Phase 1 (Registration): ${phase1.stats.success} success, ${phase1.stats.errors} errors`);
-  console.log(`  Phase 2 (Check-in):     ${phase2.stats?.success || "N/A"} success, ${phase2.stats?.errors || "N/A"} errors`);
-  console.log(`  Phase 3 (Analytics):    ${phase3.filter(r => r.success).length}/5 responded correctly`);
-  console.log("");
+  console.log(`  Total time:            ${totalTime}s`);
+  console.log(`  Registration:          ${combined.regStats.success} success, ${combined.regStats.errors} errors (${combined.regStats.throughput.toFixed(1)} req/s)`);
+  console.log(`  Check-in:              ${combined.checkinStats.success} success, ${combined.checkinStats.errors} errors (${combined.checkinStats.throughput.toFixed(1)} req/s)`);
+  console.log(`  Analytics:             ${phase3.filter(r => r.success).length}/5 responded correctly`);
 
-  if (phase1.stats.errors > 0 || (phase2.stats && phase2.stats.errors > 0)) {
-    console.log("  ⚠️  ISSUES DETECTED — see details above for error breakdown");
+  // Latency comparison
+  if (combined.regStats.times.length > 0) {
+    console.log(`\n  Registration latency:`);
+    console.log(`    p50: ${formatMs(percentile(combined.regStats.times, 50))}`);
+    console.log(`    p95: ${formatMs(percentile(combined.regStats.times, 95))}`);
+    console.log(`    p99: ${formatMs(percentile(combined.regStats.times, 99))}`);
+  }
+  if (combined.checkinStats.times.length > 0) {
+    console.log(`\n  Check-in latency:`);
+    console.log(`    p50: ${formatMs(percentile(combined.checkinStats.times, 50))}`);
+    console.log(`    p95: ${formatMs(percentile(combined.checkinStats.times, 95))}`);
+    console.log(`    p99: ${formatMs(percentile(combined.checkinStats.times, 99))}`);
+  }
+
+  const totalErrors = combined.regStats.errors + combined.checkinStats.errors;
+  if (totalErrors > 0) {
+    console.log(`\n  ⚠️  ${totalErrors} TOTAL ISSUES DETECTED`);
     console.log("  Common causes:");
-    console.log("    - Rate limiting (429s): registration limits per invite code");
+    console.log("    - 429 rate limiting: registration limits per invite code (200/hr)");
     console.log("    - MongoDB connection pool exhaustion under concurrent writes");
-    console.log("    - Node.js event loop blocking from synchronous operations");
+    console.log("    - Network timeouts under heavy load");
   } else {
-    console.log("  ✅ All phases passed — system handled the load");
+    console.log("\n  ✅ All phases passed — system handled the load");
   }
   console.log("");
 }
