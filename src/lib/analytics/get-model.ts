@@ -1,14 +1,13 @@
 import { getPayload } from "payload";
-import { Types } from "mongoose";
+import { ObjectId } from "mongodb";
 import config from "@payload-config";
 
 /**
  * Convert a string ID to MongoDB ObjectId.
- * Required in aggregation $match stages since Mongoose
- * doesn't auto-cast in .aggregate() like it does in .find().
+ * Uses the mongodb driver's ObjectId (not Mongoose's) to avoid BSON version conflicts.
  */
 export function toObjectId(id: string) {
-  return new Types.ObjectId(id);
+  return new ObjectId(id);
 }
 
 /**
