@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
+import { countDocs } from "@/lib/analytics/get-model";
 
 export async function GET(
   request: NextRequest,
@@ -84,18 +85,10 @@ export async function GET(
     });
 
     // Get registration count and capacity info
-    const registrations = await payload.find({
-      collection: "event-registrations",
-      where: {
-        event: { equals: event.id },
-        status: { in: ["registered", "attended", "baptized"] },
-      },
-      limit: 0,
-      depth: 0,
-      overrideAccess: true,
+    const registrationCount = await countDocs(payload, "event-registrations", {
+      event: event.id,
+      status: { $in: ["registered", "attended", "baptized"] },
     });
-
-    const registrationCount = registrations.totalDocs;
     const spotsRemaining = event.maxAttendees
       ? Math.max(0, event.maxAttendees - registrationCount)
       : null;

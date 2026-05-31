@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
 import { getCurrentUser, isAdmin } from "@/lib/auth-helpers";
+import { countDocs } from "@/lib/analytics/get-model";
 
 export async function GET(
   request: NextRequest,
@@ -29,16 +30,10 @@ export async function GET(
       overrideAccess: true,
     });
 
-    // Fetch registrations for this event
-    const registrations = await payload.find({
-      collection: "event-registrations",
-      where: {
-        event: { equals: eventId },
-        status: { in: ["registered", "attended", "baptized"] },
-      },
-      limit: 0,
-      depth: 0,
-      overrideAccess: true,
+    // Fetch registration count for this event
+    const totalRegistrations = await countDocs(payload, "event-registrations", {
+      event: eventId,
+      status: { $in: ["registered", "attended", "baptized"] },
     });
 
     // Fetch church event invites for this event
@@ -266,7 +261,7 @@ export async function GET(
       totalScans: scans.totalDocs,
       memberScans: memberScans.length,
       churchScans: churchScans.length,
-      totalRegistrations: registrations.totalDocs,
+      totalRegistrations,
       conversionRate: {
         member: memberScans.length > 0
           ? Math.round((memberRegistered / memberScans.length) * 100)

@@ -15,3 +15,11 @@ export function toObjectId(id: string) {
 export function getModel(payload: Payload, slug: string) {
   return payload.db.collections[slug];
 }
+
+/**
+ * Count documents in a Payload collection using raw MongoDB countDocuments().
+ * Much faster than payload.find({ limit: 0 }) which runs through full Payload middleware.
+ */
+export function countDocs(payload: Payload, slug: string, filter: Record<string, unknown>) {
+  return payload.db.collections[slug].countDocuments(filter);
+}

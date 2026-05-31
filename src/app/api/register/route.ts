@@ -7,6 +7,7 @@ import { formatEventDate, formatEventTime } from "@/lib/event-date";
 import { rateLimitAsync } from "@/lib/rate-limit";
 import { wrap as cacheWrap, cacheKeys, invalidateEventCache } from "@/lib/cache";
 import { randomInt } from "crypto";
+import { countDocs } from "@/lib/analytics/get-model";
 
 function generateRegistrationCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -544,37 +545,27 @@ export async function POST(request: NextRequest) {
     let waitlistPosition = 0;
 
     if (fullEvent.maxAttendees) {
-      const currentRegistrations = await cacheWrap(
+      const currentRegistrationCount = await cacheWrap(
         cacheKeys.eventCapacity(fullEvent.id),
         30,
-        () => payload.find({
-          collection: "event-registrations",
-          where: {
-            event: { equals: fullEvent.id },
-            status: { in: ["registered", "confirmed", "attended", "baptized"] },
-          },
-          limit: 0,
-          depth: 0,
+        () => countDocs(payload, "event-registrations", {
+          event: fullEvent.id,
+          status: { $in: ["registered", "confirmed", "attended", "baptized"] },
         }),
       );
 
-      if (currentRegistrations.totalDocs >= (fullEvent.maxAttendees as number)) {
+      if (currentRegistrationCount >= (fullEvent.maxAttendees as number)) {
         if (!joinWaitlist) {
-          const waitlistCount = await payload.find({
-            collection: "event-registrations",
-            where: {
-              event: { equals: fullEvent.id },
-              status: { equals: "waitlisted" },
-            },
-            limit: 0,
-            depth: 0,
+          const waitlistCount = await countDocs(payload, "event-registrations", {
+            event: fullEvent.id,
+            status: "waitlisted",
           });
 
           return NextResponse.json(
             {
               error: "Event has reached maximum capacity",
               capacityReached: true,
-              waitlistCount: waitlistCount.totalDocs,
+              waitlistCount,
               canJoinWaitlist: true,
             },
             { status: 400 }
@@ -582,16 +573,11 @@ export async function POST(request: NextRequest) {
         }
 
         isWaitlisted = true;
-        const waitlistEntries = await payload.find({
-          collection: "event-registrations",
-          where: {
-            event: { equals: fullEvent.id },
-            status: { equals: "waitlisted" },
-          },
-          limit: 0,
-          depth: 0,
+        const waitlistEntryCount = await countDocs(payload, "event-registrations", {
+          event: fullEvent.id,
+          status: "waitlisted",
         });
-        waitlistPosition = waitlistEntries.totalDocs + 1;
+        waitlistPosition = waitlistEntryCount + 1;
       }
     }
 
@@ -810,7 +796,7 @@ export async function POST(request: NextRequest) {
       invitedBy: invitedByDisplay,
     });
   } catch (error) {
-    console.error("Registration error");
+    console.error("Registration error", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

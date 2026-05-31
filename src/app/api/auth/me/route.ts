@@ -4,6 +4,7 @@ import config from "@payload-config";
 import { headers } from "next/headers";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { countDocs } from "@/lib/analytics/get-model";
 
 export async function GET(request: NextRequest) {
   try {
@@ -86,39 +87,19 @@ export async function GET(request: NextRequest) {
 
 async function getInviteStats(payload: Awaited<ReturnType<typeof getPayload>>, userId: string) {
   try {
-    // Use limit: 0 to just get totalDocs count without fetching all documents
-    const [totalRes, registeredRes, attendedRes, baptizedRes] = await Promise.all([
-      payload.find({
-        collection: "event-registrations",
-        where: { invitedBy: { equals: userId } },
-        limit: 0,
-        overrideAccess: true,
-      }),
-      payload.find({
-        collection: "event-registrations",
-        where: { invitedBy: { equals: userId }, status: { in: ["registered", "attended", "baptized"] } },
-        limit: 0,
-        overrideAccess: true,
-      }),
-      payload.find({
-        collection: "event-registrations",
-        where: { invitedBy: { equals: userId }, status: { in: ["attended", "baptized"] } },
-        limit: 0,
-        overrideAccess: true,
-      }),
-      payload.find({
-        collection: "event-registrations",
-        where: { invitedBy: { equals: userId }, status: { equals: "baptized" } },
-        limit: 0,
-        overrideAccess: true,
-      }),
+    // Use raw MongoDB countDocuments for count-only queries
+    const [totalInvites, registered, attended, baptized] = await Promise.all([
+      countDocs(payload, "event-registrations", { invitedBy: userId }),
+      countDocs(payload, "event-registrations", { invitedBy: userId, status: { $in: ["registered", "attended", "baptized"] } }),
+      countDocs(payload, "event-registrations", { invitedBy: userId, status: { $in: ["attended", "baptized"] } }),
+      countDocs(payload, "event-registrations", { invitedBy: userId, status: "baptized" }),
     ]);
 
     return {
-      totalInvites: totalRes.totalDocs,
-      registered: registeredRes.totalDocs,
-      attended: attendedRes.totalDocs,
-      baptized: baptizedRes.totalDocs,
+      totalInvites,
+      registered,
+      attended,
+      baptized,
     };
   } catch {
     return {
@@ -195,12 +176,7 @@ async function getEventInvites(payload: Awaited<ReturnType<typeof getPayload>>, 
     // Batch: get registration counts for all invites in parallel
     const countResults = await Promise.all(
       validInvites.map((invite) =>
-        payload.find({
-          collection: "event-registrations",
-          where: { eventInvite: { equals: invite.id } },
-          limit: 0,
-          overrideAccess: true,
-        })
+        countDocs(payload, "event-registrations", { eventInvite: invite.id })
       )
     );
 
@@ -215,7 +191,7 @@ async function getEventInvites(payload: Awaited<ReturnType<typeof getPayload>>, 
         eventDate: event.startDate as string,
         eventLocation: event.location as string,
         inviteCode: invite.inviteCode as string,
-        registrationCount: countResults[i].totalDocs,
+        registrationCount: countResults[i],
       };
     }).filter(Boolean) as Array<{
       eventId: string; eventTitle: string; eventSlug: string;

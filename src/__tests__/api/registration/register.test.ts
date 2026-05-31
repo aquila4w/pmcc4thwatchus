@@ -43,7 +43,25 @@ vi.mock("@payload-config", () => ({
 
 vi.mock("@/lib/rate-limit", () => ({
   rateLimit: vi.fn(() => ({ allowed: true, remaining: 99, resetIn: 60000 })),
+  rateLimitAsync: vi.fn(async () => ({ allowed: true, remaining: 99, resetIn: 60000 })),
   getClientIp: vi.fn(() => "127.0.0.1"),
+}));
+
+vi.mock("@/lib/cache", () => ({
+  wrap: vi.fn(async (_key: string, _ttl: number, fn: () => Promise<unknown>) => fn()),
+  get: vi.fn(async () => null),
+  set: vi.fn(async () => {}),
+  del: vi.fn(async () => {}),
+  delPattern: vi.fn(async () => {}),
+  cacheKeys: {
+    event: (id: string) => `event:${id}`,
+    eventStats: (id: string) => `event:${id}:stats`,
+    eventCapacity: (id: string) => `event:${id}:capacity`,
+    invite: (code: string) => `invite:${code}`,
+    churchInvite: (code: string) => `church-invite:${code}`,
+    platformLink: (code: string) => `platform-link:${code}`,
+  },
+  invalidateEventCache: vi.fn(async () => {}),
 }));
 
 vi.mock("@/lib/email", () => ({

@@ -3,6 +3,7 @@ import { getPayload } from "payload";
 import config from "@payload-config";
 import { getCurrentUser, isAdmin } from "@/lib/auth-helpers";
 import { wrap, cacheKeys, invalidateEventCache } from "@/lib/cache";
+import { countDocs } from "@/lib/analytics/get-model";
 
 export async function GET(
   request: NextRequest,
@@ -40,65 +41,27 @@ export async function GET(
         if (!event) return null;
 
         // Get registration stats
-        const registrations = await payload.find({
-          collection: "event-registrations",
-          where: {
-            event: { equals: eventId },
-          },
-          limit: 0,
-          depth: 0,
-          overrideAccess: true,
+        const totalRegistrations = await countDocs(payload, "event-registrations", {
+          event: eventId,
         });
-
-        const totalRegistrations = registrations.totalDocs;
 
         // Get attended count
-        const attended = await payload.find({
-          collection: "event-registrations",
-          where: {
-            and: [
-              { event: { equals: eventId } },
-              { status: { in: ["attended", "baptized"] } },
-            ],
-          },
-          limit: 0,
-          depth: 0,
-          overrideAccess: true,
+        const attendedCount = await countDocs(payload, "event-registrations", {
+          event: eventId,
+          status: { $in: ["attended", "baptized"] },
         });
-
-        const attendedCount = attended.totalDocs;
 
         // Get baptized count
-        const baptized = await payload.find({
-          collection: "event-registrations",
-          where: {
-            and: [
-              { event: { equals: eventId } },
-              { status: { equals: "baptized" } },
-            ],
-          },
-          limit: 0,
-          depth: 0,
-          overrideAccess: true,
+        const baptizedCount = await countDocs(payload, "event-registrations", {
+          event: eventId,
+          status: "baptized",
         });
-
-        const baptizedCount = baptized.totalDocs;
 
         // Get waitlisted count
-        const waitlisted = await payload.find({
-          collection: "event-registrations",
-          where: {
-            and: [
-              { event: { equals: eventId } },
-              { status: { equals: "waitlisted" } },
-            ],
-          },
-          limit: 0,
-          depth: 0,
-          overrideAccess: true,
+        const waitlistedCount = await countDocs(payload, "event-registrations", {
+          event: eventId,
+          status: "waitlisted",
         });
-
-        const waitlistedCount = waitlisted.totalDocs;
 
         return {
           totalRegistrations,

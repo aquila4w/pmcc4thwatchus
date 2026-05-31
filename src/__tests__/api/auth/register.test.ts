@@ -30,6 +30,7 @@ vi.mock("@/lib/auth-helpers", async () => {
 
 vi.mock("@/lib/rate-limit", () => ({
   rateLimit: vi.fn(() => ({ allowed: true, remaining: 99, resetIn: 60000 })),
+  rateLimitAsync: vi.fn(async () => ({ allowed: true, remaining: 99, resetIn: 60000 })),
   getClientIp: vi.fn(() => "127.0.0.1"),
 }));
 

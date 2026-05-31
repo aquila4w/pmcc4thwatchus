@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
+import { countDocs } from "@/lib/analytics/get-model";
 
 export async function GET(
   request: NextRequest,
@@ -63,12 +64,8 @@ export async function GET(
         });
 
     // Get registration count
-    const registrations = await payload.find({
-      collection: "event-registrations",
-      where: { platformEventLink: { equals: link.id } },
-      limit: 0,
-      depth: 0,
-      overrideAccess: true,
+    const registrationCount = await countDocs(payload, "event-registrations", {
+      platformEventLink: link.id,
     });
 
     return NextResponse.json({
@@ -102,7 +99,7 @@ export async function GET(
         name: platform.name,
         slug: platform.slug,
       } : null,
-      registrationCount: registrations.totalDocs,
+      registrationCount,
     });
   } catch (error) {
     console.error("Failed to fetch platform link:", error);

@@ -9,6 +9,7 @@ export const _getCurrentUserMock = vi.fn();
 export const _getServerSessionMock = vi.fn();
 export const _headersMock = vi.fn(async () => new Headers());
 export const _rateLimitMock = vi.fn(() => ({ allowed: true, remaining: 99, resetIn: 60000 }));
+export const _rateLimitAsyncMock = vi.fn(async () => ({ allowed: true, remaining: 99, resetIn: 60000 }));
 
 /**
  * Standard module-level mocks needed for most API route tests.
@@ -45,7 +46,25 @@ export function setupModuleMocks() {
 
   vi.mock("@/lib/rate-limit", () => ({
     rateLimit: _rateLimitMock,
+    rateLimitAsync: _rateLimitAsyncMock,
     getClientIp: vi.fn(() => "127.0.0.1"),
+  }));
+
+  vi.mock("@/lib/cache", () => ({
+    wrap: vi.fn(async (_key: string, _ttl: number, fn: () => Promise<unknown>) => fn()),
+    get: vi.fn(async () => null),
+    set: vi.fn(async () => {}),
+    del: vi.fn(async () => {}),
+    delPattern: vi.fn(async () => {}),
+    cacheKeys: {
+      event: (id: string) => `event:${id}`,
+      eventStats: (id: string) => `event:${id}:stats`,
+      eventCapacity: (id: string) => `event:${id}:capacity`,
+      invite: (code: string) => `invite:${code}`,
+      churchInvite: (code: string) => `church-invite:${code}`,
+      platformLink: (code: string) => `platform-link:${code}`,
+    },
+    invalidateEventCache: vi.fn(async () => {}),
   }));
 }
 
