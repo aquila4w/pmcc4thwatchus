@@ -23,6 +23,7 @@ export async function GET(
     console.log(`[ANALYTICS] Payload init: ${Date.now() - t0}ms`);
 
     const authUser = await getCurrentUser(request);
+    console.log(`[ANALYTICS] Auth done: ${Date.now() - t0}ms`);
     if (!authUser) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
