@@ -11,10 +11,9 @@ export const metadata: Metadata = {
   },
 };
 
-// Force all routes to be dynamically rendered at runtime (not at build time)
-// This prevents build timeouts from Payload CMS/MongoDB connections
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+// NOTE: Removed force-dynamic from layout. Static pages (about, beliefs, give, radio)
+// are now statically generated and served from CDN. Only pages that need database
+// data should set `export const dynamic = 'force-dynamic'` individually.
 
 export default function FrontendLayout({
   children,

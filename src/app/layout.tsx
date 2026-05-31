@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
-// Force all routes to be dynamically rendered at runtime (not at build time)
-// This prevents build timeouts from Payload CMS/MongoDB connections
-export const dynamic = "force-dynamic";
+// NOTE: Removed force-dynamic. Static frontend pages (about, beliefs, give, radio, etc.)
+// are now statically generated and served from CDN. Only admin and dynamic routes
+// (ticket, register, etc.) use force-dynamic in their own layouts.
 
 const siteUrl = "https://pmcc4thwatch.us";
 
