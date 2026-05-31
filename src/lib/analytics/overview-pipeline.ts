@@ -1,4 +1,4 @@
-import { getModel } from "./get-model";
+import { getModel, toObjectId } from "./get-model";
 import { buildDateMatch } from "./date-filter";
 
 interface OverviewResult {
@@ -19,13 +19,13 @@ export async function getOverview(
 ): Promise<OverviewResult> {
   const ScanModel = await getModel("invite-scans");
   const RegModel = await getModel("event-registrations");
+  const eventOid = toObjectId(eventId);
   const scanDateMatch = buildDateMatch("scannedAt", from, to);
   const regDateMatch = buildDateMatch("createdAt", from, to);
 
   const [scanResult, regResult] = await Promise.all([
     ScanModel.aggregate([
-      { $addFields: { __eventOid: { $toObjectId: eventId } } },
-      { $match: { $expr: { $eq: ["$event", "$__eventOid"] }, ...scanDateMatch } },
+      { $match: { event: eventOid, ...scanDateMatch } },
       { $facet: {
         counts: [{ $group: { _id: null, totalScans: { $sum: 1 }, memberScans: { $sum: { $cond: [{ $eq: ["$inviteType", "member"] }, 1, 0] } }, churchScans: { $sum: { $cond: [{ $eq: ["$inviteType", "church"] }, 1, 0] } }, platformScans: { $sum: { $cond: [{ $eq: ["$inviteType", "platform"] }, 1, 0] } }, registeredFromScans: { $sum: { $cond: [{ $eq: ["$registered", true] }, 1, 0] } } } }],
         timeline: [
@@ -37,8 +37,7 @@ export async function getOverview(
       } },
     ]),
     RegModel.aggregate([
-      { $addFields: { __eventOid: { $toObjectId: eventId } } },
-      { $match: { $expr: { $eq: ["$event", "$__eventOid"] }, ...regDateMatch } },
+      { $match: { event: eventOid, ...regDateMatch } },
       { $facet: {
         counts: [{ $group: { _id: null, totalRegistrations: { $sum: 1 }, attended: { $sum: { $cond: [{ $in: ["$status", ["attended", "baptized"]] }, 1, 0] } }, baptized: { $sum: { $cond: [{ $eq: ["$status", "baptized"] }, 1, 0] } }, waitlisted: { $sum: { $cond: [{ $eq: ["$status", "waitlisted"] }, 1, 0] } } } }],
         statusDistribution: [{ $group: { _id: { $ifNull: ["$status", "unknown"] }, count: { $sum: 1 } } }, { $project: { _id: 0, status: "$_id", count: 1 } }],

@@ -1,6 +1,6 @@
 import { getPayload } from "payload";
 import config from "@payload-config";
-import { getModel } from "./get-model";
+import { getModel, toObjectId } from "./get-model";
 import { buildDateMatch } from "./date-filter";
 
 interface ChurchData {
@@ -12,25 +12,23 @@ export async function getChurches(eventId: string, from?: string | null, to?: st
   const payload = await getPayload({ config });
   const ScanModel = await getModel("invite-scans");
   const RegModel = await getModel("event-registrations");
+  const eventOid = toObjectId(eventId);
   const scanDateMatch = buildDateMatch("scannedAt", from, to);
   const regDateMatch = buildDateMatch("createdAt", from, to);
 
   const [scanByChurch, regByChurch, memberScansByInvite, eventInvites] = await Promise.all([
     ScanModel.aggregate([
-      { $addFields: { __eventOid: { $toObjectId: eventId } } },
-      { $match: { $expr: { $eq: ["$event", "$__eventOid"] }, inviteType: { $in: ["member", "church"] }, church: { $exists: true, $ne: null }, ...scanDateMatch } },
+      { $match: { event: eventOid, inviteType: { $in: ["member", "church"] }, church: { $exists: true, $ne: null }, ...scanDateMatch } },
       { $group: { _id: "$church", totalScans: { $sum: 1 } } },
       { $project: { _id: 0, churchId: "$_id", totalScans: 1 } },
     ]),
     RegModel.aggregate([
-      { $addFields: { __eventOid: { $toObjectId: eventId } } },
-      { $match: { $expr: { $eq: ["$event", "$__eventOid"] }, invitedByChurch: { $exists: true, $ne: null }, ...regDateMatch } },
+      { $match: { event: eventOid, invitedByChurch: { $exists: true, $ne: null }, ...regDateMatch } },
       { $group: { _id: "$invitedByChurch", total: { $sum: 1 }, attended: { $sum: { $cond: [{ $in: ["$status", ["attended", "baptized"]] }, 1, 0] } }, baptized: { $sum: { $cond: [{ $eq: ["$status", "baptized"] }, 1, 0] } } } },
       { $project: { _id: 0, churchId: "$_id", total: 1, attended: 1, baptized: 1 } },
     ]),
     ScanModel.aggregate([
-      { $addFields: { __eventOid: { $toObjectId: eventId } } },
-      { $match: { $expr: { $eq: ["$event", "$__eventOid"] }, inviteType: "member", eventInvite: { $exists: true, $ne: null }, ...scanDateMatch } },
+      { $match: { event: eventOid, inviteType: "member", eventInvite: { $exists: true, $ne: null }, ...scanDateMatch } },
       { $group: { _id: "$eventInvite", scans: { $sum: 1 } } },
       { $project: { _id: 0, eventInviteId: "$_id", scans: 1 } },
     ]),
@@ -66,11 +64,10 @@ export async function getChurches(eventId: string, from?: string | null, to?: st
     membersByChurch.get(churchId)!.push(member);
   }
 
-  // Batch-fill registration counts using server-side $toObjectId
+  // Batch-fill registration counts
   if (inviteDocIds.length > 0) {
     const regByInvite = await RegModel.aggregate([
-      { $addFields: { __eventOid: { $toObjectId: eventId }, __inviteOids: { $map: { input: inviteDocIds, as: "id", in: { $toObjectId: "$$id" } } } } },
-      { $match: { $expr: { $and: [{ $eq: ["$event", "$__eventOid"] }, { $in: ["$eventInvite", "$__inviteOids"] }] }, ...regDateMatch } },
+      { $match: { event: eventOid, eventInvite: { $in: inviteDocIds.map(toObjectId) }, ...regDateMatch } },
       { $group: { _id: "$eventInvite", count: { $sum: 1 } } },
     ]);
     for (const r of regByInvite) {

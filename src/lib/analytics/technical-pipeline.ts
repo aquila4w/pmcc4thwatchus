@@ -1,4 +1,4 @@
-import { getModel } from "./get-model";
+import { getModel, toObjectId } from "./get-model";
 import { buildDateMatch } from "./date-filter";
 
 interface TechnicalResult {
@@ -16,8 +16,7 @@ export async function getTechnical(eventId: string, from?: string | null, to?: s
   const roundOrNull = (v: number | undefined) => (v != null ? Math.round(v) : null);
 
   const result = await model.aggregate([
-    { $addFields: { __eventOid: { $toObjectId: eventId } } },
-    { $match: { $expr: { $eq: ["$event", "$__eventOid"] }, ...dateMatch } },
+    { $match: { event: toObjectId(eventId), ...dateMatch } },
     { $facet: {
       deviceBreakdown: [
         { $group: { _id: { $ifNull: ["$device", "unknown"] }, scans: { $sum: 1 }, registered: { $sum: { $cond: [{ $eq: ["$registered", true] }, 1, 0] } } } },

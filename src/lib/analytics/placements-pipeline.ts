@@ -1,6 +1,6 @@
 import { getPayload } from "payload";
 import config from "@payload-config";
-import { getModel } from "./get-model";
+import { getModel, toObjectId } from "./get-model";
 import { buildDateMatch } from "./date-filter";
 
 interface PlacementData { placementId: string; placementName: string; scans: number; registrations: number; conversionRate: number }
@@ -9,6 +9,7 @@ export async function getPlacements(eventId: string, from?: string | null, to?: 
   const payload = await getPayload({ config });
   const ScanModel = await getModel("invite-scans");
   const RegModel = await getModel("event-registrations");
+  const eventOid = toObjectId(eventId);
   const scanDateMatch = buildDateMatch("scannedAt", from, to);
   const regDateMatch = buildDateMatch("createdAt", from, to);
 
@@ -21,14 +22,12 @@ export async function getPlacements(eventId: string, from?: string | null, to?: 
 
   const [scanByPlacement, regByChurchInvite] = await Promise.all([
     ScanModel.aggregate([
-      { $addFields: { __eventOid: { $toObjectId: eventId } } },
-      { $match: { $expr: { $eq: ["$event", "$__eventOid"] }, inviteType: "church", adPlacement: { $exists: true, $ne: null }, ...scanDateMatch } },
+      { $match: { event: eventOid, inviteType: "church", adPlacement: { $exists: true, $ne: null }, ...scanDateMatch } },
       { $group: { _id: "$adPlacement", scans: { $sum: 1 } } },
       { $project: { _id: 0, placementId: "$_id", scans: 1 } },
     ]),
     RegModel.aggregate([
-      { $addFields: { __eventOid: { $toObjectId: eventId } } },
-      { $match: { $expr: { $eq: ["$event", "$__eventOid"] }, sourceType: "church", churchEventInvite: { $exists: true, $ne: null }, ...regDateMatch } },
+      { $match: { event: eventOid, sourceType: "church", churchEventInvite: { $exists: true, $ne: null }, ...regDateMatch } },
       { $group: { _id: "$churchEventInvite", count: { $sum: 1 } } },
     ]),
   ]);
