@@ -4,7 +4,7 @@ import config from "@payload-config";
 import { headers } from "next/headers";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { countDocs, toObjectId } from "@/lib/analytics/get-model";
+import { toObjectId } from "@/lib/analytics/get-model";
 
 export async function GET(request: NextRequest) {
   try {
@@ -75,15 +75,20 @@ export async function GET(request: NextRequest) {
 
 async function getInviteStats(payload: Awaited<ReturnType<typeof getPayload>>, userId: string) {
   try {
-    const userOid = toObjectId(userId);
-    const [totalInvites, registered, attended, baptized] = await Promise.all([
-      countDocs(payload, "event-registrations", { invitedBy: userOid }),
-      countDocs(payload, "event-registrations", { invitedBy: userOid, status: { $in: ["registered", "attended", "baptized"] } }),
-      countDocs(payload, "event-registrations", { invitedBy: userOid, status: { $in: ["attended", "baptized"] } }),
-      countDocs(payload, "event-registrations", { invitedBy: userOid, status: "baptized" }),
+    // Single aggregation pipeline instead of 4 separate countDocuments queries
+    const RegModel = payload.db.collections["event-registrations"];
+    const result = await RegModel.aggregate([
+      { $match: { invitedBy: toObjectId(userId) } },
+      { $group: {
+        _id: null,
+        total: { $sum: 1 },
+        registered: { $sum: { $cond: [{ $in: ["$status", ["registered", "attended", "baptized"]] }, 1, 0] } },
+        attended: { $sum: { $cond: [{ $in: ["$status", ["attended", "baptized"]] }, 1, 0] } },
+        baptized: { $sum: { $cond: [{ $eq: ["$status", "baptized"] }, 1, 0] } },
+      } },
     ]);
-
-    return { totalInvites, registered, attended, baptized };
+    const s = result[0] || {};
+    return { totalInvites: s.total || 0, registered: s.registered || 0, attended: s.attended || 0, baptized: s.baptized || 0 };
   } catch {
     return { totalInvites: 0, registered: 0, attended: 0, baptized: 0 };
   }
@@ -125,15 +130,16 @@ async function getEventInvites(payload: Awaited<ReturnType<typeof getPayload>>, 
 
     if (!validInvites.length) return [];
 
-    // Batch: get registration counts for all valid invites in parallel
+    // Single aggregation to get registration counts for ALL invites at once
     const RegModel = payload.db.collections["event-registrations"];
-    const countResults = await Promise.all(
-      validInvites.map((invite: Record<string, unknown>) =>
-        RegModel.countDocuments({ eventInvite: invite._id })
-      )
-    );
+    const inviteIds = validInvites.map((inv: Record<string, unknown>) => inv._id);
+    const regCounts = await RegModel.aggregate([
+      { $match: { eventInvite: { $in: inviteIds } } },
+      { $group: { _id: "$eventInvite", count: { $sum: 1 } } },
+    ]);
+    const regMap = new Map(regCounts.map((r: { _id: unknown; count: number }) => [String(r._id), r.count]));
 
-    return validInvites.map((invite: Record<string, unknown>, i: number) => {
+    return validInvites.map((invite: Record<string, unknown>) => {
       const eventId = String(invite.event);
       const event = eventMap.get(eventId);
       if (!event) return null;
@@ -144,7 +150,7 @@ async function getEventInvites(payload: Awaited<ReturnType<typeof getPayload>>, 
         eventDate: event.startDate as string,
         eventLocation: event.location as string,
         inviteCode: invite.inviteCode as string,
-        registrationCount: countResults[i],
+        registrationCount: regMap.get(String(invite._id)) || 0,
       };
     }).filter(Boolean) as Array<{
       eventId: string; eventTitle: string; eventSlug: string;
