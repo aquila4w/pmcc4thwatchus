@@ -33,11 +33,35 @@ vi.mock("@/lib/rate-limit", () => ({
   getClientIp: vi.fn(() => "127.0.0.1"),
 }));
 
+vi.mock(import("@/lib/cache"), () => ({
+  wrap: vi.fn(async (_key: string, _ttl: number, fn: () => Promise<unknown>) => fn()),
+  get: vi.fn(async () => null),
+  set: vi.fn(async () => {}),
+  del: vi.fn(async () => {}),
+  delPattern: vi.fn(async () => {}),
+  cacheKeys: {
+    event: (id: string) => `event:${id}`,
+    eventStats: (id: string) => `event:${id}:stats`,
+    eventCapacity: (id: string) => `event:${id}:capacity`,
+    invite: (code: string) => `invite:${code}`,
+    churchInvite: (code: string) => `church-invite:${code}`,
+    platformLink: (code: string) => `platform-link:${code}`,
+  },
+  invalidateEventCache: vi.fn(async () => {}),
+}));
+
+vi.mock(import("@/lib/analytics/get-model"), () => ({
+  countDocs: vi.fn(async () => 0),
+  toObjectId: vi.fn((id: string) => id),
+  getModel: vi.fn(),
+}));
+
 vi.mock("@payload-config", () => ({
   default: {},
 }));
 
 import { GET } from "@/app/api/events/[eventId]/stats/route";
+import { countDocs } from "@/lib/analytics/get-model";
 
 describe("GET /api/events/[eventId]/stats", () => {
   let payload: ReturnType<typeof createMockPayload>["payload"];
@@ -64,6 +88,13 @@ describe("GET /api/events/[eventId]/stats", () => {
   });
 
   it("returns correct event statistics", async () => {
+    // countDocs is called 4 times: total(6), attended(3), baptized(1), waitlisted(1)
+    vi.mocked(countDocs)
+      .mockResolvedValueOnce(6)   // total registrations
+      .mockResolvedValueOnce(3)   // attended (includes baptized)
+      .mockResolvedValueOnce(1)   // baptized
+      .mockResolvedValueOnce(1);  // waitlisted
+
     const request = buildRequest({
       method: "GET",
       url: "http://localhost:3000/api/events/event-1/stats",
@@ -81,6 +112,13 @@ describe("GET /api/events/[eventId]/stats", () => {
   });
 
   it("calculates spotsRemaining from maxAttendees", async () => {
+    // countDocs: total=6, attended=3, baptized=1, waitlisted=1
+    vi.mocked(countDocs)
+      .mockResolvedValueOnce(6)
+      .mockResolvedValueOnce(3)
+      .mockResolvedValueOnce(1)
+      .mockResolvedValueOnce(1);
+
     const request = buildRequest({
       method: "GET",
       url: "http://localhost:3000/api/events/event-1/stats",
@@ -121,15 +159,18 @@ describe("GET /api/events/[eventId]/stats", () => {
         "managed-events": [
           { ...mockEvent, id: "event-3", maxAttendees: 2 },
         ],
-        "event-registrations": [
-          { id: "r1", event: "event-3", status: "registered" },
-          { id: "r2", event: "event-3", status: "registered" },
-          { id: "r3", event: "event-3", status: "waitlisted" },
-        ],
+        "event-registrations": [],
       },
     });
     payload = mock.payload;
     mockGetPayload(payload);
+
+    // countDocs: total=3 (exceeds maxAttendees of 2), attended=2, baptized=0, waitlisted=1
+    vi.mocked(countDocs)
+      .mockResolvedValueOnce(3)
+      .mockResolvedValueOnce(2)
+      .mockResolvedValueOnce(0)
+      .mockResolvedValueOnce(1);
 
     const request = buildRequest({
       method: "GET",
@@ -182,30 +223,30 @@ describe("GET /api/events/[eventId]/stats", () => {
     });
     await GET(request, buildParams({ eventId: "event-1" }));
 
-    // Verify payload.find was called with appropriate where clauses
-    const findCalls = payload.find.mock.calls;
+    // Verify countDocs was called 4 times with appropriate filters
+    const countCalls = vi.mocked(countDocs).mock.calls;
 
-    // First call: total registrations
-    expect(findCalls[0][0].collection).toBe("event-registrations");
-    expect(findCalls[0][0].where).toEqual({ event: { equals: "event-1" } });
+    // First call: total registrations (no status filter)
+    expect(countCalls[0][1]).toBe("event-registrations");
+    expect(countCalls[0][2]).toEqual({ event: "event-1" });
 
     // Second call: attended (includes baptized)
-    expect(findCalls[1][0].where.and).toEqual([
-      { event: { equals: "event-1" } },
-      { status: { in: ["attended", "baptized"] } },
-    ]);
+    expect(countCalls[1][2]).toEqual({
+      event: "event-1",
+      status: { $in: ["attended", "baptized"] },
+    });
 
     // Third call: baptized only
-    expect(findCalls[2][0].where.and).toEqual([
-      { event: { equals: "event-1" } },
-      { status: { equals: "baptized" } },
-    ]);
+    expect(countCalls[2][2]).toEqual({
+      event: "event-1",
+      status: "baptized",
+    });
 
     // Fourth call: waitlisted
-    expect(findCalls[3][0].where.and).toEqual([
-      { event: { equals: "event-1" } },
-      { status: { equals: "waitlisted" } },
-    ]);
+    expect(countCalls[3][2]).toEqual({
+      event: "event-1",
+      status: "waitlisted",
+    });
   });
 
   it("returns 500 on internal error", async () => {

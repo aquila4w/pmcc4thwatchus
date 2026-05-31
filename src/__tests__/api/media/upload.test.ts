@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { createMockPayload } from "../../helpers/mock-payload";
 import { setupModuleMocks, mockAuthenticatedUser, mockGetPayload } from "../../helpers/mock-auth";
-import { getRateLimitMock } from "../../helpers/mock-auth";
+import { getRateLimitMock, getRateLimitAsyncMock } from "../../helpers/mock-auth";
 import { buildRequest } from "../../helpers/mock-request";
 import { mockSuperAdmin, mockMember } from "../../helpers/fixtures";
 
@@ -257,8 +257,8 @@ describe("POST /api/media/upload", () => {
   });
 
   it("returns 429 when rate limited", async () => {
-    const rateLimit = getRateLimitMock();
-    rateLimit.mockReturnValueOnce({ allowed: false, resetIn: 60000 });
+    const rateLimitAsync = getRateLimitAsyncMock();
+    rateLimitAsync.mockResolvedValueOnce({ allowed: false, resetIn: 60000 });
 
     const request = buildRequest({
       method: "POST",

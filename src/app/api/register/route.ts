@@ -796,7 +796,7 @@ export async function POST(request: NextRequest) {
       invitedBy: invitedByDisplay,
     });
   } catch (error) {
-    console.error("Registration error", error);
+    console.error("Registration error");
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -50,7 +50,7 @@ export function setupModuleMocks() {
     getClientIp: vi.fn(() => "127.0.0.1"),
   }));
 
-  vi.mock("@/lib/cache", () => ({
+  vi.mock(import("@/lib/cache"), () => ({
     wrap: vi.fn(async (_key: string, _ttl: number, fn: () => Promise<unknown>) => fn()),
     get: vi.fn(async () => null),
     set: vi.fn(async () => {}),
@@ -65,6 +65,12 @@ export function setupModuleMocks() {
       platformLink: (code: string) => `platform-link:${code}`,
     },
     invalidateEventCache: vi.fn(async () => {}),
+  }));
+
+  vi.mock(import("@/lib/analytics/get-model"), () => ({
+    countDocs: vi.fn(async () => 0),
+    toObjectId: vi.fn((id: string) => id),
+    getModel: vi.fn(),
   }));
 }
 
@@ -117,6 +123,13 @@ export function mockPayloadAuth(payload: Record<string, unknown>, user: Record<s
  */
 export function getRateLimitMock() {
   return _rateLimitMock;
+}
+
+/**
+ * Get the cached rateLimitAsync mock for direct configuration.
+ */
+export function getRateLimitAsyncMock() {
+  return _rateLimitAsyncMock;
 }
 
 /**

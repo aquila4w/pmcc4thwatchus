@@ -54,6 +54,7 @@ process.env.RESEND_API_KEY = "test-resend-key";
 // Import after mocks are set up
 import { POST as registerPOST } from "@/app/api/register/route";
 import { POST as waitlistPromotePOST } from "@/app/api/waitlist/promote/route";
+import { countDocs } from "@/lib/analytics/get-model";
 
 describe("Waitlist Flow: Fill event -> Register to waitlist -> Promote from waitlist", () => {
   let payload: ReturnType<typeof createMockPayload>["payload"];
@@ -119,6 +120,11 @@ describe("Waitlist Flow: Fill event -> Register to waitlist -> Promote from wait
   });
 
   it("step 2: POST /api/register with joinWaitlist creates waitlisted registration", async () => {
+    // countDocs: first call returns 2 (at capacity), second returns 0 (no waitlist entries yet → position 1)
+    vi.mocked(countDocs)
+      .mockResolvedValueOnce(2) // capacity check (via cacheWrap)
+      .mockResolvedValueOnce(0); // waitlist position count
+
     const request = buildRequest({
       method: "POST",
       url: "http://localhost:3000/api/register",

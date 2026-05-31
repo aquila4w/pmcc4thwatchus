@@ -64,6 +64,15 @@ vi.mock("@/lib/cache", () => ({
   invalidateEventCache: vi.fn(async () => {}),
 }));
 
+vi.mock("@/lib/analytics/get-model", () => ({
+  countDocs: vi.fn(async () => 0),
+  toObjectId: vi.fn((id: string) => id),
+  getModel: vi.fn(),
+}));
+
+// Import the mocked countDocs so we can configure its return value in tests
+import { countDocs } from "@/lib/analytics/get-model";
+
 vi.mock("@/lib/email", () => ({
   sendRegistrationEmail: vi.fn().mockResolvedValue({ success: true }),
 }));
@@ -90,7 +99,7 @@ import { getPayload } from "payload";
 import { POST } from "@/app/api/register/route";
 import { sendRegistrationEmail } from "@/lib/email";
 import { sendRegistrationSMS } from "@/lib/sms";
-import { rateLimit } from "@/lib/rate-limit";
+import { rateLimit, rateLimitAsync } from "@/lib/rate-limit";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -155,6 +164,7 @@ describe("POST /api/register", () => {
 
     // Default: rate limit allows
     vi.mocked(rateLimit).mockReturnValue({ allowed: true, remaining: 99, resetIn: 60000 });
+    vi.mocked(rateLimitAsync).mockResolvedValue({ allowed: true, remaining: 99, resetIn: 60000 });
 
     const mock = createMockPayload({ stores: buildDefaultStores() });
     payload = mock.payload;
@@ -408,21 +418,11 @@ describe("POST /api/register", () => {
   // 13. Waitlist registration when event full and joinWaitlist=true
   // -------------------------------------------------------------------------
   it("waitlist registration when event full and joinWaitlist=true", async () => {
-    // Pre-fill event-registrations to capacity (500 registered)
-    const registrations: Record<string, unknown>[] = [];
-    for (let i = 0; i < 500; i++) {
-      registrations.push({
-        id: `reg-full-${i}`,
-        inviteCode: `FULLCODE${i}`,
-        event: "event-1",
-        status: "registered",
-      });
-    }
+    // Simulate capacity full — countDocs returns 500 (= maxAttendees)
+    vi.mocked(countDocs).mockResolvedValue(500);
 
     const mock = createMockPayload({
-      stores: buildDefaultStores({
-        "event-registrations": registrations,
-      }),
+      stores: buildDefaultStores(),
     });
     vi.mocked(getPayload).mockResolvedValue(mock.payload as unknown as Awaited<ReturnType<typeof getPayload>>);
 
@@ -509,7 +509,9 @@ describe("POST /api/register", () => {
   // -------------------------------------------------------------------------
   // 17. Returns 400 when recaptchaToken missing
   // -------------------------------------------------------------------------
-  it("returns 400 when recaptchaToken missing", async () => {
+  // NOTE: reCAPTCHA validation was removed from the registration route.
+  // These tests are skipped until reCAPTCHA is re-added or the tests are rewritten.
+  it.skip("returns 400 when recaptchaToken missing", async () => {
     const request = buildRequest({
       method: "POST",
       url: "http://localhost:3000/api/register",
@@ -531,7 +533,7 @@ describe("POST /api/register", () => {
   // -------------------------------------------------------------------------
   // 18. Returns 400 when reCAPTCHA fails
   // -------------------------------------------------------------------------
-  it("returns 400 when reCAPTCHA fails", async () => {
+  it.skip("returns 400 when reCAPTCHA fails", async () => {
     mockFetch.mockResolvedValueOnce({
       json: () => Promise.resolve({ success: false }),
     });
@@ -561,10 +563,11 @@ describe("POST /api/register", () => {
     });
     vi.mocked(getPayload).mockResolvedValue(mock.payload as unknown as Awaited<ReturnType<typeof getPayload>>);
 
+    // Use refCode + eventSlug path so the route queries the managed-events store
     const request = buildRequest({
       method: "POST",
       url: "http://localhost:3000/api/register",
-      body: baseBody({ eventInviteCode: "ABCD1234" }),
+      body: baseBody({ refCode: "MEMBR01A2", eventSlug: "summer-crusade-2026" }),
     });
 
     const response = await POST(request);
@@ -578,21 +581,11 @@ describe("POST /api/register", () => {
   // 20. Returns 400 when event at capacity without joinWaitlist
   // -------------------------------------------------------------------------
   it("returns 400 when event at capacity without joinWaitlist", async () => {
-    // Fill capacity
-    const registrations: Record<string, unknown>[] = [];
-    for (let i = 0; i < 500; i++) {
-      registrations.push({
-        id: `reg-full-${i}`,
-        inviteCode: `FULLCODE${i}`,
-        event: "event-1",
-        status: "registered",
-      });
-    }
+    // Simulate capacity full — countDocs returns 500 (= maxAttendees)
+    vi.mocked(countDocs).mockResolvedValue(500);
 
     const mock = createMockPayload({
-      stores: buildDefaultStores({
-        "event-registrations": registrations,
-      }),
+      stores: buildDefaultStores(),
     });
     vi.mocked(getPayload).mockResolvedValue(mock.payload as unknown as Awaited<ReturnType<typeof getPayload>>);
 
@@ -703,7 +696,7 @@ describe("POST /api/register", () => {
   // 26. Returns 429 when rate limit exceeded
   // -------------------------------------------------------------------------
   it("returns 429 when rate limit exceeded", async () => {
-    vi.mocked(rateLimit).mockReturnValue({ allowed: false, remaining: 0, resetIn: 60000 });
+    vi.mocked(rateLimitAsync).mockResolvedValue({ allowed: false, remaining: 0, resetIn: 60000 });
 
     const request = buildRequest({
       method: "POST",

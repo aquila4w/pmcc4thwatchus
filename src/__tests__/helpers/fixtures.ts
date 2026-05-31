@@ -123,7 +123,7 @@ export const mockEvent = {
 export const mockEventInvite = {
   id: "invite-1",
   inviteCode: "ABCD1234",
-  event: { id: "event-1", title: "Summer Crusade 2026" },
+  event: { id: "event-1", title: "Summer Crusade 2026", status: "registration-open", startDate: "2026-07-15T10:00:00.000Z", location: "LA Convention Center", address: "1201 S Figueroa St, Los Angeles, CA 90015", maxAttendees: 500, hasBaptism: true, checkInEnabled: true },
   invitedBy: "member-1",
   church: "church-1",
   status: "active",

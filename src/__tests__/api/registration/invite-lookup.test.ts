@@ -38,12 +38,36 @@ vi.mock("@/lib/rate-limit", () => ({
   getClientIp: vi.fn(() => "127.0.0.1"),
 }));
 
+vi.mock(import("@/lib/cache"), () => ({
+  wrap: vi.fn(async (_key: string, _ttl: number, fn: () => Promise<unknown>) => fn()),
+  get: vi.fn(async () => null),
+  set: vi.fn(async () => {}),
+  del: vi.fn(async () => {}),
+  delPattern: vi.fn(async () => {}),
+  cacheKeys: {
+    event: (id: string) => `event:${id}`,
+    eventStats: (id: string) => `event:${id}:stats`,
+    eventCapacity: (id: string) => `event:${id}:capacity`,
+    invite: (code: string) => `invite:${code}`,
+    churchInvite: (code: string) => `church-invite:${code}`,
+    platformLink: (code: string) => `platform-link:${code}`,
+  },
+  invalidateEventCache: vi.fn(async () => {}),
+}));
+
+vi.mock(import("@/lib/analytics/get-model"), () => ({
+  countDocs: vi.fn(async () => 0),
+  toObjectId: vi.fn((id: string) => id),
+  getModel: vi.fn(),
+}));
+
 vi.mock("@payload-config", () => ({
   default: {},
 }));
 
 // Import after mocks are set up
 import { GET } from "@/app/api/invite/[memberCode]/route";
+import { countDocs } from "@/lib/analytics/get-model";
 
 describe("GET /api/invite/[memberCode]", () => {
   let payload: ReturnType<typeof createMockPayload>["payload"];
@@ -151,11 +175,9 @@ describe("GET /api/invite/[memberCode]", () => {
       maxAttendees: 1,
       registrationDeadline: "2027-12-31T23:59:59.000Z",
     };
-    // Create enough registrations to fill the event
-    const registrations = [
-      { ...mockRegistration, id: "reg-a", event: "event-full", status: "registered" },
-      { ...mockRegistration, id: "reg-b", event: "event-full", status: "attended" },
-    ];
+    // Create enough registrations to fill the event (maxAttendees: 1)
+    // countDocs returns 2 (exceeds capacity of 1) so the event is filtered out
+    vi.mocked(countDocs).mockResolvedValue(2);
 
     const mock = createMockPayload({
       stores: {
@@ -163,7 +185,6 @@ describe("GET /api/invite/[memberCode]", () => {
           { ...mockMember, church: { id: "church-1", name: "PMCC LA Church" } },
         ],
         "managed-events": [fullEvent],
-        "event-registrations": registrations,
       },
     });
     mockGetPayload(mock.payload);
