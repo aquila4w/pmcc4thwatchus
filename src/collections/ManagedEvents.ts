@@ -659,16 +659,10 @@ export const ManagedEvents: CollectionConfig = {
           async ({ data, req }) => {
             if (!data?.id) return 0;
             try {
-              const registrations = await req.payload.find({
-                collection: "event-registrations",
-                where: {
-                  event: { equals: data.id },
-                },
-                limit: 0,
-                depth: 0,
-                overrideAccess: true,
-              });
-              return registrations.totalDocs;
+              // Use raw MongoDB countDocuments() instead of payload.find({ limit: 0 })
+              // to avoid Payload middleware overhead that caused 40+ second queries on serverless
+              const mongooseModel = req.payload.db.collections["event-registrations"];
+              return await mongooseModel.countDocuments({ event: data.id });
             } catch {
               return 0;
             }
