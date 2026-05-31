@@ -133,18 +133,8 @@ export const PlatformEventLinks: CollectionConfig = {
           async ({ data, req }) => {
             if (!data?.id) return 0;
             try {
-              const registrations = await req.payload.find({
-                collection: "event-registrations",
-                where: {
-                  and: [
-                    { platformEventLink: { equals: data.id } },
-                  ],
-                },
-                limit: 0,
-                depth: 0,
-                overrideAccess: true,
-              });
-              return registrations.totalDocs;
+              const RegModel = req.payload.db.collections["event-registrations"];
+              return await RegModel.countDocuments({ platformEventLink: data.id });
             } catch {
               return 0;
             }

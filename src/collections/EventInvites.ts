@@ -143,14 +143,8 @@ export const EventInvites: CollectionConfig = {
           async ({ data, req }) => {
             if (!data?.id) return 0;
             try {
-              const registrations = await req.payload.find({
-                collection: "event-registrations",
-                where: {
-                  eventInvite: { equals: data.id },
-                },
-                limit: 0,
-              });
-              return registrations.totalDocs;
+              const RegModel = req.payload.db.collections["event-registrations"];
+              return await RegModel.countDocuments({ eventInvite: data.id });
             } catch {
               return 0;
             }
