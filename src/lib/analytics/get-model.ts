@@ -11,10 +11,12 @@ export function toObjectId(id: string) {
 }
 
 /**
- * Get the Mongoose model for a Payload collection slug.
- * The model has .aggregate() available for running pipelines.
+ * Get the native MongoDB collection for a Payload collection slug.
+ * Returns the native driver collection (not the Mongoose model) to avoid
+ * BSON version conflicts when running aggregation pipelines on serverless.
  */
 export async function getModel(slug: string) {
   const payload = await getPayload({ config });
-  return payload.db.collections[slug];
+  const mongooseModel = payload.db.collections[slug];
+  return mongooseModel.collection;
 }

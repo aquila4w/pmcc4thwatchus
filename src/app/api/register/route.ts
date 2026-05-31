@@ -5,6 +5,7 @@ import { sendRegistrationEmail } from "@/lib/email";
 import { sendRegistrationSMS } from "@/lib/sms";
 import { formatEventDate, formatEventTime } from "@/lib/event-date";
 import { rateLimitAsync } from "@/lib/rate-limit";
+import { wrap as cacheWrap, cacheKeys, invalidateEventCache } from "@/lib/cache";
 import { randomInt } from "crypto";
 
 function generateRegistrationCode(): string {
@@ -171,15 +172,21 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Authentication required for walk-in registration" }, { status: 401 });
       }
 
-      // Verify event exists and has walk-in enabled
+      // Verify event exists and has walk-in enabled — cache for 5 min
+      const eventCacheKey = cacheKeys.event(bodyEventId);
       let walkInEvent: Record<string, unknown> | null = null;
       try {
-        walkInEvent = await payload.findByID({
-          collection: "managed-events",
-          id: bodyEventId,
-          depth: 0,
-          overrideAccess: true,
-        }) as Record<string, unknown>;
+        walkInEvent = await cacheWrap(eventCacheKey, 300, async () => {
+          return payload.findByID({
+            collection: "managed-events",
+            id: bodyEventId,
+            depth: 0,
+            overrideAccess: true,
+          }) as Promise<Record<string, unknown>>;
+        });
+        if (!walkInEvent) {
+          return NextResponse.json({ error: "Event not found" }, { status: 404 });
+        }
       } catch {
         return NextResponse.json({ error: "Event not found" }, { status: 404 });
       }
@@ -254,6 +261,9 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      // Invalidate cached stats & capacity for this event
+      invalidateEventCache(bodyEventId).catch(() => {});
+
       // Optionally send email/SMS
       if (sendNotification) {
         const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || "https://pmcc4thwatch.us";
@@ -312,7 +322,7 @@ export async function POST(request: NextRequest) {
     let sourceType: "member" | "church" | "platform" | "walk-in" = "member";
 
     if (refCode && eventSlug) {
-      // Look up member + event in parallel (was sequential — 2 DB round-trips → 1)
+      // Look up member + event in parallel. Event is cached (5 min TTL).
       const [membersResult, eventsResult] = await Promise.all([
         payload.find({
           collection: "users",
@@ -320,12 +330,16 @@ export async function POST(request: NextRequest) {
           limit: 1,
           depth: 0,
         }),
-        payload.find({
-          collection: "managed-events",
-          where: { slug: { equals: eventSlug } },
-          limit: 1,
-          depth: 0,
-        }),
+        cacheWrap(
+          cacheKeys.event(`slug:${eventSlug}`),
+          300,
+          () => payload.find({
+            collection: "managed-events",
+            where: { slug: { equals: eventSlug } },
+            limit: 1,
+            depth: 0,
+          }),
+        ),
       ]);
 
       if (membersResult.docs.length === 0) {
@@ -343,38 +357,46 @@ export async function POST(request: NextRequest) {
       }
 
       invitingMember = membersResult.docs[0];
-      event = eventsResult.docs[0];
+      event = eventsResult.docs[0]!;
 
-      // Find EventInvite for this member+event (parallel with nothing else to do here)
-      const existingInvites = await payload.find({
-        collection: "event-invites",
-        where: {
-          and: [
-            { event: { equals: event.id } },
-            { invitedBy: { equals: invitingMember.id } },
-          ],
-        },
-        limit: 1,
-        depth: 0,
-      });
+      // Find EventInvite for this member+event — cache for 5 min
+      const existingInvites = await cacheWrap(
+        cacheKeys.invite(`${event!.id}:${invitingMember!.id}`),
+        300,
+        () => payload.find({
+          collection: "event-invites",
+          where: {
+            and: [
+              { event: { equals: event!.id } },
+              { invitedBy: { equals: invitingMember!.id } },
+            ],
+          },
+          limit: 1,
+          depth: 0,
+        }),
+      );
 
       if (existingInvites.docs.length > 0) {
         eventInvite = existingInvites.docs[0];
       }
       // If no invite exists, we still allow registration (member may not have been auto-generated)
     } else if (eventInviteCode) {
-      // Legacy: look up by EventInvite UUID code
-      const invites = await payload.find({
-        collection: "event-invites",
-        where: {
-          and: [
-            { inviteCode: { equals: eventInviteCode } },
-            { status: { equals: "active" } },
-          ],
-        },
-        limit: 1,
-        depth: 2,
-      });
+      // Legacy: look up by EventInvite UUID code — cache for 5 min
+      const invites = await cacheWrap(
+        cacheKeys.invite(eventInviteCode),
+        300,
+        () => payload.find({
+          collection: "event-invites",
+          where: {
+            and: [
+              { inviteCode: { equals: eventInviteCode } },
+              { status: { equals: "active" } },
+            ],
+          },
+          limit: 1,
+          depth: 2,
+        }),
+      );
 
       if (invites.docs.length === 0) {
         return NextResponse.json(
@@ -389,18 +411,22 @@ export async function POST(request: NextRequest) {
     } else if (adCode) {
       // Church ad QR code lookup
       sourceType = "church";
-      const ciResult = await payload.find({
-        collection: "church-event-invites",
-        where: {
-          and: [
-            { code: { equals: adCode } },
-            { status: { equals: "active" } },
-          ],
-        },
-        limit: 1,
-        depth: 0,
-        overrideAccess: true,
-      });
+      const ciResult = await cacheWrap(
+        cacheKeys.churchInvite(adCode),
+        300,
+        () => payload.find({
+          collection: "church-event-invites",
+          where: {
+            and: [
+              { code: { equals: adCode } },
+              { status: { equals: "active" } },
+            ],
+          },
+          limit: 1,
+          depth: 0,
+          overrideAccess: true,
+        }),
+      );
 
       if (ciResult.docs.length === 0) {
         return NextResponse.json(
@@ -419,20 +445,24 @@ export async function POST(request: NextRequest) {
         phone: (churchInvite.contactPhone as string) || undefined,
       };
     } else if (platformCode && eventSlug) {
-      // Online platform QR code lookup
+      // Online platform QR code lookup — cache for 5 min
       sourceType = "platform";
-      const plResult = await payload.find({
-        collection: "platform-event-links",
-        where: {
-          and: [
-            { code: { equals: platformCode } },
-            { status: { equals: "active" } },
-          ],
-        },
-        limit: 1,
-        depth: 0,
-        overrideAccess: true,
-      });
+      const plResult = await cacheWrap(
+        cacheKeys.platformLink(platformCode),
+        300,
+        () => payload.find({
+          collection: "platform-event-links",
+          where: {
+            and: [
+              { code: { equals: platformCode } },
+              { status: { equals: "active" } },
+            ],
+          },
+          limit: 1,
+          depth: 0,
+          overrideAccess: true,
+        }),
+      );
 
       if (plResult.docs.length === 0) {
         return NextResponse.json(
@@ -493,7 +523,7 @@ export async function POST(request: NextRequest) {
     if (!fullEvent.status && !fullEvent.title) {
       const fetchedEvent = await payload.findByID({
         collection: "managed-events",
-        id: String(event.id),
+        id: String(event!.id),
         depth: 0,
       });
       if (!fetchedEvent) {
@@ -509,20 +539,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check capacity — single query with totalDocs only
+    // Check capacity — cache the count for 30 seconds to avoid expensive count queries
     let isWaitlisted = false;
     let waitlistPosition = 0;
 
     if (fullEvent.maxAttendees) {
-      const currentRegistrations = await payload.find({
-        collection: "event-registrations",
-        where: {
-          event: { equals: fullEvent.id },
-          status: { in: ["registered", "confirmed", "attended", "baptized"] },
-        },
-        limit: 0,
-        depth: 0,
-      });
+      const currentRegistrations = await cacheWrap(
+        cacheKeys.eventCapacity(fullEvent.id),
+        30,
+        () => payload.find({
+          collection: "event-registrations",
+          where: {
+            event: { equals: fullEvent.id },
+            status: { in: ["registered", "confirmed", "attended", "baptized"] },
+          },
+          limit: 0,
+          depth: 0,
+        }),
+      );
 
       if (currentRegistrations.totalDocs >= (fullEvent.maxAttendees as number)) {
         if (!joinWaitlist) {
@@ -664,6 +698,9 @@ export async function POST(request: NextRequest) {
         registeredAt: new Date().toISOString(),
       },
     });
+
+    // Invalidate cached stats & capacity for this event
+    invalidateEventCache(fullEvent.id).catch(() => {});
 
     // Build URLs
     const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || "https://pmcc4thwatch.us";

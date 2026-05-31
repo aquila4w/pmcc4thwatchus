@@ -24,11 +24,11 @@ export async function getPlatforms(eventId: string, from?: string | null, to?: s
     ScanModel.aggregate([
       { $match: { event: eventOid, inviteType: "platform", platformEventLink: { $exists: true, $ne: null }, ...scanDateMatch } },
       { $group: { _id: "$platformEventLink", scans: { $sum: 1 } } },
-    ]),
+    ]).toArray(),
     RegModel.aggregate([
       { $match: { event: eventOid, platformEventLink: { $exists: true, $ne: null }, ...regDateMatch } },
       { $group: { _id: "$platformEventLink", count: { $sum: 1 } } },
-    ]),
+    ]).toArray(),
   ]);
 
   const scanMap = new Map<string, number>();

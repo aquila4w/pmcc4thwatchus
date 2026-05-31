@@ -43,7 +43,7 @@ export async function getTechnical(eventId: string, from?: string | null, to?: s
       rageClicks: [{ $match: { rageClickDetected: true } }, { $count: "count" }],
       adBlockers: [{ $match: { adBlockerDetected: true } }, { $count: "count" }],
     } },
-  ]);
+  ]).toArray();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const f: any = result[0] || {};

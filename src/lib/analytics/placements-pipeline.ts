@@ -25,11 +25,11 @@ export async function getPlacements(eventId: string, from?: string | null, to?: 
       { $match: { event: eventOid, inviteType: "church", adPlacement: { $exists: true, $ne: null }, ...scanDateMatch } },
       { $group: { _id: "$adPlacement", scans: { $sum: 1 } } },
       { $project: { _id: 0, placementId: "$_id", scans: 1 } },
-    ]),
+    ]).toArray(),
     RegModel.aggregate([
       { $match: { event: eventOid, sourceType: "church", churchEventInvite: { $exists: true, $ne: null }, ...regDateMatch } },
       { $group: { _id: "$churchEventInvite", count: { $sum: 1 } } },
-    ]),
+    ]).toArray(),
   ]);
 
   const scanMap = new Map<string, number>();

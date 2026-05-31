@@ -35,14 +35,14 @@ export async function getOverview(
           { $sort: { date: 1 } },
         ],
       } },
-    ]),
+    ]).toArray(),
     RegModel.aggregate([
       { $match: { event: eventOid, ...regDateMatch } },
       { $facet: {
         counts: [{ $group: { _id: null, totalRegistrations: { $sum: 1 }, attended: { $sum: { $cond: [{ $in: ["$status", ["attended", "baptized"]] }, 1, 0] } }, baptized: { $sum: { $cond: [{ $eq: ["$status", "baptized"] }, 1, 0] } }, waitlisted: { $sum: { $cond: [{ $eq: ["$status", "waitlisted"] }, 1, 0] } } } }],
         statusDistribution: [{ $group: { _id: { $ifNull: ["$status", "unknown"] }, count: { $sum: 1 } } }, { $project: { _id: 0, status: "$_id", count: 1 } }],
       } },
-    ]),
+    ]).toArray(),
   ]);
 
   const scanCounts = scanResult[0]?.counts?.[0] || {};
