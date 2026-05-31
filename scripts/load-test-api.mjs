@@ -29,7 +29,7 @@ const require = createRequire(import.meta.url);
 const bcrypt = require('bcryptjs');
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+const BASE_URL = process.argv.includes('--prod') ? 'https://pmcc4thwatch.us' : (process.env.BASE_URL || 'http://localhost:3000');
 const REGISTRATIONS = parseInt(process.argv.find(a => a.startsWith('--registrations='))?.split('=')[1]) || 200;
 const CHECKINS = parseInt(process.argv.find(a => a.startsWith('--checkins='))?.split('=')[1]) || 100;
 const CONCURRENCY = parseInt(process.argv.find(a => a.startsWith('--concurrency='))?.split('=')[1]) || 10;

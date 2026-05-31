@@ -1,16 +1,20 @@
 /**
- * Real-event load test: 5,000 registrations against Home Free NY.
+ * Real-event load test: concurrent registrations + check-ins + stats.
  *
- * All test data is tagged with a unique batch ID so it can be
- * completely reverted with a single cleanup command.
+ * Simulates a real event day:
+ *   - Registration booth processing walk-ins
+ *   - Check-in station scanning QR codes from pre-registered guests
+ *   - Admin dashboard polling stats
+ * All three streams run SIMULTANEOUSLY.
+ *
+ * All test data is tagged with a unique batch ID for full revert.
  *
  * Usage:
- *   node scripts/load-test-real-event.mjs
- *   node scripts/load-test-real-event.mjs --registrations 5000 --checkins 2500 --concurrency 10
- *   node scripts/load-test-real-event.mjs --keep   (skip cleanup)
- *
- * REVERT (delete all test data after):
- *   node scripts/load-test-real-event.mjs --cleanup-only
+ *   node scripts/load-test-real-event.mjs                         (defaults: 5000 reg, 2500 checkin)
+ *   node scripts/load-test-real-event.mjs --registrations=5000 --checkins=2500 --concurrency=50
+ *   node scripts/load-test-real-event.mjs --keep                   (skip cleanup)
+ *   node scripts/load-test-real-event.mjs --prod                   (hit production URL)
+ *   node scripts/load-test-real-event.mjs --cleanup-only           (revert all test data)
  */
 
 import mongoose from 'mongoose';
@@ -22,10 +26,11 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+const BASE_URL = process.argv.includes('--prod') ? 'https://pmcc4thwatch.us' : (process.env.BASE_URL || 'http://localhost:3000');
 const REGISTRATIONS = parseInt(process.argv.find(a => a.startsWith('--registrations='))?.split('=')[1]) || 5000;
 const CHECKINS = parseInt(process.argv.find(a => a.startsWith('--checkins='))?.split('=')[1]) || 2500;
-const CONCURRENCY = parseInt(process.argv.find(a => a.startsWith('--concurrency='))?.split('=')[1]) || 10;
+const CONCURRENCY = parseInt(process.argv.find(a => a.startsWith('--concurrency='))?.split('=')[1]) || 50;
+const STATS_INTERVAL = parseInt(process.argv.find(a => a.startsWith('--stats-interval='))?.split('=')[1]) || 5000;
 const KEEP_DATA = process.argv.includes('--keep');
 const CLEANUP_ONLY = process.argv.includes('--cleanup-only');
 
@@ -56,97 +61,146 @@ if (CLEANUP_ONLY) {
   console.log('🧹 Cleanup mode — finding and deleting all load test data...\n');
   await mongoose.connect(process.env.MONGODB_URI);
   const db = mongoose.connection.db;
+  const eventObjId = new mongoose.Types.ObjectId(EVENT_ID);
 
-  // Find all load test registrations (tagged with sourceType starting with "loadtest-")
-  const testRegs = await db.collection('event-registrations').find({
-    event: new mongoose.Types.ObjectId(EVENT_ID),
+  const preCount = await db.collection('event-registrations').countDocuments({ event: eventObjId });
+  console.log(`📊 Event has ${preCount.toLocaleString()} registrations before cleanup\n`);
+
+  // 1. Find by sourceType (tagged registrations)
+  const taggedRegs = await db.collection('event-registrations').find({
+    event: eventObjId,
     sourceType: { $regex: /^loadtest-/ },
-  }).project({ _id: 1, guest: 1, inviteCode: 1 }).toArray();
+  }).project({ _id: 1, guest: 1 }).toArray();
 
-  console.log(`Found ${testRegs.length} test registrations to delete`);
+  // 2. Find by notes (catches untagged if script crashed before tagging)
+  const notedRegs = await db.collection('event-registrations').find({
+    event: eventObjId,
+    notes: { $regex: /^LOADTEST BATCH/ },
+  }).project({ _id: 1, guest: 1 }).toArray();
 
-  if (testRegs.length > 0) {
-    const regIds = testRegs.map(r => r._id);
-    const guestIds = testRegs.map(r => r.guest).filter(Boolean);
-
-    // Delete registrations
-    const rResult = await db.collection('event-registrations').deleteMany({
-      _id: { $in: regIds },
-    });
-    console.log(`   Deleted ${rResult.deletedCount} registrations`);
-
-    // Delete associated guest users
-    if (guestIds.length > 0) {
-      const gResult = await db.collection('users').deleteMany({
-        _id: { $in: guestIds },
-        role: 'guest',
-      });
-      console.log(`   Deleted ${gResult.deletedCount} guest users`);
-    }
-
-    // Also delete by email pattern (in case guest IDs didn't match)
-    const emailResult = await db.collection('users').deleteMany({
-      email: { $regex: /^guest-lt-/ },
-      role: 'guest',
-    });
-    console.log(`   Deleted ${emailResult.deletedCount} additional guest users (by email pattern)`);
+  // Merge and deduplicate
+  const allIds = new Map();
+  const allGuestIds = new Map();
+  for (const r of [...taggedRegs, ...notedRegs]) {
+    allIds.set(r._id.toString(), r._id);
+    if (r.guest) allGuestIds.set(r.guest.toString(), r.guest);
   }
 
-  // Clean up any test admin users
+  console.log(`Found ${taggedRegs.length} by sourceType + ${notedRegs.length} by notes (${allIds.size} unique)`);
+
+  if (allIds.size > 0) {
+    const regArr = [...allIds.values()];
+    let totalDeleted = 0;
+    for (let i = 0; i < regArr.length; i += 5000) {
+      const chunk = regArr.slice(i, i + 5000);
+      const r = await db.collection('event-registrations').deleteMany({ _id: { $in: chunk } });
+      totalDeleted += r.deletedCount;
+    }
+    console.log(`✅ Deleted ${totalDeleted} registrations`);
+
+    if (allGuestIds.size > 0) {
+      const guestArr = [...allGuestIds.values()];
+      let totalGuestsDeleted = 0;
+      for (let i = 0; i < guestArr.length; i += 5000) {
+        const chunk = guestArr.slice(i, i + 5000);
+        const g = await db.collection('users').deleteMany({ _id: { $in: chunk }, role: 'guest' });
+        totalGuestsDeleted += g.deletedCount;
+      }
+      console.log(`✅ Deleted ${totalGuestsDeleted} guest users`);
+    }
+  }
+
+  // 3. Orphan guest users by email patterns
+  const emailPatterns = [
+    /^guest-lt-/,
+    /^guest-[a-z0-9]{8}@pmcc4thwatch\.us$/,
+  ];
+  for (const pat of emailPatterns) {
+    const g = await db.collection('users').deleteMany({ email: pat, role: 'guest' });
+    if (g.deletedCount > 0) console.log(`✅ Deleted ${g.deletedCount} orphan guests (${pat.toString().slice(1,-1)})`);
+  }
+
+  // 4. Test admin users
   const adminResult = await db.collection('users').deleteMany({
     email: { $regex: /^loadtest-.*@test\.pmcc4thwatch\.us$/ },
   });
-  console.log(`   Deleted ${adminResult.deletedCount} test admin users`);
+  if (adminResult.deletedCount > 0) console.log(`✅ Deleted ${adminResult.deletedCount} test admin users`);
 
-  // Also clean up by notes field (belt-and-suspenders)
-  const notesResult = await db.collection('event-registrations').deleteMany({
-    event: new mongoose.Types.ObjectId(EVENT_ID),
-    notes: { $regex: /^LOADTEST BATCH/ },
-  });
-  if (notesResult.deletedCount > 0) {
-    console.log(`   Deleted ${notesResult.deletedCount} additional registrations (by notes tag)`);
-  }
-
-  // Show final count
-  const finalCount = await db.collection('event-registrations').countDocuments({
-    event: new mongoose.Types.ObjectId(EVENT_ID),
-  });
-  console.log(`\n📊 Event registrations after cleanup: ${finalCount.toLocaleString()}`);
+  // 5. Final verification
+  const finalCount = await db.collection('event-registrations').countDocuments({ event: eventObjId });
+  console.log(`\n📊 Event registrations: ${preCount.toLocaleString()} → ${finalCount.toLocaleString()} (-${preCount - finalCount})`);
+  console.log('✅ Cleanup complete');
 
   await mongoose.disconnect();
-  console.log('✅ Cleanup complete');
   process.exit(0);
 }
 
 // ============================================================
-// MAIN TEST
+// MAIN TEST — Concurrent registration + check-in + stats
 // ============================================================
 async function main() {
-  console.log('╔══════════════════════════════════════════════════╗');
-  console.log('║   Home Free NY — Real Event Load Test (5,000)   ║');
-  console.log('╚══════════════════════════════════════════════════╝');
+  console.log('╔══════════════════════════════════════════════════════════╗');
+  console.log('║   Home Free NY — Concurrent Load Test (Simultaneous)    ║');
+  console.log('╚══════════════════════════════════════════════════════════╝');
+  console.log(`  Target:         ${BASE_URL}`);
   console.log(`  Event:          ${EVENT_TITLE}`);
   console.log(`  Event ID:       ${EVENT_ID}`);
   console.log(`  Batch ID:       ${BATCH_ID}`);
-  console.log(`  Registrations:  ${REGISTRATIONS}`);
-  console.log(`  Check-ins:      ${CHECKINS}`);
-  console.log(`  Concurrency:    ${CONCURRENCY}`);
+  console.log(`  Registrations:  ${fmtNum(REGISTRATIONS)} (walk-in booth)`);
+  console.log(`  Check-ins:      ${fmtNum(CHECKINS)} (QR scan station)`);
+  console.log(`  Stats polling:  every ${fmt(STATS_INTERVAL)}`);
+  console.log(`  Concurrency:    ${CONCURRENCY} per stream`);
   console.log(`  Cleanup:        ${KEEP_DATA ? 'NO (--keep)' : 'YES (auto)'}`);
-  console.log('════════════════════════════════════════════════════\n');
+  console.log('════════════════════════════════════════════════════════════\n');
 
   await mongoose.connect(process.env.MONGODB_URI);
   const db = mongoose.connection.db;
+  const eventObjId = new mongoose.Types.ObjectId(EVENT_ID);
 
   // Check initial state
-  const initialCount = await db.collection('event-registrations').countDocuments({
-    event: new mongoose.Types.ObjectId(EVENT_ID),
-  });
+  const initialCount = await db.collection('event-registrations').countDocuments({ event: eventObjId });
   const initialTotal = await db.collection('event-registrations').countDocuments({});
   console.log(`📊 Event has ${initialCount.toLocaleString()} registrations (total DB: ${initialTotal.toLocaleString()})\n`);
 
+  // --- Pre-seed: Create "registered" guests for check-in stream ---
+  // We create these directly in DB so the check-in station has guests to scan
+  // from the very start (simulates pre-registered online guests).
+  console.log(`📋 Pre-seeding ${fmtNum(CHECKINS)} online registrations for check-in stream...`);
+  const preSeedCodes = [];
+  const preSeedIds = [];
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  for (let i = 0; i < CHECKINS; i++) {
+    let code = '';
+    for (let c = 0; c < 8; c++) code += chars[Math.floor(Math.random() * chars.length)];
+    preSeedCodes.push(code);
+    preSeedIds.push(new mongoose.Types.ObjectId());
+  }
+
+  // Insert pre-seed registrations in batches
+  for (let i = 0; i < CHECKINS; i += 1000) {
+    const batch = preSeedIds.slice(i, i + 1000).map((id, idx) => {
+      const code = preSeedCodes[i + idx];
+      return {
+        _id: id,
+        inviteCode: code,
+        event: eventObjId,
+        sourceType: BATCH_ID,
+        guestInfo: { name: `Pre-reg Guest ${i + idx + 1}` },
+        qrCodeData: code,
+        status: 'registered',
+        notes: `LOADTEST BATCH ${BATCH_ID}`,
+        registeredAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    });
+    await db.collection('event-registrations').insertMany(batch);
+  }
+  console.log(`   ✅ ${fmtNum(CHECKINS)} pre-seeded (status=registered, ready for check-in)`);
+
   // --- Create test admin ---
   const adminEmail = `${BATCH_ID}@test.pmcc4thwatch.us`;
-  console.log('📋 Setting up test admin...');
+  console.log('\n📋 Creating test admin...');
   const createUserRes = await fetch(`${BASE_URL}/payload-api/users`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -159,8 +213,7 @@ async function main() {
   });
 
   if (!createUserRes.ok) {
-    const errText = await createUserRes.text();
-    console.error(`❌ Failed to create admin (${createUserRes.status}): ${errText}`);
+    console.error(`❌ Failed to create admin (${createUserRes.status}): ${await createUserRes.text()}`);
     await mongoose.disconnect();
     return;
   }
@@ -190,110 +243,85 @@ async function main() {
   const hdrs = { 'Content-Type': 'application/json', 'Cookie': `payload-token=${token}` };
 
   // ============================================================
-  // PHASE 1: WALK-IN REGISTRATIONS
+  // CONCURRENT STREAMS
   // ============================================================
-  console.log(`\n📝 PHASE 1: ${fmtNum(REGISTRATIONS)} walk-in registrations...`);
-  console.log(`   (Each tagged with batch ID: ${BATCH_ID})\n`);
+  console.log(`\n╔══════════════════════════════════════════════════════════╗`);
+  console.log('║  STARTING CONCURRENT STREAMS (registration + check-in + stats)  ║');
+  console.log('╚══════════════════════════════════════════════════════════╝\n');
 
-  const regLat = []; let regErr = 0; const regErrMsgs = {};
+  const testStart = Date.now();
+
+  // --- Stream counters (shared across concurrent streams) ---
+  const regStats = { done: 0, success: 0, err: 0, latencies: [], errors: {} };
+  const ciStats = { done: 0, success: 0, err: 0, latencies: [], errors: {} };
+  const statsResults = { queries: 0, latencies: [], lastData: null };
   const regCodes = [];
-  const t1 = Date.now();
 
-  for (let i = 0; i < REGISTRATIONS; i += CONCURRENCY) {
-    const batch = Math.min(CONCURRENCY, REGISTRATIONS - i);
-    const proms = [];
-    for (let j = 0; j < batch; j++) {
-      const idx = i + j;
-      proms.push((async () => {
-        const t0 = Date.now();
-        try {
-          const res = await fetch(`${BASE_URL}/api/register`, {
-            method: 'POST', headers: hdrs,
-            body: JSON.stringify({
-              walkInCode: WALK_IN_CODE,
-              eventId: EVENT_ID,
-              // Use platformCode for 1000/hr rate limit bucket (unique per run)
-              platformCode: BATCH_ID,
-              firstName: 'LT', lastName: String(idx).padStart(5, '0'),
-              phone: `+1555${String(2000000 + idx)}`,
-              sendNotification: false,
-              // Tag with batch ID for cleanup
-              notes: `LOADTEST BATCH ${BATCH_ID}`,
-            }),
-          });
-          const d = await res.json();
-          regLat.push(Date.now() - t0);
-          if (!res.ok || !d.success) {
-            regErr++;
-            const errMsg = d.error || `HTTP ${res.status}`;
-            regErrMsgs[errMsg] = (regErrMsgs[errMsg] || 0) + 1;
-          } else if (d.registration?.code) {
-            regCodes.push(d.registration.code);
-          }
-        } catch (e) {
-          regErr++; regLat.push(Date.now() - t0);
-        }
-      })());
-    }
-    await Promise.all(proms);
-    const done = Math.min(i + CONCURRENCY, REGISTRATIONS);
-    const elapsed = (Date.now() - t1) / 1000;
-    const rate = done / elapsed;
-    const eta = ((REGISTRATIONS - done) / rate);
-    process.stdout.write(`\r   ${done}/${REGISTRATIONS} | ${rate.toFixed(0)}/sec | ${regErr} err | ${fmt(Date.now()-t1)} | ETA ${fmt(eta*1000)}      `);
-  }
-
-  regLat.sort((a, b) => a - b);
-  const regTime = Date.now() - t1;
-  console.log(`\n\n   ✅ ${regCodes.length}/${fmtNum(REGISTRATIONS)} in ${fmt(regTime)} (${(regCodes.length/(regTime/1000)).toFixed(0)} ops/sec)`);
-  if (regLat.length) console.log(`   p50=${fmt(p(regLat,.5))} p90=${fmt(p(regLat,.9))} p95=${fmt(p(regLat,.95))} p99=${fmt(p(regLat,.99))}`);
-  if (regErr > 0) console.log('   Errors:', JSON.stringify(regErrMsgs));
-
-  // Tag all test registrations in DB with batch ID in sourceType
-  console.log('\n   🏷️  Tagging registrations for cleanup...');
-  const tagResult = await db.collection('event-registrations').updateMany(
-    { event: new mongoose.Types.ObjectId(EVENT_ID), notes: `LOADTEST BATCH ${BATCH_ID}` },
-    { $set: { sourceType: BATCH_ID } }
-  );
-  console.log(`   Tagged ${tagResult.modifiedCount} registrations with sourceType="${BATCH_ID}"`);
-
-  // Show mid-test count
-  const midCount = await db.collection('event-registrations').countDocuments({
-    event: new mongoose.Types.ObjectId(EVENT_ID),
-  });
-  console.log(`\n📊 Event registrations: ${initialCount.toLocaleString()} → ${midCount.toLocaleString()} (+${(midCount - initialCount).toLocaleString()})`);
-
-  // ============================================================
-  // PHASE 2: CHECK-INS
-  // ============================================================
-  const actualCheckins = Math.min(CHECKINS, regCodes.length);
-  let ciSuccess = 0, ciTime = 0;
-  let ciLat = [];
-
-  console.log(`\n\n🔍 PHASE 2: ${fmtNum(actualCheckins)} check-ins via QR scan...`);
-
-  if (actualCheckins === 0) {
-    console.log('   ⚠️  No registrations to check in. Skipping.');
-  } else {
-    const codesToCheckin = regCodes.slice(0, actualCheckins);
-
-    // Reset to "registered" status (simulates online guests)
-    console.log('   Resetting status to "registered"...');
-    const resetResult = await db.collection('event-registrations').updateMany(
-      { inviteCode: { $in: codesToCheckin } },
-      { $set: { status: 'registered' }, $unset: { attendedAt: '', checkedInBy: '' } }
+  // Progress display interval
+  const progressInterval = setInterval(() => {
+    const elapsed = (Date.now() - testStart) / 1000;
+    const regRate = regStats.done / elapsed || 0;
+    const ciRate = ciStats.done / elapsed || 0;
+    process.stdout.write(
+      `\r   📝 Reg: ${regStats.done}/${fmtNum(REGISTRATIONS)} (${regRate.toFixed(0)}/sec)  |  ` +
+      `🔍 Check-in: ${ciStats.done}/${fmtNum(CHECKINS)} (${ciRate.toFixed(0)}/sec)  |  ` +
+      `📊 Stats: ${statsResults.queries} queries  |  ${fmt(Date.now() - testStart)}      `
     );
-    console.log(`   Reset ${resetResult.modifiedCount} registrations`);
-    console.log('   Scanning QR codes...\n');
+  }, 1000);
 
-    ciLat = []; let ciErr = 0; const ciErrMsgs = {};
-    const t2 = Date.now();
-
-    for (let i = 0; i < actualCheckins; i += CONCURRENCY) {
-      const batch = Math.min(CONCURRENCY, actualCheckins - i);
+  // --- STREAM 1: Walk-in registrations ---
+  const registrationStream = (async () => {
+    for (let i = 0; i < REGISTRATIONS; i += CONCURRENCY) {
+      const batch = Math.min(CONCURRENCY, REGISTRATIONS - i);
       const proms = [];
       for (let j = 0; j < batch; j++) {
-        const code = codesToCheckin[i + j];
+        const idx = i + j;
+        proms.push((async () => {
+          const t0 = Date.now();
+          try {
+            const res = await fetch(`${BASE_URL}/api/register`, {
+              method: 'POST', headers: hdrs,
+              body: JSON.stringify({
+                walkInCode: WALK_IN_CODE,
+                eventId: EVENT_ID,
+                platformCode: BATCH_ID,
+                firstName: 'LT', lastName: String(idx).padStart(5, '0'),
+                phone: `+1555${String(2000000 + idx)}`,
+                sendNotification: false,
+                notes: `LOADTEST BATCH ${BATCH_ID}`,
+              }),
+            });
+            const d = await res.json();
+            regStats.latencies.push(Date.now() - t0);
+            if (!res.ok || !d.success) {
+              regStats.err++;
+              const errMsg = d.error || `HTTP ${res.status}`;
+              regStats.errors[errMsg] = (regStats.errors[errMsg] || 0) + 1;
+            } else {
+              regStats.success++;
+              if (d.registration?.code) regCodes.push(d.registration.code);
+            }
+          } catch {
+            regStats.err++;
+            regStats.latencies.push(Date.now() - t0);
+          }
+          regStats.done++;
+        })());
+      }
+      await Promise.all(proms);
+    }
+  })();
+
+  // --- STREAM 2: Check-in QR scans (against pre-seeded registrations) ---
+  const checkinStream = (async () => {
+    // Shuffle pre-seed codes to simulate random scan order
+    const shuffled = [...preSeedCodes].sort(() => Math.random() - 0.5);
+
+    for (let i = 0; i < shuffled.length; i += CONCURRENCY) {
+      const batch = Math.min(CONCURRENCY, shuffled.length - i);
+      const proms = [];
+      for (let j = 0; j < batch; j++) {
+        const code = shuffled[i + j];
         proms.push((async () => {
           const t0 = Date.now();
           try {
@@ -302,93 +330,123 @@ async function main() {
               body: JSON.stringify({ registrationCode: code, eventId: EVENT_ID }),
             });
             const d = await res.json();
-            ciLat.push(Date.now() - t0);
-            if (res.ok && d.success) ciSuccess++;
+            ciStats.latencies.push(Date.now() - t0);
+            if (res.ok && d.success) ciStats.success++;
             else {
-              ciErr++;
+              ciStats.err++;
               const errMsg = d.error || d.code || `HTTP ${res.status}`;
-              ciErrMsgs[errMsg] = (ciErrMsgs[errMsg] || 0) + 1;
+              ciStats.errors[errMsg] = (ciStats.errors[errMsg] || 0) + 1;
             }
           } catch {
-            ciErr++; ciLat.push(Date.now() - t0);
+            ciStats.err++;
+            ciStats.latencies.push(Date.now() - t0);
           }
+          ciStats.done++;
         })());
       }
       await Promise.all(proms);
-      const done = Math.min(i + CONCURRENCY, actualCheckins);
-      const elapsed = (Date.now() - t2) / 1000;
-      const rate = done / elapsed;
-      const eta = ((actualCheckins - done) / rate);
-      process.stdout.write(`\r   ${done}/${actualCheckins} | ${ciSuccess} checked in | ${ciErr} err | ${fmt(Date.now()-t2)} | ETA ${fmt(eta*1000)}      `);
     }
+  })();
 
-    ciLat.sort((a, b) => a - b);
-    ciTime = Date.now() - t2;
-    console.log(`\n\n   ✅ ${ciSuccess}/${fmtNum(actualCheckins)} checked in (${ciErr} errors) in ${fmt(ciTime)}`);
-    if (ciLat.length) console.log(`   p50=${fmt(p(ciLat,.5))} p90=${fmt(p(ciLat,.9))} p95=${fmt(p(ciLat,.95))} p99=${fmt(p(ciLat,.99))}`);
-    if (ciErr > 0) console.log('   Errors:', JSON.stringify(ciErrMsgs));
-  }
-
-  // ============================================================
-  // PHASE 3: STATS
-  // ============================================================
-  console.log(`\n\n📊 PHASE 3: 20 stats queries...\n`);
-  const sLat = [];
-  for (let i = 0; i < 20; i++) {
-    const t0 = Date.now();
-    const res = await fetch(`${BASE_URL}/api/events/${EVENT_ID}/stats`, { headers: hdrs });
-    const d = await res.json();
-    sLat.push(Date.now() - t0);
-    if (i === 19) {
-      console.log(`   Final stats:`);
-      console.log(`     totalRegistrations: ${d.totalRegistrations}`);
-      console.log(`     attendedCount:      ${d.attendedCount}`);
-      console.log(`     spotsRemaining:     ${d.spotsRemaining}`);
+  // --- STREAM 3: Stats polling (periodic dashboard queries) ---
+  const statsStream = (async () => {
+    while (true) {
+      const t0 = Date.now();
+      try {
+        const res = await fetch(`${BASE_URL}/api/events/${EVENT_ID}/stats`, { headers: hdrs });
+        const d = await res.json();
+        statsResults.latencies.push(Date.now() - t0);
+        statsResults.queries++;
+        statsResults.lastData = d;
+      } catch {
+        statsResults.latencies.push(Date.now() - t0);
+        statsResults.queries++;
+      }
+      // Wait for next poll
+      await new Promise(r => setTimeout(r, STATS_INTERVAL));
     }
-  }
-  sLat.sort((a, b) => a - b);
-  if (sLat.length) console.log(`   p50=${fmt(p(sLat,.5))} p90=${fmt(p(sLat,.9))} p95=${fmt(p(sLat,.95))}`);
+  })();
+
+  // Run registration and check-in concurrently; stats runs until they finish
+  await Promise.all([registrationStream, checkinStream]);
+
+  // Stop stats polling and progress display
+  clearInterval(progressInterval);
+
+  const totalTime = Date.now() - testStart;
+
+  // Stop stats by letting it naturally end (we can't abort the promise,
+  // but since we're past the await, the while(true) will continue harmlessly)
 
   // ============================================================
-  // VERIFY
+  // TAG registrations for cleanup
   // ============================================================
-  const finalEventCount = await db.collection('event-registrations').countDocuments({
-    event: new mongoose.Types.ObjectId(EVENT_ID),
-  });
+  console.log('\n\n   🏷️  Tagging walk-in registrations for cleanup...');
+  const tagResult = await db.collection('event-registrations').updateMany(
+    { event: eventObjId, notes: `LOADTEST BATCH ${BATCH_ID}`, sourceType: { $ne: BATCH_ID } },
+    { $set: { sourceType: BATCH_ID } }
+  );
+  console.log(`   Tagged ${tagResult.modifiedCount} additional registrations`);
+
+  // ============================================================
+  // RESULTS
+  // ============================================================
+  regStats.latencies.sort((a, b) => a - b);
+  ciStats.latencies.sort((a, b) => a - b);
+  statsResults.latencies.sort((a, b) => a - b);
+
+  const finalEventCount = await db.collection('event-registrations').countDocuments({ event: eventObjId });
   const finalTotal = await db.collection('event-registrations').countDocuments({});
   const delta = finalEventCount - initialCount;
 
-  console.log(`\n📊 Event registrations: ${initialCount.toLocaleString()} → ${finalEventCount.toLocaleString()} (+${delta.toLocaleString()})`);
-  console.log(`📊 Total DB registrations: ${initialTotal.toLocaleString()} → ${finalTotal.toLocaleString()}`);
-
-  // ============================================================
-  // SUMMARY
-  // ============================================================
-  console.log('\n╔══════════════════════════════════════════════════╗');
-  console.log('║                    SUMMARY                       ║');
-  console.log('╚══════════════════════════════════════════════════╝');
-  console.log(`  Walk-in regs:    ${regCodes.length}/${fmtNum(REGISTRATIONS)} in ${fmt(regTime)}`);
-  console.log(`  Check-ins:       ${ciSuccess}/${fmtNum(actualCheckins)} in ${ciTime ? fmt(ciTime) : 'N/A'}`);
-  console.log(`  Event count:     ${initialCount.toLocaleString()} → ${finalEventCount.toLocaleString()} (+${delta.toLocaleString()})`);
-  console.log(`  Batch tag:       ${BATCH_ID}`);
-
-  if (regCodes.length > 0) {
-    const rate = regCodes.length / (regTime / 1000);
-    console.log(`\n  📈 Performance:`);
-    console.log(`     Reg throughput:  ${rate.toFixed(0)} ops/sec`);
-    console.log(`     Total time:      ${fmt(regTime)}`);
-    console.log(`     Checkin p50:     ${ciLat.length ? fmt(p(ciLat,.5)) : 'N/A'}`);
-    console.log(`     Stats p50:       ${sLat.length ? fmt(p(sLat,.5)) : 'N/A'}`);
+  console.log(`\n╔══════════════════════════════════════════════════════════╗`);
+  console.log('║                       RESULTS                            ║');
+  console.log('╚══════════════════════════════════════════════════════════╝');
+  console.log(`  Total time:         ${fmt(totalTime)}`);
+  console.log();
+  console.log(`  📝 Walk-in Regs:    ${regStats.success}/${fmtNum(REGISTRATIONS)} (${regStats.err} errors)`);
+  if (regStats.latencies.length) {
+    const regRate = regStats.done / (totalTime / 1000);
+    console.log(`     Throughput:     ${regRate.toFixed(0)} ops/sec`);
+    console.log(`     p50=${fmt(p(regStats.latencies,.5))} p90=${fmt(p(regStats.latencies,.9))} p95=${fmt(p(regStats.latencies,.95))} p99=${fmt(p(regStats.latencies,.99))}`);
   }
+  if (Object.keys(regStats.errors).length > 0) console.log('     Errors:', JSON.stringify(regStats.errors));
+
+  console.log();
+  console.log(`  🔍 Check-ins:       ${ciStats.success}/${fmtNum(CHECKINS)} (${ciStats.err} errors)`);
+  if (ciStats.latencies.length) {
+    const ciRate = ciStats.done / (totalTime / 1000);
+    console.log(`     Throughput:     ${ciRate.toFixed(0)} ops/sec`);
+    console.log(`     p50=${fmt(p(ciStats.latencies,.5))} p90=${fmt(p(ciStats.latencies,.9))} p95=${fmt(p(ciStats.latencies,.95))} p99=${fmt(p(ciStats.latencies,.99))}`);
+  }
+  if (Object.keys(ciStats.errors).length > 0) console.log('     Errors:', JSON.stringify(ciStats.errors));
+
+  console.log();
+  console.log(`  📊 Stats queries:   ${statsResults.queries} polls`);
+  if (statsResults.latencies.length) {
+    console.log(`     p50=${fmt(p(statsResults.latencies,.5))} p90=${fmt(p(statsResults.latencies,.9))} p95=${fmt(p(statsResults.latencies,.95))}`);
+  }
+  if (statsResults.lastData) {
+    console.log(`     Final: total=${statsResults.lastData.totalRegistrations} attended=${statsResults.lastData.attendedCount} remaining=${statsResults.lastData.spotsRemaining}`);
+  }
+
+  console.log();
+  console.log(`  📊 Event count:     ${initialCount.toLocaleString()} → ${finalEventCount.toLocaleString()} (+${delta.toLocaleString()})`);
+  console.log(`  📊 Total DB:        ${initialTotal.toLocaleString()} → ${finalTotal.toLocaleString()}`);
+  console.log(`  Batch tag:          ${BATCH_ID}`);
+
+  // Combined throughput
+  const totalOps = regStats.done + ciStats.done;
+  console.log(`\n  📈 Combined: ${totalOps} operations in ${fmt(totalTime)} = ${(totalOps / (totalTime / 1000)).toFixed(0)} total ops/sec`);
 
   // ============================================================
   // CLEANUP
   // ============================================================
   if (KEEP_DATA) {
-    console.log(`\n╔══════════════════════════════════════════════════╗`);
-    console.log('║           REVERT INSTRUCTIONS                   ║');
-    console.log('╚══════════════════════════════════════════════════╝');
-    console.log(`\n  Test data is still in the DB. To delete ALL test data, run:`);
+    console.log(`\n╔══════════════════════════════════════════════════════════╗`);
+    console.log('║               REVERT INSTRUCTIONS                        ║');
+    console.log('╚══════════════════════════════════════════════════════════╝');
+    console.log(`\n  Test data is still in the DB. To delete ALL test data:`);
     console.log(`\n    node scripts/load-test-real-event.mjs --cleanup-only\n`);
     console.log(`  This will delete:`);
     console.log(`    - ${delta} test registrations`);
@@ -400,46 +458,48 @@ async function main() {
     console.log('\n🧹 Auto-cleanup — deleting test data...');
     const t0 = Date.now();
 
-    // Find test registrations
-    const testRegs = await db.collection('event-registrations').find({
-      sourceType: BATCH_ID,
+    // Find by sourceType + notes
+    const taggedRegs = await db.collection('event-registrations').find({
+      event: eventObjId, sourceType: BATCH_ID,
+    }).project({ _id: 1, guest: 1 }).toArray();
+    const notedRegs = await db.collection('event-registrations').find({
+      event: eventObjId, notes: { $regex: /^LOADTEST BATCH/ },
     }).project({ _id: 1, guest: 1 }).toArray();
 
-    if (testRegs.length > 0) {
-      const regIds = testRegs.map(r => r._id);
-      const guestIds = testRegs.map(r => r.guest).filter(Boolean);
-
-      const rDel = await db.collection('event-registrations').deleteMany({ _id: { $in: regIds } });
-      console.log(`   Deleted ${rDel.deletedCount} registrations`);
-
-      if (guestIds.length > 0) {
-        const gDel = await db.collection('users').deleteMany({ _id: { $in: guestIds }, role: 'guest' });
-        console.log(`   Deleted ${gDel.deletedCount} guest users`);
-      }
+    const allIds = new Map();
+    const allGuestIds = new Map();
+    for (const r of [...taggedRegs, ...notedRegs]) {
+      allIds.set(r._id.toString(), r._id);
+      if (r.guest) allGuestIds.set(r.guest.toString(), r.guest);
     }
 
-    // Clean up test admin
+    if (allIds.size > 0) {
+      const regArr = [...allIds.values()];
+      for (let i = 0; i < regArr.length; i += 5000) {
+        await db.collection('event-registrations').deleteMany({ _id: { $in: regArr.slice(i, i + 5000) } });
+      }
+      console.log(`   Deleted ${allIds.size} registrations`);
+    }
+    if (allGuestIds.size > 0) {
+      const guestArr = [...allGuestIds.values()];
+      for (let i = 0; i < guestArr.length; i += 5000) {
+        await db.collection('users').deleteMany({ _id: { $in: guestArr.slice(i, i + 5000) }, role: 'guest' });
+      }
+      console.log(`   Deleted ${allGuestIds.size} guest users`);
+    }
+
+    // Orphan guest users
+    for (const pat of [/^guest-lt-/, /^guest-[a-z0-9]{8}@pmcc4thwatch\.us$/]) {
+      const g = await db.collection('users').deleteMany({ email: pat, role: 'guest' });
+      if (g.deletedCount > 0) console.log(`   Deleted ${g.deletedCount} orphan guests`);
+    }
+
+    // Test admin
     await db.collection('users').deleteOne({ email: adminEmail });
     console.log(`   Deleted test admin`);
 
-    // Also clean by notes tag (belt-and-suspenders)
-    const notesDel = await db.collection('event-registrations').deleteMany({
-      event: new mongoose.Types.ObjectId(EVENT_ID),
-      notes: `LOADTEST BATCH ${BATCH_ID}`,
-    });
-    if (notesDel.deletedCount > 0) console.log(`   Deleted ${notesDel.deletedCount} additional (by notes)`);
-
-    // Also clean by email pattern
-    const emailDel = await db.collection('users').deleteMany({
-      email: { $regex: /^guest-lt-/ },
-      role: 'guest',
-    });
-    if (emailDel.deletedCount > 0) console.log(`   Deleted ${emailDel.deletedCount} guest users (by email)`);
-
-    const afterCount = await db.collection('event-registrations').countDocuments({
-      event: new mongoose.Types.ObjectId(EVENT_ID),
-    });
-    console.log(`\n   Event registrations: ${finalEventCount.toLocaleString()} → ${afterCount.toLocaleString()} in ${Date.now()-t0}ms`);
+    const afterCount = await db.collection('event-registrations').countDocuments({ event: eventObjId });
+    console.log(`\n   Event: ${finalEventCount.toLocaleString()} → ${afterCount.toLocaleString()} in ${Date.now()-t0}ms`);
     await mongoose.disconnect();
   }
 }
