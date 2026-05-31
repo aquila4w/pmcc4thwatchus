@@ -1,4 +1,4 @@
-import { getModel, toObjectId } from "./get-model";
+import { getModel } from "./get-model";
 import { buildDateMatch } from "./date-filter";
 
 interface TechnicalResult {
@@ -16,7 +16,8 @@ export async function getTechnical(eventId: string, from?: string | null, to?: s
   const roundOrNull = (v: number | undefined) => (v != null ? Math.round(v) : null);
 
   const result = await model.aggregate([
-    { $match: { event: toObjectId(eventId), ...dateMatch } },
+    { $addFields: { __eventOid: { $toObjectId: eventId } } },
+    { $match: { $expr: { $eq: ["$event", "$__eventOid"] }, ...dateMatch } },
     { $facet: {
       deviceBreakdown: [
         { $group: { _id: { $ifNull: ["$device", "unknown"] }, scans: { $sum: 1 }, registered: { $sum: { $cond: [{ $eq: ["$registered", true] }, 1, 0] } } } },
@@ -43,7 +44,7 @@ export async function getTechnical(eventId: string, from?: string | null, to?: s
       rageClicks: [{ $match: { rageClickDetected: true } }, { $count: "count" }],
       adBlockers: [{ $match: { adBlockerDetected: true } }, { $count: "count" }],
     } },
-  ]).toArray();
+  ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const f: any = result[0] || {};

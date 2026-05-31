@@ -1,22 +1,19 @@
 import { getPayload } from "payload";
-import { ObjectId } from "mongodb";
 import config from "@payload-config";
 
 /**
- * Convert a string ID to MongoDB ObjectId.
- * Uses the mongodb driver's ObjectId (not Mongoose's) to avoid BSON version conflicts.
- */
-export function toObjectId(id: string) {
-  return new ObjectId(id);
-}
-
-/**
- * Get the native MongoDB collection for a Payload collection slug.
- * Returns the native driver collection (not the Mongoose model) to avoid
- * BSON version conflicts when running aggregation pipelines on serverless.
+ * Get the Mongoose model for a Payload collection slug.
  */
 export async function getModel(slug: string) {
   const payload = await getPayload({ config });
-  const mongooseModel = payload.db.collections[slug];
-  return mongooseModel.collection;
+  return payload.db.collections[slug];
+}
+
+/**
+ * Create pipeline stages that add a server-side ObjectId for matching.
+ * Avoids client-side ObjectId creation which causes BSON version conflicts
+ * when mongoose 9.x (bson 7.x) and Payload's mongoose 8.x (bson 6.x) coexist.
+ */
+export function oidStage(value: string, name = "__oid") {
+  return { $toObjectId: value } as const;
 }
