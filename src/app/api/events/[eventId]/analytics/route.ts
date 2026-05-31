@@ -37,11 +37,11 @@ export async function GET(
     const to = searchParams.get("to");
     const section = searchParams.get("section"); // overview|churches|placements|platforms|technical
 
-    // Fetch event details (always needed)
-    let event: Record<string, unknown> | null = null;
-    try {
-      event = await payload.findByID({ collection: "managed-events", id: eventId, depth: 0, overrideAccess: true });
-    } catch {
+    // Fetch event details — use raw Mongoose query to bypass the slow
+    // registrationCount afterRead hook (which does a full count query)
+    const EventModel = payload.db.collections["managed-events"];
+    const event = (await EventModel.findById(eventId).lean()) as Record<string, unknown> | null;
+    if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
     console.log(`[ANALYTICS] Event fetched: ${Date.now() - t0}ms`);
