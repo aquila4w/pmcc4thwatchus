@@ -182,7 +182,7 @@ export default function CheckInPage({ params }: { params: Promise<{ eventId: str
                 asChild
                 className="text-white hover:bg-slate-700"
               >
-                <Link href="/dashboard">
+                <Link href="/admin">
                   <ChevronLeft className="w-5 h-5" />
                 </Link>
               </Button>

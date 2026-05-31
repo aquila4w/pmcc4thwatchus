@@ -285,7 +285,7 @@ export default function EventDashboardPage({ params }: { params: Promise<{ event
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" asChild className="text-white hover:bg-slate-700">
-                <Link href="/dashboard">
+                <Link href="/admin">
                   <ChevronLeft className="w-5 h-5" />
                 </Link>
               </Button>

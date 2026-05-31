@@ -157,7 +157,7 @@ export function Footer() {
               <Link href="/terms" className="text-slate-400 dark:text-white/30 hover:text-slate-600 dark:hover:text-white/60 transition-colors">
                 Terms of Service
               </Link>
-              <Link href="/dashboard" className="text-slate-400 dark:text-white/30 hover:text-secondary transition-colors">
+              <Link href="/admin" className="text-slate-400 dark:text-white/30 hover:text-secondary transition-colors">
                 Admin
               </Link>
             </div>
