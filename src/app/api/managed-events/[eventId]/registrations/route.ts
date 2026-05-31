@@ -24,7 +24,7 @@ export async function GET(
     const { searchParams } = new URL(request.url);
 
     // Parse query parameters
-    const status = searchParams.get("status");
+    const statusParam = searchParams.get("status"); // comma-separated: "registered,attended"
     const search = searchParams.get("search");
     const limit = parseInt(searchParams.get("limit") || "50");
     const page = parseInt(searchParams.get("page") || "1");
@@ -37,8 +37,14 @@ export async function GET(
       ],
     };
 
-    if (status) {
-      where.and?.push({ status: { equals: status } });
+    // Support comma-separated statuses for multi-select filter
+    if (statusParam) {
+      const statuses = statusParam.split(",").map(s => s.trim()).filter(Boolean);
+      if (statuses.length === 1) {
+        where.and?.push({ status: { equals: statuses[0] } });
+      } else if (statuses.length > 1) {
+        where.and?.push({ status: { in: statuses } });
+      }
     }
 
     if (search) {
@@ -61,11 +67,45 @@ export async function GET(
       depth: 1,
     });
 
+    // Get status counts for filter pills (lightweight indexed lookups)
+    const allStatuses = ["invited", "registered", "confirmed", "attended", "baptized", "waitlisted", "cancelled"] as const;
+    const statusCounts: Record<string, number> = {};
+    const countBase: Where = {
+      and: [
+        { event: { equals: eventId } },
+        ...(search ? [{
+          or: [
+            { "guestInfo.name": { like: search } },
+            { "guestInfo.email": { like: search } },
+            { "guestInfo.phone": { like: search } },
+            { inviteCode: { like: search } },
+          ],
+        }] : []),
+      ],
+    };
+
+    const countPromises = allStatuses.map(async (s) => {
+      const countWhere: Where = {
+        and: [
+          ...((countBase.and as Where[]) || []),
+          { status: { equals: s } },
+        ],
+      };
+      const countResult = await payload.count({
+        collection: "event-registrations",
+        where: countWhere,
+      });
+      statusCounts[s] = countResult.totalDocs;
+    });
+
+    await Promise.all(countPromises);
+
     return NextResponse.json({
       docs: result.docs,
       totalDocs: result.totalDocs,
       totalPages: result.totalPages,
       page: result.page,
+      statusCounts,
     });
   } catch (error) {
     console.error("Registrations list error:", error);

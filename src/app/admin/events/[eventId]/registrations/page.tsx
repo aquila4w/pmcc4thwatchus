@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -42,20 +42,51 @@ interface StatsResponse {
   waitlistedCount?: number;
 }
 
-export default function EventRegistrationsPage() {
+// Update URL without triggering navigation
+function updateUrlParams(params: { statuses?: string[]; page?: number; search?: string }) {
+  const url = new URL(window.location.href);
+  if (params.statuses && params.statuses.length > 0) {
+    url.searchParams.set("status", params.statuses.join(","));
+  } else {
+    url.searchParams.delete("status");
+  }
+  if (params.page && params.page > 1) {
+    url.searchParams.set("page", String(params.page));
+  } else {
+    url.searchParams.delete("page");
+  }
+  if (params.search) {
+    url.searchParams.set("search", params.search);
+  } else {
+    url.searchParams.delete("search");
+  }
+  window.history.replaceState(null, "", url.toString());
+}
+
+function RegistrationsPageContent() {
   const params = useParams();
   const eventId = params.eventId as string;
+  const searchParams = useSearchParams();
+
+  // Read initial state from URL
+  const initialStatuses = searchParams.get("status")?.split(",").filter(Boolean) || [];
+  const initialPage = parseInt(searchParams.get("page") || "1");
+  const initialSearch = searchParams.get("search") || "";
 
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [stats, setStats] = useState<StatsResponse>({});
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initialPage);
   const [totalPages, setTotalPages] = useState(1);
   const [totalDocs, setTotalDocs] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [currentFilters, setCurrentFilters] = useState<{ status?: string; search?: string }>({});
+  const [currentFilters, setCurrentFilters] = useState<{
+    statuses: string[];
+    search?: string;
+  }>({ statuses: initialStatuses, search: initialSearch || undefined });
 
-  const fetchRegistrations = useCallback(async (filters?: { status?: string; search?: string }, pageNum = 1) => {
+  const fetchRegistrations = useCallback(async (filters: { statuses: string[]; search?: string }, pageNum = 1) => {
     setLoading(true);
     try {
       const queryParams = new URLSearchParams({
@@ -63,10 +94,10 @@ export default function EventRegistrationsPage() {
         page: String(pageNum),
       });
 
-      if (filters?.status) {
-        queryParams.append("status", filters.status);
+      if (filters.statuses.length > 0) {
+        queryParams.append("status", filters.statuses.join(","));
       }
-      if (filters?.search) {
+      if (filters.search) {
         queryParams.append("search", filters.search);
       }
 
@@ -77,6 +108,7 @@ export default function EventRegistrationsPage() {
         setTotalPages(data.totalPages || 1);
         setTotalDocs(data.totalDocs || 0);
         setPage(data.page || 1);
+        setStatusCounts(data.statusCounts || {});
       }
     } catch (error) {
       console.error("Failed to fetch registrations:", error);
@@ -98,16 +130,21 @@ export default function EventRegistrationsPage() {
   }, [eventId]);
 
   useEffect(() => {
-    fetchRegistrations();
+    fetchRegistrations(currentFilters, initialPage);
     fetchStats();
-  }, [fetchRegistrations, fetchStats]);
+    // Only run on mount — initialPage/currentFilters are read from URL once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleFilterChange = (filters: { status?: string; search?: string }) => {
+  const handleFilterChange = (filters: { statuses: string[]; search?: string }) => {
     setCurrentFilters(filters);
+    updateUrlParams({ statuses: filters.statuses, page: 1, search: filters.search });
     fetchRegistrations(filters, 1);
   };
 
   const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    updateUrlParams({ statuses: currentFilters.statuses, page: newPage, search: currentFilters.search });
     fetchRegistrations(currentFilters, newPage);
   };
 
@@ -115,14 +152,6 @@ export default function EventRegistrationsPage() {
     fetchRegistrations(currentFilters, page);
     fetchStats();
   };
-
-  if (loading && registrations.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -224,6 +253,8 @@ export default function EventRegistrationsPage() {
           totalDocs={totalDocs}
           page={page}
           totalPages={totalPages}
+          loading={loading}
+          statusCounts={statusCounts}
           onPageChange={handlePageChange}
           onFilterChange={handleFilterChange}
           onRefresh={handleRefresh}
@@ -232,5 +263,19 @@ export default function EventRegistrationsPage() {
         />
       </Card>
     </div>
+  );
+}
+
+export default function EventRegistrationsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <RegistrationsPageContent />
+    </Suspense>
   );
 }
