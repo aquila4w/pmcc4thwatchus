@@ -1,3 +1,4 @@
+import type { Payload } from "payload";
 import { getModel, toObjectId } from "./get-model";
 import { buildDateMatch } from "./date-filter";
 
@@ -13,12 +14,13 @@ interface OverviewResult {
 }
 
 export async function getOverview(
+  payload: Payload,
   eventId: string,
   event: { title?: string; startDate?: string; location?: string; maxAttendees?: number },
   from?: string | null, to?: string | null,
 ): Promise<OverviewResult> {
-  const ScanModel = await getModel("invite-scans");
-  const RegModel = await getModel("event-registrations");
+  const ScanModel = getModel(payload, "invite-scans");
+  const RegModel = getModel(payload, "event-registrations");
   const eventOid = toObjectId(eventId);
   const scanDateMatch = buildDateMatch("scannedAt", from, to);
   const regDateMatch = buildDateMatch("createdAt", from, to);

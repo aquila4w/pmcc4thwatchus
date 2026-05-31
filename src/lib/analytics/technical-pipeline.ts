@@ -1,3 +1,4 @@
+import type { Payload } from "payload";
 import { getModel, toObjectId } from "./get-model";
 import { buildDateMatch } from "./date-filter";
 
@@ -9,8 +10,8 @@ interface TechnicalResult {
   behavioralMetrics: { avgTimeOnPage: number | null; avgScrollDepth: number | null; avgFormStartDelay: number | null; rageClickCount: number; adBlockerDetectedCount: number; sampleSize: number };
 }
 
-export async function getTechnical(eventId: string, from?: string | null, to?: string | null): Promise<TechnicalResult> {
-  const model = await getModel("invite-scans");
+export async function getTechnical(payload: Payload, eventId: string, from?: string | null, to?: string | null): Promise<TechnicalResult> {
+  const model = getModel(payload, "invite-scans");
   const dateMatch = buildDateMatch("scannedAt", from, to);
   const toRate = (s: { scans: number; registered: number }) => (s.scans > 0 ? Math.round((s.registered / s.scans) * 100) : 0);
   const roundOrNull = (v: number | undefined) => (v != null ? Math.round(v) : null);

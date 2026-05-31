@@ -1,6 +1,5 @@
-import { getPayload } from "payload";
 import { Types } from "mongoose";
-import config from "@payload-config";
+import type { Payload } from "payload";
 
 /**
  * Convert a string ID to MongoDB ObjectId.
@@ -11,8 +10,8 @@ export function toObjectId(id: string) {
 
 /**
  * Get the Mongoose model for a Payload collection slug.
+ * Accepts an existing Payload instance to avoid re-initialization.
  */
-export async function getModel(slug: string) {
-  const payload = await getPayload({ config });
+export function getModel(payload: Payload, slug: string) {
   return payload.db.collections[slug];
 }

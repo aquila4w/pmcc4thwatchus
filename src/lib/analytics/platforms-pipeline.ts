@@ -1,14 +1,12 @@
-import { getPayload } from "payload";
-import config from "@payload-config";
+import type { Payload } from "payload";
 import { getModel, toObjectId } from "./get-model";
 import { buildDateMatch } from "./date-filter";
 
 interface PlatformData { platformId: string; platformName: string; scans: number; registrations: number; conversionRate: number }
 
-export async function getPlatforms(eventId: string, from?: string | null, to?: string | null): Promise<PlatformData[]> {
-  const payload = await getPayload({ config });
-  const ScanModel = await getModel("invite-scans");
-  const RegModel = await getModel("event-registrations");
+export async function getPlatforms(payload: Payload, eventId: string, from?: string | null, to?: string | null): Promise<PlatformData[]> {
+  const ScanModel = getModel(payload, "invite-scans");
+  const RegModel = getModel(payload, "event-registrations");
   const eventOid = toObjectId(eventId);
   const scanDateMatch = buildDateMatch("scannedAt", from, to);
   const regDateMatch = buildDateMatch("createdAt", from, to);

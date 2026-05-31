@@ -1,5 +1,4 @@
-import { getPayload } from "payload";
-import config from "@payload-config";
+import type { Payload } from "payload";
 import { getModel, toObjectId } from "./get-model";
 import { buildDateMatch } from "./date-filter";
 
@@ -8,10 +7,9 @@ interface ChurchData {
   members: { memberId: string; memberName: string; inviteCode: string; scans: number; registrations: number; conversionRate: number }[];
 }
 
-export async function getChurches(eventId: string, from?: string | null, to?: string | null): Promise<ChurchData[]> {
-  const payload = await getPayload({ config });
-  const ScanModel = await getModel("invite-scans");
-  const RegModel = await getModel("event-registrations");
+export async function getChurches(payload: Payload, eventId: string, from?: string | null, to?: string | null): Promise<ChurchData[]> {
+  const ScanModel = getModel(payload, "invite-scans");
+  const RegModel = getModel(payload, "event-registrations");
   const eventOid = toObjectId(eventId);
   const scanDateMatch = buildDateMatch("scannedAt", from, to);
   const regDateMatch = buildDateMatch("createdAt", from, to);
@@ -44,7 +42,6 @@ export async function getChurches(eventId: string, from?: string | null, to?: st
   const memberScanMap = new Map<string, number>();
   for (const ms of memberScansByInvite) memberScanMap.set(String(ms.eventInviteId), ms.scans);
 
-  // Build members by church
   const membersByChurch = new Map<string, ChurchData["members"]>();
   const memberByInviteDocId = new Map<string, ChurchData["members"][0]>();
   const inviteDocIds: string[] = [];
@@ -64,7 +61,6 @@ export async function getChurches(eventId: string, from?: string | null, to?: st
     membersByChurch.get(churchId)!.push(member);
   }
 
-  // Batch-fill registration counts
   if (inviteDocIds.length > 0) {
     const regByInvite = await RegModel.aggregate([
       { $match: { event: eventOid, eventInvite: { $in: inviteDocIds.map(toObjectId) }, ...regDateMatch } },
@@ -77,8 +73,6 @@ export async function getChurches(eventId: string, from?: string | null, to?: st
   }
 
   const allChurchIds = new Set([...scanMap.keys(), ...regMap.keys(), ...membersByChurch.keys()]);
-
-  // Bulk church names
   const churchNameMap = new Map<string, string>();
   const churchIdArray = Array.from(allChurchIds).filter((id) => id !== "unknown");
   if (churchIdArray.length > 0) {

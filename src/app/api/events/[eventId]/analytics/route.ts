@@ -8,15 +8,19 @@ import { getPlacements } from "@/lib/analytics/placements-pipeline";
 import { getPlatforms } from "@/lib/analytics/platforms-pipeline";
 import { getTechnical } from "@/lib/analytics/technical-pipeline";
 
-// Allow up to 60s for analytics aggregation under heavy load (Vercel Pro)
+// Allow up to 60s for analytics aggregation under heavy load
 export const maxDuration = 60;
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
+  const t0 = Date.now();
   try {
+    console.log(`[ANALYTICS] Start — ${request.url}`);
+
     const payload = await getPayload({ config });
+    console.log(`[ANALYTICS] Payload init: ${Date.now() - t0}ms`);
 
     const authUser = await getCurrentUser(request);
     if (!authUser) {
@@ -39,6 +43,7 @@ export async function GET(
     } catch {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
+    console.log(`[ANALYTICS] Event fetched: ${Date.now() - t0}ms`);
 
     const eventData = {
       title: event?.title as string | undefined,
@@ -50,33 +55,37 @@ export async function GET(
     // Route to the appropriate pipeline based on section
     if (section === "churches") {
       const [overviewResult, byChurch] = await Promise.all([
-        getOverview(eventId, eventData, from, to),
-        getChurches(eventId, from, to),
+        getOverview(payload, eventId, eventData, from, to),
+        getChurches(payload, eventId, from, to),
       ]);
+      console.log(`[ANALYTICS] churches done: ${Date.now() - t0}ms`);
       return NextResponse.json({ overview: overviewResult.overview, byChurch });
     }
 
     if (section === "placements") {
       const [overviewResult, byPlacement] = await Promise.all([
-        getOverview(eventId, eventData, from, to),
-        getPlacements(eventId, from, to),
+        getOverview(payload, eventId, eventData, from, to),
+        getPlacements(payload, eventId, from, to),
       ]);
+      console.log(`[ANALYTICS] placements done: ${Date.now() - t0}ms`);
       return NextResponse.json({ overview: overviewResult.overview, byPlacement });
     }
 
     if (section === "platforms") {
       const [overviewResult, byPlatform] = await Promise.all([
-        getOverview(eventId, eventData, from, to),
-        getPlatforms(eventId, from, to),
+        getOverview(payload, eventId, eventData, from, to),
+        getPlatforms(payload, eventId, from, to),
       ]);
+      console.log(`[ANALYTICS] platforms done: ${Date.now() - t0}ms`);
       return NextResponse.json({ overview: overviewResult.overview, byPlatform });
     }
 
     if (section === "technical") {
       const [overviewResult, technical] = await Promise.all([
-        getOverview(eventId, eventData, from, to),
-        getTechnical(eventId, from, to),
+        getOverview(payload, eventId, eventData, from, to),
+        getTechnical(payload, eventId, from, to),
       ]);
+      console.log(`[ANALYTICS] technical done: ${Date.now() - t0}ms`);
       return NextResponse.json({
         overview: overviewResult.overview,
         deviceBreakdown: technical.deviceBreakdown,
@@ -88,11 +97,12 @@ export async function GET(
     }
 
     // Default: overview only (or full if no section param and backward compat)
-    const overviewResult = await getOverview(eventId, eventData, from, to);
+    const overviewResult = await getOverview(payload, eventId, eventData, from, to);
 
     if (section === "overview" || !section) {
       // For lazy-loading, return just overview.
       // For backward compat (no section param), return overview + timeline.
+      console.log(`[ANALYTICS] overview done: ${Date.now() - t0}ms`);
       return NextResponse.json({
         overview: overviewResult.overview,
         scanTimeline: overviewResult.scanTimeline,
@@ -101,7 +111,7 @@ export async function GET(
 
     return NextResponse.json(overviewResult);
   } catch (error) {
-    console.error("Analytics API error:", error instanceof Error ? error.message : error);
+    console.error(`[ANALYTICS] Error at ${Date.now() - t0}ms:`, error instanceof Error ? error.message : error);
     console.error("Stack:", error instanceof Error ? error.stack : "N/A");
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
