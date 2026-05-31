@@ -3,6 +3,7 @@ import { getPayload } from "payload";
 import config from "@payload-config";
 import { getCurrentUser, isAdmin } from "@/lib/auth-helpers";
 import { rateLimitAsync, getClientIp } from "@/lib/rate-limit";
+import { invalidateEventCache } from "@/lib/cache";
 
 export async function POST(request: NextRequest) {
   // Rate limit by IP: 200 requests per minute (event-day capacity for scanner stations)
@@ -103,6 +104,12 @@ export async function POST(request: NextRequest) {
         checkedInBy: authUser.id,
       },
     });
+
+    // Invalidate cached stats for this event so the booth page sees the update
+    const eventObjId = (event as { id?: string })?.id;
+    if (eventObjId) {
+      invalidateEventCache(eventObjId).catch(() => {});
+    }
 
     const invitedBy = registration.invitedBy as { name?: string; church?: string | { name?: string } } | null;
     let inviterChurch: string | undefined;
