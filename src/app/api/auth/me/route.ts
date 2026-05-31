@@ -4,7 +4,7 @@ import config from "@payload-config";
 import { headers } from "next/headers";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { countDocs } from "@/lib/analytics/get-model";
+import { countDocs, toObjectId } from "@/lib/analytics/get-model";
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,29 +38,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get church info
-    let churchName = null;
-    if (user.church) {
-      try {
-        const church = await payload.findByID({
-          collection: "churches",
-          id: user.church as string,
-        });
-        churchName = church?.name;
-      } catch {
-        // Continue without church name
-      }
-    }
+    const userId = String(user.id);
 
-    // Get invite statistics
-    const inviteStats = await getInviteStats(payload, String(user.id));
-
-    // Get event-specific invites for this member (future, registration-open events only)
-    // Wrap in timeout so it doesn't block the whole response
-    type EventInviteResult = Awaited<ReturnType<typeof getEventInvites>>;
-    const eventInvites = await Promise.race([
-      getEventInvites(payload, String(user.id)),
-      new Promise<EventInviteResult>((resolve) => setTimeout(() => resolve([]), 5000)),
+    // Run stats + invites + church lookup in parallel
+    const [inviteStats, eventInvites, churchName] = await Promise.all([
+      getInviteStats(payload, userId),
+      getEventInvites(payload, userId),
+      user.church
+        ? payload.findByID({ collection: "churches", id: user.church as string, depth: 0, overrideAccess: true })
+            .then((c) => c?.name ?? null)
+            .catch(() => null)
+        : null,
     ]);
 
     return NextResponse.json({
@@ -87,105 +75,70 @@ export async function GET(request: NextRequest) {
 
 async function getInviteStats(payload: Awaited<ReturnType<typeof getPayload>>, userId: string) {
   try {
-    // Use raw MongoDB countDocuments for count-only queries
+    const userOid = toObjectId(userId);
     const [totalInvites, registered, attended, baptized] = await Promise.all([
-      countDocs(payload, "event-registrations", { invitedBy: userId }),
-      countDocs(payload, "event-registrations", { invitedBy: userId, status: { $in: ["registered", "attended", "baptized"] } }),
-      countDocs(payload, "event-registrations", { invitedBy: userId, status: { $in: ["attended", "baptized"] } }),
-      countDocs(payload, "event-registrations", { invitedBy: userId, status: "baptized" }),
+      countDocs(payload, "event-registrations", { invitedBy: userOid }),
+      countDocs(payload, "event-registrations", { invitedBy: userOid, status: { $in: ["registered", "attended", "baptized"] } }),
+      countDocs(payload, "event-registrations", { invitedBy: userOid, status: { $in: ["attended", "baptized"] } }),
+      countDocs(payload, "event-registrations", { invitedBy: userOid, status: "baptized" }),
     ]);
 
-    return {
-      totalInvites,
-      registered,
-      attended,
-      baptized,
-    };
+    return { totalInvites, registered, attended, baptized };
   } catch {
-    return {
-      totalInvites: 0,
-      registered: 0,
-      attended: 0,
-      baptized: 0,
-    };
+    return { totalInvites: 0, registered: 0, attended: 0, baptized: 0 };
   }
 }
 
 async function getEventInvites(payload: Awaited<ReturnType<typeof getPayload>>, userId: string) {
-  const t = Date.now();
   try {
-    const invites = await payload.find({
-      collection: "event-invites",
-      where: {
-        and: [
-          { invitedBy: { equals: userId } },
-          { status: { equals: "active" } },
-        ],
-      },
-      depth: 0,
-      limit: 100,
-      overrideAccess: true,
-    });
-    console.log(`[EVENT-INVITES] Got ${invites.docs.length} invites in ${Date.now() - t}ms`);
+    const userOid = toObjectId(userId);
 
-    if (invites.docs.length === 0) return [];
+    // Raw Mongoose queries to bypass Payload hooks (esp. managed-events registrationCount)
+    const InviteModel = payload.db.collections["event-invites"];
+    const EventModel = payload.db.collections["managed-events"];
 
-    // Extract event IDs and fetch events separately
-    const eventIds = invites.docs
-      .map((invite) => {
-        const event = invite.event;
-        return typeof event === "string" ? event : (event as { id?: string })?.id;
-      })
-      .filter(Boolean) as string[];
+    // Fetch invites and events in parallel
+    const [invites, events] = await Promise.all([
+      InviteModel.find({ invitedBy: userOid, status: "active" })
+        .select("event inviteCode")
+        .lean(),
+      EventModel.find({ status: "registration-open" })
+        .select("title slug startDate location status")
+        .lean(),
+    ]);
 
-    const eventsResult = await payload.find({
-      collection: "managed-events",
-      where: {
-        id: { in: eventIds },
-        status: { equals: "registration-open" },
-      },
-      depth: 0,
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        startDate: true,
-        location: true,
-        status: true,
-      },
-      limit: 100,
-      overrideAccess: true,
-    });
-    // Build event lookup
+    if (!invites.length) return [];
+
+    // Build event lookup map
     const eventMap = new Map(
-      eventsResult.docs.map((event) => [String(event.id), event])
+      events.map((e: Record<string, unknown>) => [String(e._id), e])
     );
 
     // Filter to future events
-    const validInvites = invites.docs.filter((invite) => {
-      const eventId = typeof invite.event === "string" ? invite.event : (invite.event as { id?: string })?.id;
-      const event = eventId ? eventMap.get(eventId) : undefined;
+    const now = new Date();
+    const validInvites = invites.filter((invite: Record<string, unknown>) => {
+      const eventId = String(invite.event);
+      const event = eventMap.get(eventId);
       if (!event) return false;
-      const startDate = new Date(event.startDate as string);
-      return startDate > new Date();
+      return new Date(event.startDate as string) > now;
     });
 
-    console.log(`[EVENT-INVITES] ${validInvites.length} valid invites in ${Date.now() - t}ms`);
-    if (validInvites.length === 0) return [];
+    if (!validInvites.length) return [];
 
-    // Batch: get registration counts for all invites in parallel
+    // Batch: get registration counts for all valid invites in parallel
+    const RegModel = payload.db.collections["event-registrations"];
     const countResults = await Promise.all(
-      validInvites.map((invite) =>
-        countDocs(payload, "event-registrations", { eventInvite: invite.id })
+      validInvites.map((invite: Record<string, unknown>) =>
+        RegModel.countDocuments({ eventInvite: invite._id })
       )
     );
 
-    return validInvites.map((invite, i) => {
-      const eventId = typeof invite.event === "string" ? invite.event : (invite.event as { id?: string })?.id;
-      const event = eventId ? eventMap.get(eventId) : undefined;
+    return validInvites.map((invite: Record<string, unknown>, i: number) => {
+      const eventId = String(invite.event);
+      const event = eventMap.get(eventId);
       if (!event) return null;
       return {
-        eventId: String(event.id),
+        eventId,
         eventTitle: event.title as string,
         eventSlug: event.slug as string,
         eventDate: event.startDate as string,
