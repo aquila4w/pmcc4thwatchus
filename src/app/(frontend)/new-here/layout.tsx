@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import { generatePageMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = { title: "New Here" };
+export const metadata: Metadata = generatePageMetadata("New Here", "/new-here");
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return children;

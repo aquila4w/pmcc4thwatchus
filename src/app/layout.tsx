@@ -18,28 +18,28 @@ export const metadata: Metadata = {
   publisher: "PMCC 4th Watch US District",
   metadataBase: new URL(siteUrl),
   alternates: {
-    canonical: "/",
+    canonical: siteUrl,
   },
   openGraph: {
     type: "website",
     locale: "en_US",
     url: siteUrl,
     siteName: "PMCC 4th Watch US District",
-    title: "PMCC 4th Watch | Holiness & Service Unto The Lord",
-    description: "Pentecostal Missionary Church of Christ (4th Watch) - An apostolic church committed to holiness, evangelism, and service unto the Lord. Join our community of 50 local churches across the US.",
+    title: "PMCC 4th Watch | US District",
+    description: "PMCC 4th Watch | US District",
     images: [
       {
         url: "/images/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "PMCC 4th Watch US District - Holiness & Service",
+        alt: "PMCC 4th Watch US District",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "PMCC 4th Watch | Holiness & Service Unto The Lord",
-    description: "Pentecostal Missionary Church of Christ (4th Watch) - An apostolic church committed to holiness, evangelism, and service unto the Lord.",
+    title: "PMCC 4th Watch | US District",
+    description: "PMCC 4th Watch | US District",
     images: ["/images/og-image.jpg"],
   },
   robots: {

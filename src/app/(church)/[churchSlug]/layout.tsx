@@ -3,12 +3,15 @@ import { getPayload } from "payload";
 import config from "@payload-config";
 import "../../globals.css";
 
+const SITE_URL = "https://pmcc4thwatch.us";
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ churchSlug: string }>;
 }): Promise<Metadata> {
   const { churchSlug } = await params;
+  const pageUrl = `${SITE_URL}/${churchSlug}`;
   try {
     const payload = await getPayload({ config });
     const churches = await payload.find({
@@ -19,15 +22,27 @@ export async function generateMetadata({
     });
     const church = churches.docs[0];
     if (church) {
+      const fullTitle = `${church.name} - PMCC 4th Watch`;
       return {
         title: {
-          default: `${church.name} - PMCC 4th Watch`,
-          template: `%s | ${church.name} - PMCC 4th Watch`,
+          default: fullTitle,
+          template: `%s | ${fullTitle}`,
         },
+        description: fullTitle,
+        alternates: { canonical: pageUrl },
+        openGraph: { title: fullTitle, description: fullTitle, url: pageUrl },
+        twitter: { title: fullTitle, description: fullTitle },
       };
     }
   } catch {}
-  return { title: "Church - PMCC 4th Watch" };
+  const fullTitle = "Church - PMCC 4th Watch";
+  return {
+    title: fullTitle,
+    description: fullTitle,
+    alternates: { canonical: pageUrl },
+    openGraph: { title: fullTitle, description: fullTitle, url: pageUrl },
+    twitter: { title: fullTitle, description: fullTitle },
+  };
 }
 
 export default function ChurchLayout({
