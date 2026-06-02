@@ -18,6 +18,7 @@ export async function generateMetadata({
     const event = events.docs[0];
     if (event?.title) {
       const description = `Register to ${event.title}!`;
+      const pageUrl = `https://pmcc4thwatch.us/register/${eventSlug}`;
       const ogImage = event.heroImage?.url
         ? { url: event.heroImage.url, width: 1200, height: 630, alt: event.title }
         : undefined;
@@ -25,12 +26,12 @@ export async function generateMetadata({
         title: `Register - ${event.title}`,
         description,
         alternates: {
-          canonical: `/register/${eventSlug}`,
+          canonical: pageUrl,
         },
         openGraph: {
           title: `Register - ${event.title}`,
           description,
-          url: `/register/${eventSlug}`,
+          url: pageUrl,
           ...(ogImage && { images: [ogImage] }),
         },
         twitter: {
