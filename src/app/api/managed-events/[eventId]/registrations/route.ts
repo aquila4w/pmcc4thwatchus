@@ -153,13 +153,13 @@ export async function GET(
     ]);
 
     const adPlacementNames = new Map(
-      adPlacements.docs.map((ap: { id: string; name: string }) => [ap.id, ap.name])
+      adPlacements.docs.map((ap) => [String(ap.id), String((ap as Record<string, unknown>).name)])
     );
     const platformNames = new Map(
-      platforms.docs.map((p: { id: string; name: string }) => [p.id, p.name])
+      platforms.docs.map((p) => [String(p.id), String((p as Record<string, unknown>).name)])
     );
     const churchNames = new Map(
-      churches.docs.map((c: { id: string; name: string }) => [c.id, c.name])
+      churches.docs.map((c) => [String(c.id), String((c as Record<string, unknown>).name)])
     );
 
     const referralLabels: Record<string, string> = {
