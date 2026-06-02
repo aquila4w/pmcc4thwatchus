@@ -15,11 +15,29 @@ export async function generateMetadata({
       where: { slug: { equals: eventSlug } },
       limit: 1,
     });
-    const eventTitle = events.docs[0]?.title;
-    if (eventTitle) {
+    const event = events.docs[0];
+    if (event?.title) {
+      const description = `Register to ${event.title}!`;
+      const ogImage = event.heroImage?.url
+        ? { url: event.heroImage.url, width: 1200, height: 630, alt: event.title }
+        : undefined;
       return {
-        title: `Register - ${eventTitle}`,
-        description: `Register to ${eventTitle}!`,
+        title: `Register - ${event.title}`,
+        description,
+        alternates: {
+          canonical: `/register/${eventSlug}`,
+        },
+        openGraph: {
+          title: `Register - ${event.title}`,
+          description,
+          url: `/register/${eventSlug}`,
+          ...(ogImage && { images: [ogImage] }),
+        },
+        twitter: {
+          title: `Register - ${event.title}`,
+          description,
+          ...(ogImage && { images: [ogImage.url as string] }),
+        },
       };
     }
   } catch {}
