@@ -17,7 +17,10 @@ export async function generateMetadata({
     });
     const eventTitle = events.docs[0]?.title;
     if (eventTitle) {
-      return { title: `Register - ${eventTitle}` };
+      return {
+        title: `Register - ${eventTitle}`,
+        description: `Register to ${eventTitle}!`,
+      };
     }
   } catch {}
   return { title: "Event Registration" };
