@@ -101,9 +101,12 @@ export default buildConfig({
   db: mongooseAdapter({
     url: process.env.MONGODB_URI || process.env.DATABASE_URI || "",
     connectOptions: {
-      maxPoolSize: process.env.NODE_ENV === "production" ? 50 : 50,
-      minPoolSize: process.env.NODE_ENV === "production" ? 5 : 2,
-      maxIdleTimeMS: 30000,
+      // Serverless (Netlify): each function is its own process with its own pool.
+      // Atlas Flex tier = 500 max connections. With pool size 1, up to 500
+      // concurrent functions can run before hitting the limit.
+      maxPoolSize: process.env.NODE_ENV === "production" ? 1 : 5,
+      minPoolSize: 0,
+      maxIdleTimeMS: 5000,
       serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 30000,
       connectTimeoutMS: 10000,
