@@ -17,6 +17,11 @@ import {
   Users,
   FilterX,
   Loader2,
+  Mail,
+  Phone,
+  MapPin,
+  Share2,
+  Footprints,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +46,10 @@ interface Registration {
     id: string;
     name: string;
   };
+  sourceType?: string;
+  sourceLabel?: string;
+  referralSource?: string;
+  referralSourceOther?: string;
   status: string;
   registeredAt?: string;
   attendedAt?: string;
@@ -344,7 +353,7 @@ export function RegistrationTable({
                   />
                 </th>
                 <th className="text-left p-4 font-medium text-sm">Guest</th>
-                <th className="text-left p-4 font-medium text-sm">Church</th>
+                <th className="text-left p-4 font-medium text-sm">Source</th>
                 <th className="text-left p-4 font-medium text-sm">Status</th>
                 <th className="text-left p-4 font-medium text-sm">Registered</th>
                 <th className="text-left p-4 font-medium text-sm">Attended</th>
@@ -386,13 +395,36 @@ export function RegistrationTable({
                           <span className="font-medium">
                             {registration.guestInfo?.name || "Unknown"}
                           </span>
-                          <div className="text-sm text-slate-500">
-                            {registration.guestInfo?.email || registration.guestInfo?.phone || "-"}
-                          </div>
+                          {registration.guestInfo?.email && (
+                            <div className="text-sm text-slate-500 flex items-center gap-1">
+                              <Mail className="w-3 h-3 shrink-0" />
+                              {registration.guestInfo.email}
+                            </div>
+                          )}
+                          {registration.guestInfo?.phone && (
+                            <div className="text-sm text-slate-500 flex items-center gap-1">
+                              <Phone className="w-3 h-3 shrink-0" />
+                              {registration.guestInfo.phone}
+                            </div>
+                          )}
+                          {!registration.guestInfo?.email && !registration.guestInfo?.phone && (
+                            <div className="text-sm text-slate-400">No contact info</div>
+                          )}
                         </div>
                       </td>
                       <td className="p-4 text-sm">
-                        {registration.invitedByChurch?.name || "-"}
+                        <div className="flex items-center gap-1.5">
+                          {registration.sourceType === "walk-in" ? (
+                            <Footprints className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          ) : registration.sourceType === "platform" ? (
+                            <Share2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                          ) : registration.sourceType === "church" ? (
+                            <MapPin className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                          ) : (
+                            <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          )}
+                          <span>{registration.sourceLabel || registration.invitedByChurch?.name || "-"}</span>
+                        </div>
                       </td>
                       <td className="p-4">
                         <Badge className={statusInfo.color}>

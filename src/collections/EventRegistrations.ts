@@ -99,6 +99,32 @@ export const EventRegistrations: CollectionConfig = {
       },
     },
     {
+      name: "referralSource",
+      type: "select",
+      options: [
+        { label: "Friend", value: "friend" },
+        { label: "Family", value: "family" },
+        { label: "Social Media", value: "social-media" },
+        { label: "Church Member", value: "church-member" },
+        { label: "Flyer", value: "flyer" },
+        { label: "Other", value: "other" },
+      ],
+      admin: {
+        position: "sidebar",
+        description: "How the walk-in guest heard about the event",
+        condition: (data) => data?.sourceType === "walk-in",
+      },
+    },
+    {
+      name: "referralSourceOther",
+      type: "text",
+      admin: {
+        position: "sidebar",
+        description: "Details when referral source is 'Other'",
+        condition: (data) => data?.sourceType === "walk-in" && data?.referralSource === "other",
+      },
+    },
+    {
       name: "guest",
       type: "relationship",
       relationTo: "users",

@@ -496,7 +496,7 @@ function LookupTab({ eventId, eventTitle }: { eventId: string; eventTitle: strin
 
 // ===== Tab: Walk-in =====
 function WalkInTab({ eventId, eventTitle, walkInCode, onSuccess }: { eventId: string; eventTitle: string; walkInCode: string; onSuccess: () => void }) {
-  const [form, setForm] = useState({ firstName: "", lastName: "", phone: "", email: "", notes: "" });
+  const [form, setForm] = useState({ firstName: "", lastName: "", phone: "", email: "", notes: "", referralSource: "", referralSourceOther: "" });
   const [sendNotif, setSendNotif] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ code: string; qrCodeUrl: string } | null>(null);
@@ -520,6 +520,8 @@ function WalkInTab({ eventId, eventTitle, walkInCode, onSuccess }: { eventId: st
           phone: form.phone.trim(),
           email: form.email.trim() || undefined,
           notes: form.notes.trim() || undefined,
+          referralSource: form.referralSource || undefined,
+          referralSourceOther: form.referralSourceOther.trim() || undefined,
           sendNotification: sendNotif,
         }),
       });
@@ -537,7 +539,7 @@ function WalkInTab({ eventId, eventTitle, walkInCode, onSuccess }: { eventId: st
   };
 
   const handleReset = () => {
-    setForm({ firstName: "", lastName: "", phone: "", email: "", notes: "" });
+    setForm({ firstName: "", lastName: "", phone: "", email: "", notes: "", referralSource: "", referralSourceOther: "" });
     setSendNotif(false);
     setResult(null);
     setError(null);
@@ -598,6 +600,32 @@ function WalkInTab({ eventId, eventTitle, walkInCode, onSuccess }: { eventId: st
             onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
           />
         </div>
+        <div>
+          <label className="text-xs font-medium text-slate-600">How did you hear about us?</label>
+          <select
+            value={form.referralSource}
+            onChange={(e) => setForm(f => ({ ...f, referralSource: e.target.value, referralSourceOther: e.target.value !== "other" ? "" : f.referralSourceOther }))}
+            className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm"
+          >
+            <option value="">-- Select --</option>
+            <option value="friend">Friend</option>
+            <option value="family">Family</option>
+            <option value="social-media">Social Media</option>
+            <option value="church-member">Church Member</option>
+            <option value="flyer">Flyer</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        {form.referralSource === "other" && (
+          <div>
+            <label className="text-xs font-medium text-slate-600">Please specify</label>
+            <Input
+              value={form.referralSourceOther}
+              onChange={(e) => setForm(f => ({ ...f, referralSourceOther: e.target.value }))}
+              placeholder="How did you hear about us?"
+            />
+          </div>
+        )}
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={sendNotif} onChange={(e) => setSendNotif(e.target.checked)} className="rounded" />
           Send confirmation to guest (email/SMS)

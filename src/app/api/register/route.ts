@@ -69,6 +69,8 @@ export async function POST(request: NextRequest) {
     recaptchaToken,
     joinWaitlist,
     sendNotification,
+    referralSource,
+    referralSourceOther,
     // Legacy support
     guestName,
     guestEmail,
@@ -89,6 +91,8 @@ export async function POST(request: NextRequest) {
     recaptchaToken?: string;
     joinWaitlist?: boolean;
     sendNotification?: boolean;
+    referralSource?: string;
+    referralSourceOther?: string;
     guestName?: string;
     guestEmail?: string;
     guestPhone?: string;
@@ -259,6 +263,8 @@ export async function POST(request: NextRequest) {
           registeredBy: authUser.id,
           checkedInBy: authUser.id,
           notes: (body as Record<string, unknown>).notes as string || undefined,
+          referralSource: referralSource || undefined,
+          referralSourceOther: referralSourceOther || undefined,
         },
       });
 

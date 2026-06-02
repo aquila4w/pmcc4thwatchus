@@ -100,8 +100,125 @@ export async function GET(
 
     await Promise.all(countPromises);
 
+    // Resolve source labels: ad placement names, platform names, and church names.
+    // With depth:1, churchEventInvite and platformEventLink are populated objects,
+    // but their nested relationships (adPlacement, platform, church) are just IDs.
+    // Batch-resolve the names to avoid N+1 queries.
+    const adPlacementIds = new Set<string>();
+    const platformIds = new Set<string>();
+    const churchIds = new Set<string>();
+
+    for (const doc of result.docs) {
+      const cei = doc.churchEventInvite as { adPlacement?: string; church?: string } | null;
+      if (cei?.adPlacement && typeof cei.adPlacement === "string") {
+        adPlacementIds.add(cei.adPlacement);
+      }
+      if (cei?.church && typeof cei.church === "string") {
+        churchIds.add(cei.church);
+      }
+      const pel = doc.platformEventLink as { platform?: string } | null;
+      if (pel?.platform && typeof pel.platform === "string") {
+        platformIds.add(pel.platform);
+      }
+    }
+
+    const [adPlacements, platforms, churches] = await Promise.all([
+      adPlacementIds.size > 0
+        ? payload.find({
+            collection: "ad-placements",
+            where: { id: { in: [...adPlacementIds] } },
+            limit: adPlacementIds.size,
+            depth: 0,
+            overrideAccess: true,
+          })
+        : { docs: [] },
+      platformIds.size > 0
+        ? payload.find({
+            collection: "online-platforms",
+            where: { id: { in: [...platformIds] } },
+            limit: platformIds.size,
+            depth: 0,
+            overrideAccess: true,
+          })
+        : { docs: [] },
+      churchIds.size > 0
+        ? payload.find({
+            collection: "churches",
+            where: { id: { in: [...churchIds] } },
+            limit: churchIds.size,
+            depth: 0,
+            overrideAccess: true,
+          })
+        : { docs: [] },
+    ]);
+
+    const adPlacementNames = new Map(
+      adPlacements.docs.map((ap: { id: string; name: string }) => [ap.id, ap.name])
+    );
+    const platformNames = new Map(
+      platforms.docs.map((p: { id: string; name: string }) => [p.id, p.name])
+    );
+    const churchNames = new Map(
+      churches.docs.map((c: { id: string; name: string }) => [c.id, c.name])
+    );
+
+    const referralLabels: Record<string, string> = {
+      friend: "Friend",
+      family: "Family",
+      "social-media": "Social Media",
+      "church-member": "Church Member",
+      flyer: "Flyer",
+      other: "Other",
+    };
+
+    // Enrich each doc with a human-readable sourceLabel
+    const docs = result.docs.map((doc: Record<string, unknown>) => {
+      const sourceType = doc.sourceType as string;
+      const church = doc.invitedByChurch as { name?: string } | null;
+
+      let sourceLabel = "";
+      if (sourceType === "walk-in") {
+        const referral = doc.referralSource as string | undefined;
+        const referralOther = doc.referralSourceOther as string | undefined;
+        if (referral) {
+          const label = referral === "other" && referralOther
+            ? `Other: ${referralOther}`
+            : (referralLabels[referral] || referral);
+          sourceLabel = `Walk-in · ${label}`;
+        } else {
+          sourceLabel = "Walk-in";
+        }
+      } else if (church?.name) {
+        sourceLabel = church.name;
+      } else if (sourceType === "church") {
+        const cei = doc.churchEventInvite as { adPlacement?: string; church?: string } | null;
+        const ceiChurchName = cei?.church ? churchNames.get(cei.church) : undefined;
+        const placementName = cei?.adPlacement ? adPlacementNames.get(cei.adPlacement) : undefined;
+        if (ceiChurchName && placementName) {
+          sourceLabel = `${ceiChurchName} · ${placementName}`;
+        } else if (ceiChurchName) {
+          sourceLabel = ceiChurchName;
+        } else if (placementName) {
+          sourceLabel = placementName;
+        } else {
+          sourceLabel = "Church Ad";
+        }
+      } else if (sourceType === "platform") {
+        const pel = doc.platformEventLink as { platform?: string } | null;
+        if (pel?.platform) {
+          sourceLabel = platformNames.get(pel.platform) || "Online Platform";
+        } else {
+          sourceLabel = "Online Platform";
+        }
+      } else {
+        sourceLabel = "Member Invite";
+      }
+
+      return { ...doc, sourceLabel };
+    });
+
     return NextResponse.json({
-      docs: result.docs,
+      docs,
       totalDocs: result.totalDocs,
       totalPages: result.totalPages,
       page: result.page,
