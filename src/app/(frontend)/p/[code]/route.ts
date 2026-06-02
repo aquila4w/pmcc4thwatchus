@@ -6,6 +6,11 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
+  // Use Host header (preserves original domain behind proxies) over request.url
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+  const protocol = request.headers.get("x-forwarded-proto") || "https";
+  const baseUrl = host ? `${protocol}://${host}` : (process.env.NEXT_PUBLIC_SITE_URL || "https://pmcc4thwatch.us");
+
   try {
     const { code } = await params;
     const payload = await getPayload({ config });
@@ -25,7 +30,7 @@ export async function GET(
     });
 
     if (links.totalDocs === 0) {
-      return NextResponse.redirect(new URL("/", request.url));
+      return NextResponse.redirect(new URL("/", baseUrl));
     }
 
     const link = links.docs[0];
@@ -39,7 +44,7 @@ export async function GET(
     });
 
     if (!event?.slug) {
-      return NextResponse.redirect(new URL("/", request.url));
+      return NextResponse.redirect(new URL("/", baseUrl));
     }
 
     // Resolve platform slug for UTM
@@ -98,16 +103,15 @@ export async function GET(
         const parsed = new URL(link.customUrl);
         if (!["https:", "http:"].includes(parsed.protocol)) {
           // Reject non-HTTP schemes (javascript:, data:, etc.)
-          return NextResponse.redirect(new URL("/", request.url));
+          return NextResponse.redirect(new URL("/", baseUrl));
         }
       } catch {
-        return NextResponse.redirect(new URL("/", request.url));
+        return NextResponse.redirect(new URL("/", baseUrl));
       }
       return NextResponse.redirect(link.customUrl);
     }
 
     // Build registration URL with UTM params and platform code
-    const baseUrl = new URL(request.url).origin;
     const regUrl = new URL(`/register/${event.slug}`, baseUrl);
     regUrl.searchParams.set("platform", code.toUpperCase());
     regUrl.searchParams.set("utm_source", platformSlug);
@@ -117,6 +121,6 @@ export async function GET(
     return NextResponse.redirect(regUrl.toString());
   } catch (error) {
     console.error("Platform redirect error:", error);
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL("/", baseUrl));
   }
 }

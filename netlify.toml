@@ -8,3 +8,16 @@ included_files = ["src/**/*"]
 
 [[plugins]]
 package = "@netlify/plugin-nextjs"
+
+# Prevent CDNs and social scrapers from caching redirect responses
+[[headers]]
+  for = "/p/*"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    X-Robots-Tag = "noindex"
+
+[[headers]]
+  for = "/t/*"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    X-Robots-Tag = "noindex"

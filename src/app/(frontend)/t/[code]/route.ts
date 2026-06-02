@@ -19,14 +19,21 @@ export async function GET(
       depth: 0,
     });
 
+    const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+    const protocol = request.headers.get("x-forwarded-proto") || "https";
+    const baseUrl = host ? `${protocol}://${host}` : (process.env.NEXT_PUBLIC_SITE_URL || "https://pmcc4thwatch.us");
+
     if (registrations.docs.length === 0) {
-      return NextResponse.redirect(new URL("/", request.url));
+      return NextResponse.redirect(new URL("/", baseUrl));
     }
 
     const registration = registrations.docs[0];
-    const ticketUrl = `${new URL(request.url).origin}/ticket/${registration.inviteCode}`;
+    const ticketUrl = `${baseUrl}/ticket/${registration.inviteCode}`;
     return NextResponse.redirect(ticketUrl);
-  } catch {
-    return NextResponse.redirect(new URL("/", request.url));
+  } catch (error) {
+    const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+    const protocol = request.headers.get("x-forwarded-proto") || "https";
+    const baseUrl = host ? `${protocol}://${host}` : (process.env.NEXT_PUBLIC_SITE_URL || "https://pmcc4thwatch.us");
+    return NextResponse.redirect(new URL("/", baseUrl));
   }
 }
