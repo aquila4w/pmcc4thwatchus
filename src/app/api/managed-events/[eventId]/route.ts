@@ -40,9 +40,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
+  let lastStep = "init";
   try {
     console.log("[event-patch] 1. Starting update...");
-    let lastStep = "init";
     const payload = await getPayload({ config });
 
     // Auth check
