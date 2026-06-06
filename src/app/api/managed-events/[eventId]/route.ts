@@ -15,7 +15,7 @@ export async function GET(
     const event = await payload.findByID({
       collection: "managed-events",
       id: eventId,
-      depth: 2,
+      depth: 1,
     });
 
     if (!event) {
@@ -94,7 +94,10 @@ export async function PATCH(
       contactWebsite,
     } = body;
 
-    const data: Record<string, unknown> = {
+    // Build update data, filtering out undefined values to avoid
+    // corrupting richText fields or triggering Payload validation errors
+    const data: Record<string, unknown> = {};
+    const fields: Record<string, unknown> = {
       title,
       slug,
       description,
@@ -132,9 +135,17 @@ export async function PATCH(
       contactWebsite,
     };
 
-    // Auto-generate slug from title if provided
-    if (title) {
-      data.slug = title
+    // Only include defined values — undefined would corrupt richText fields
+    // and cause Payload to process them as updates
+    for (const [key, value] of Object.entries(fields)) {
+      if (value !== undefined) {
+        data[key] = value;
+      }
+    }
+
+    // Auto-generate slug from title only if slug not explicitly provided
+    if (!data.slug && data.title) {
+      data.slug = (data.title as string)
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "");
@@ -144,7 +155,7 @@ export async function PATCH(
       collection: "managed-events",
       id: eventId,
       data,
-      depth: 2,
+      depth: 1,
       overrideAccess: true,
     });
 
