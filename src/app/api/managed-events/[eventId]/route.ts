@@ -3,20 +3,6 @@ import { getPayload } from "payload";
 import config from "@payload-config";
 import { getCurrentUser, isAdmin, isElevatedRole } from "@/lib/auth-helpers";
 
-/** Safely serialize a Payload response, replacing circular references. */
-function safeJson(obj: unknown): unknown {
-  const seen = new WeakSet();
-  return JSON.parse(
-    JSON.stringify(obj, (_key, value) => {
-      if (typeof value === "object" && value !== null) {
-        if (seen.has(value)) return undefined;
-        seen.add(value);
-      }
-      return value;
-    })
-  );
-}
-
 // GET - Get single event details (public)
 export async function GET(
   request: NextRequest,
@@ -39,7 +25,7 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(safeJson(event));
+    return NextResponse.json(event);
   } catch (error) {
     console.error("Event fetch error:", error);
     return NextResponse.json(
@@ -55,6 +41,7 @@ export async function PATCH(
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
+    console.log("[event-patch] 1. Starting update...");
     const payload = await getPayload({ config });
 
     // Auth check
@@ -68,6 +55,7 @@ export async function PATCH(
 
     const { eventId } = await params;
     const body = await request.json();
+    console.log("[event-patch] 2. Body keys:", Object.keys(body));
 
     // Only allow expected fields (prevent mass assignment)
     const allowedFields = [
@@ -82,9 +70,6 @@ export async function PATCH(
       "contactWebsite",
     ];
 
-    // Build update data — only include defined values to avoid corrupting
-    // richText fields (landingPageContent, thankYouMessage) or triggering
-    // Payload validation on fields the edit form doesn't manage
     const data: Record<string, unknown> = {};
     for (const key of allowedFields) {
       if (body[key] !== undefined) {
@@ -100,8 +85,11 @@ export async function PATCH(
         .replace(/(^-|-$)/g, "");
     }
 
-    // Perform the update — use depth:0 to prevent circular reference
-    // issues during JSON serialization of populated relationships
+    console.log("[event-patch] 3. Update data keys:", Object.keys(data));
+    console.log("[event-patch] 3b. Has landingPageContent?", "landingPageContent" in data);
+    console.log("[event-patch] 3c. Has thankYouMessage?", "thankYouMessage" in data);
+
+    console.log("[event-patch] 4. Calling payload.update()...");
     const event = await payload.update({
       collection: "managed-events",
       id: eventId,
@@ -109,12 +97,38 @@ export async function PATCH(
       depth: 0,
       overrideAccess: true,
     });
+    console.log("[event-patch] 5. payload.update() succeeded, typeof event:", typeof event);
 
-    // Use safeJson to strip any circular references Payload may have added
-    return NextResponse.json(safeJson(event));
+    // Build a clean plain object from the result to avoid circular refs
+    const clean: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(event)) {
+      if (key === "createdAt" || key === "updatedAt") {
+        clean[key] = value;
+      } else if (typeof value !== "object" || value === null) {
+        clean[key] = value;
+      } else if (Array.isArray(value)) {
+        clean[key] = JSON.parse(JSON.stringify(value));
+      } else {
+        // For relationship/object fields, only keep id to avoid circular refs
+        if (value && typeof value === "object" && "id" in value) {
+          clean[key] = (value as { id: string }).id;
+        } else {
+          try {
+            clean[key] = JSON.parse(JSON.stringify(value));
+          } catch {
+            clean[key] = String(value);
+          }
+        }
+      }
+    }
+
+    console.log("[event-patch] 6. Clean response keys:", Object.keys(clean));
+    return NextResponse.json(clean);
   } catch (error: unknown) {
-    console.error("Event update error:", error);
+    console.error("[event-patch] ERROR:", error);
     const message = error instanceof Error ? error.message : "Failed to update event";
+    const stack = error instanceof Error ? error.stack : undefined;
+    console.error("[event-patch] ERROR STACK:", stack);
     return NextResponse.json(
       { error: message },
       { status: 500 }
