@@ -29,6 +29,7 @@ interface Registration {
     id: string;
     name: string;
   };
+  invitedByName?: string | null;
   status: string;
   registeredAt?: string;
   attendedAt?: string;

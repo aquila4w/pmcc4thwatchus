@@ -171,10 +171,14 @@ export async function GET(
       other: "Other",
     };
 
-    // Enrich each doc with a human-readable sourceLabel
+    // Enrich each doc with a human-readable sourceLabel + inviterName
     const docs = result.docs.map((doc: Record<string, unknown>) => {
       const sourceType = doc.sourceType as string;
       const church = doc.invitedByChurch as { name?: string } | null;
+
+      // Resolve inviter name (available at depth:1)
+      const inviter = doc.invitedBy as { name?: string } | null;
+      const inviterName = inviter?.name || null;
 
       let sourceLabel = "";
       if (sourceType === "walk-in") {
@@ -212,9 +216,8 @@ export async function GET(
         }
       } else {
         // Member invite — show inviter name if available
-        const inviter = doc.invitedBy as { name?: string } | null;
-        if (inviter?.name) {
-          sourceLabel = `Invite by ${inviter.name}`;
+        if (inviterName) {
+          sourceLabel = `Invite by ${inviterName}`;
         } else {
           sourceLabel = "Member Invite";
         }
@@ -225,7 +228,7 @@ export async function GET(
         ? doc.guest
         : (doc.guest as { id?: string })?.id || null;
 
-      return { ...doc, sourceLabel, guestUserId };
+      return { ...doc, sourceLabel, inviterName, guestUserId };
     });
 
     return NextResponse.json({

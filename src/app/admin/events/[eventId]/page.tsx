@@ -529,6 +529,12 @@ export default function EventDetailPage() {
             <p className="text-sm text-slate-500">No personal invite link found for this event.</p>
           </div>
         )}
+        <div className="mt-4 pt-4 border-t">
+          <Link href={`/admin/events/${eventId}/platform-codes`} className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+            <Globe className="w-4 h-4" />
+            View all links &amp; QR codes in Online Platforms
+          </Link>
+        </div>
       </Card>
     </div>
   );

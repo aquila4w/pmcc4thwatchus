@@ -25,6 +25,10 @@ const HFGCTestimoniesSection = dynamic(
   () => import("@/components/sections/HFGCTestimoniesSection").then((m) => ({ default: m.HFGCTestimoniesSection })),
   { ssr: false }
 );
+const HFGCDanceChallengeSection = dynamic(
+  () => import("@/components/sections/HFGCDanceChallengeSection").then((m) => ({ default: m.HFGCDanceChallengeSection })),
+  { ssr: false }
+);
 const HFGCCTASection = dynamic(
   () => import("@/components/sections/HFGCCTASection").then((m) => ({ default: m.HFGCCTASection })),
   { ssr: false }
@@ -44,6 +48,7 @@ export default function HomePage() {
       <HFGCDetailsSection />
       <HFGCVideoSection />
       <HFGCTestimoniesSection />
+      <HFGCDanceChallengeSection />
       <HFGCCTASection />
       <HFGCChurchSection />
       <Footer />

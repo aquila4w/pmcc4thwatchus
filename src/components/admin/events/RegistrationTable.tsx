@@ -483,7 +483,14 @@ export function RegistrationTable({
                           ) : (
                             <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                           )}
-                          <span>{registration.sourceLabel || registration.invitedByChurch?.name || "-"}</span>
+                          <div>
+                            <span>{registration.sourceLabel || registration.invitedByChurch?.name || "-"}</span>
+                            {registration.invitedByName && registration.sourceType === "member" && registration.invitedByChurch && (
+                              <div className="text-slate-400 text-xs mt-0.5">
+                                by {registration.invitedByName}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="p-4">
