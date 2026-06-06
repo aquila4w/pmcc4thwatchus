@@ -59,9 +59,8 @@ export function HFGCCTASection() {
           </Button>
           <Button
             asChild
-            variant="outline"
             size="lg"
-            className="border-white/20 text-white hover:bg-white/10 font-semibold text-lg px-8 py-6 rounded-xl"
+            className="bg-white/10 hover:bg-white/20 text-white hover:text-white font-semibold text-lg px-8 py-6 rounded-xl border border-white/20"
           >
             <a href={MERCH_URL} target="_blank" rel="noopener noreferrer">
               <ShoppingBag className="w-5 h-5 mr-2" />

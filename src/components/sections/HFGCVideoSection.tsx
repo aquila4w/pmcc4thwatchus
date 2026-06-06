@@ -17,11 +17,6 @@ const VIDEOS = [
     title: "From Bay Area to New York",
     duration: "0:30",
   },
-  {
-    src: VIDEO_BASE + "warsaw-testimony.mp4",
-    title: "Bro. Warsaw Testimony",
-    duration: "9:22",
-  },
 ];
 
 export function HFGCVideoSection() {

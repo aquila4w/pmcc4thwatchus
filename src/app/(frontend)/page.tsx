@@ -21,8 +21,16 @@ const HFGCVideoSection = dynamic(
   () => import("@/components/sections/HFGCVideoSection").then((m) => ({ default: m.HFGCVideoSection })),
   { ssr: false }
 );
+const HFGCTestimoniesSection = dynamic(
+  () => import("@/components/sections/HFGCTestimoniesSection").then((m) => ({ default: m.HFGCTestimoniesSection })),
+  { ssr: false }
+);
 const HFGCCTASection = dynamic(
   () => import("@/components/sections/HFGCCTASection").then((m) => ({ default: m.HFGCCTASection })),
+  { ssr: false }
+);
+const HFGCChurchSection = dynamic(
+  () => import("@/components/sections/HFGCChurchSection").then((m) => ({ default: m.HFGCChurchSection })),
   { ssr: false }
 );
 
@@ -35,7 +43,9 @@ export default function HomePage() {
       <HFGCVideoFeature />
       <HFGCDetailsSection />
       <HFGCVideoSection />
+      <HFGCTestimoniesSection />
       <HFGCCTASection />
+      <HFGCChurchSection />
       <Footer />
     </main>
   );
