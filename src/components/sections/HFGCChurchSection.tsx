@@ -64,7 +64,7 @@ export function HFGCChurchSection() {
         </motion.div>
 
         {/* Feature cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-14">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-14">
           {FEATURES.map((feature, i) => {
             const Icon = feature.icon;
             return (

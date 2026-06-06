@@ -29,7 +29,7 @@ export function HFGCHeroSection() {
           style={{ backgroundImage: `url(${POSTER_URL})` }}
         />
         {/* Dark overlay for text readability */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/70 to-black/90" />
         {/* Orange glow at bottom */}
         <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-orange-900/30 to-transparent" />
       </motion.div>
@@ -47,7 +47,7 @@ export function HFGCHeroSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-500/20 border border-orange-500/30 backdrop-blur-sm mb-6"
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-500/25 border border-orange-500/40 backdrop-blur-sm mb-6 drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)]"
         >
           <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
           <span className="text-orange-300 text-xs sm:text-sm font-medium uppercase tracking-wider">
@@ -61,8 +61,8 @@ export function HFGCHeroSection() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-tighter text-white"
-            style={{ textShadow: "0 0 80px rgba(251, 146, 60, 0.3)" }}
+            className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-tighter text-white"
+            style={{ textShadow: "0 0 80px rgba(251, 146, 60, 0.3), 0 2px 20px rgba(0,0,0,0.8)" }}
           >
             HOME FREE
           </motion.h1>
@@ -70,7 +70,7 @@ export function HFGCHeroSection() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-amber-300 to-orange-400"
+            className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-amber-300 to-orange-400"
           >
             NEW YORK
           </motion.h2>
@@ -81,7 +81,7 @@ export function HFGCHeroSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.9 }}
-          className="text-lg sm:text-xl md:text-2xl font-semibold text-white/90 tracking-[0.3em] mt-4 sm:mt-6 uppercase"
+          className="text-base sm:text-xl md:text-2xl font-semibold text-white/95 tracking-[0.15em] sm:tracking-[0.3em] mt-4 sm:mt-6 uppercase drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]"
         >
           Saved. Healed. Delivered.
         </motion.p>
@@ -91,7 +91,7 @@ export function HFGCHeroSection() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 1.1 }}
-          className="text-sm sm:text-base text-white/60 mt-3"
+          className="text-sm sm:text-base text-white/70 mt-3 drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)]"
         >
           Evg. Jonathan S. Ferriol · Tasha Cobbs Leonard · Yeng Constantino
         </motion.p>

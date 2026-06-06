@@ -9,11 +9,13 @@ const VIDEO_BASE = "https://images.pmcc4thwatch.us/HFGC/2026/New%20York/videos/"
 const VIDEOS = [
   {
     src: VIDEO_BASE + "new-york-ready.mp4",
+    thumb: VIDEO_BASE + "new-york-ready.mp4#t=0.5",
     title: "New York, Are You Ready?",
     duration: "0:30",
   },
   {
     src: VIDEO_BASE + "bay-area-to-ny.mp4",
+    thumb: VIDEO_BASE + "bay-area-to-ny.mp4#t=0.5",
     title: "From Bay Area to New York",
     duration: "0:30",
   },
@@ -56,7 +58,7 @@ export function HFGCVideoSection() {
             >
               {/* Video thumbnail (first frame) */}
               <video
-                src={video.src}
+                src={video.thumb}
                 className="w-full h-full object-cover opacity-70 group-hover:opacity-90 group-hover:scale-105 transition-all duration-500"
                 muted
                 preload="metadata"

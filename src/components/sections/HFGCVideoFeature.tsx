@@ -5,6 +5,7 @@ import { motion, useInView } from "framer-motion";
 import { Volume2, VolumeX } from "lucide-react";
 
 const OBB_VIDEO_URL = "https://images.pmcc4thwatch.us/HFGC/2026/New%20York/videos/hfgc-ny-obb.mp4";
+const OBB_POSTER_URL = "https://images.pmcc4thwatch.us/HFGC/2026/New%20York/posters/poster-main.jpg";
 
 export function HFGCVideoFeature() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -67,6 +68,7 @@ export function HFGCVideoFeature() {
           <video
             ref={videoRef}
             src={OBB_VIDEO_URL}
+            poster={OBB_POSTER_URL}
             className="w-full h-full object-cover"
             controls
             playsInline
