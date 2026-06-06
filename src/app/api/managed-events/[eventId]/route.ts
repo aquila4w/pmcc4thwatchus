@@ -3,6 +3,20 @@ import { getPayload } from "payload";
 import config from "@payload-config";
 import { getCurrentUser, isAdmin, isElevatedRole } from "@/lib/auth-helpers";
 
+/** Safely serialize a Payload response, replacing circular references. */
+function safeJson(obj: unknown): unknown {
+  const seen = new WeakSet();
+  return JSON.parse(
+    JSON.stringify(obj, (_key, value) => {
+      if (typeof value === "object" && value !== null) {
+        if (seen.has(value)) return undefined;
+        seen.add(value);
+      }
+      return value;
+    })
+  );
+}
+
 // GET - Get single event details (public)
 export async function GET(
   request: NextRequest,
@@ -25,7 +39,7 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(event);
+    return NextResponse.json(safeJson(event));
   } catch (error) {
     console.error("Event fetch error:", error);
     return NextResponse.json(
@@ -56,90 +70,25 @@ export async function PATCH(
     const body = await request.json();
 
     // Only allow expected fields (prevent mass assignment)
-    const {
-      title,
-      slug,
-      description,
-      location,
-      address,
-      startDate,
-      endDate,
-      timezone,
-      status,
-      maxAttendees,
-      registrationEnabled,
-      registrationDeadline,
-      requireApproval,
-      checkInEnabled,
-      hasBaptism,
-      heroImage,
-      landingPageHeroImage,
-      landingPageTitle,
-      landingPageContent,
-      landingPageShowQR,
-      landingPageShowInviter,
-      landingPageCTA,
-      landingPageCTALink,
-      thankYouTitle,
-      thankYouMessage,
-      showQRCode,
-      sendConfirmationEmail,
-      allowMultipleCheckIns,
-      checkInStartTime,
-      organizer,
-      eventType,
-      contactName,
-      contactPhone,
-      contactEmail,
-      contactWebsite,
-    } = body;
+    const allowedFields = [
+      "title", "slug", "description", "location", "address", "startDate",
+      "endDate", "timezone", "status", "maxAttendees", "registrationEnabled",
+      "registrationDeadline", "requireApproval", "checkInEnabled", "hasBaptism",
+      "heroImage", "landingPageHeroImage", "landingPageTitle", "landingPageContent",
+      "landingPageShowQR", "landingPageShowInviter", "landingPageCTA",
+      "landingPageCTALink", "thankYouTitle", "thankYouMessage", "showQRCode",
+      "sendConfirmationEmail", "allowMultipleCheckIns", "checkInStartTime",
+      "organizer", "eventType", "contactName", "contactPhone", "contactEmail",
+      "contactWebsite",
+    ];
 
-    // Build update data, filtering out undefined values to avoid
-    // corrupting richText fields or triggering Payload validation errors
+    // Build update data — only include defined values to avoid corrupting
+    // richText fields (landingPageContent, thankYouMessage) or triggering
+    // Payload validation on fields the edit form doesn't manage
     const data: Record<string, unknown> = {};
-    const fields: Record<string, unknown> = {
-      title,
-      slug,
-      description,
-      location,
-      address,
-      startDate,
-      endDate,
-      timezone,
-      status,
-      maxAttendees,
-      registrationEnabled,
-      registrationDeadline,
-      requireApproval,
-      checkInEnabled,
-      hasBaptism,
-      heroImage,
-      landingPageHeroImage,
-      landingPageTitle,
-      landingPageContent,
-      landingPageShowQR,
-      landingPageShowInviter,
-      landingPageCTA,
-      landingPageCTALink,
-      thankYouTitle,
-      thankYouMessage,
-      showQRCode,
-      sendConfirmationEmail,
-      allowMultipleCheckIns,
-      checkInStartTime,
-      organizer,
-      eventType,
-      contactName,
-      contactPhone,
-      contactEmail,
-      contactWebsite,
-    };
-
-    // Only include defined values — undefined would corrupt richText fields
-    // and cause Payload to process them as updates
-    for (const [key, value] of Object.entries(fields)) {
-      if (value !== undefined) {
-        data[key] = value;
+    for (const key of allowedFields) {
+      if (body[key] !== undefined) {
+        data[key] = body[key];
       }
     }
 
@@ -151,15 +100,18 @@ export async function PATCH(
         .replace(/(^-|-$)/g, "");
     }
 
+    // Perform the update — use depth:0 to prevent circular reference
+    // issues during JSON serialization of populated relationships
     const event = await payload.update({
       collection: "managed-events",
       id: eventId,
       data,
-      depth: 1,
+      depth: 0,
       overrideAccess: true,
     });
 
-    return NextResponse.json(event);
+    // Use safeJson to strip any circular references Payload may have added
+    return NextResponse.json(safeJson(event));
   } catch (error: unknown) {
     console.error("Event update error:", error);
     const message = error instanceof Error ? error.message : "Failed to update event";
