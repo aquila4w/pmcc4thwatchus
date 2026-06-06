@@ -93,7 +93,7 @@ export function HFGCHeroSection() {
           transition={{ duration: 0.6, delay: 1.1 }}
           className="text-sm sm:text-base text-white/60 mt-3"
         >
-          Tasha Cobbs Leonard · Yeng Constantino · Jonathan S. Ferriol
+          Evg. Jonathan S. Ferriol · Tasha Cobbs Leonard · Yeng Constantino
         </motion.p>
 
         {/* Countdown */}

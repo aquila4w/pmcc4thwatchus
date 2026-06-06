@@ -9,6 +9,10 @@ const HFGCArtistsSection = dynamic(
   () => import("@/components/sections/HFGCArtistsSection").then((m) => ({ default: m.HFGCArtistsSection })),
   { ssr: false }
 );
+const HFGCVideoFeature = dynamic(
+  () => import("@/components/sections/HFGCVideoFeature").then((m) => ({ default: m.HFGCVideoFeature })),
+  { ssr: false }
+);
 const HFGCDetailsSection = dynamic(
   () => import("@/components/sections/HFGCDetailsSection").then((m) => ({ default: m.HFGCDetailsSection })),
   { ssr: false }
@@ -28,6 +32,7 @@ export default function HomePage() {
       <Header />
       <HFGCHeroSection />
       <HFGCArtistsSection />
+      <HFGCVideoFeature />
       <HFGCDetailsSection />
       <HFGCVideoSection />
       <HFGCCTASection />

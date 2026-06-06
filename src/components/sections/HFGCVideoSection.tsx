@@ -8,11 +8,6 @@ const VIDEO_BASE = "https://images.pmcc4thwatch.us/HFGC/2026/New%20York/videos/"
 
 const VIDEOS = [
   {
-    src: VIDEO_BASE + "hfgc-ny-obb.mp4",
-    title: "HFGC New York OBB",
-    duration: "0:30",
-  },
-  {
     src: VIDEO_BASE + "new-york-ready.mp4",
     title: "New York, Are You Ready?",
     duration: "0:30",

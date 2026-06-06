@@ -5,6 +5,12 @@ import { Mic2, Music, Globe } from "lucide-react";
 
 const ARTISTS = [
   {
+    name: "Evg. Jonathan S. Ferriol",
+    title: "Global Evangelist",
+    icon: Globe,
+    gradient: "from-red-500 to-rose-600",
+  },
+  {
     name: "Tasha Cobbs Leonard",
     title: "Grammy Award Winning Worship Singer",
     icon: Music,
@@ -15,12 +21,6 @@ const ARTISTS = [
     title: "Renowned Filipino Artist",
     icon: Mic2,
     gradient: "from-orange-500 to-red-600",
-  },
-  {
-    name: "Jonathan S. Ferriol",
-    title: "Global Evangelist",
-    icon: Globe,
-    gradient: "from-red-500 to-rose-600",
   },
 ];
 
