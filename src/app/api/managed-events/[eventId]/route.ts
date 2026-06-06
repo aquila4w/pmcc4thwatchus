@@ -171,14 +171,14 @@ async function generateInvites(
       }),
     ]);
 
-    const existingMemberIds = new Set(
+    const existingMemberIds = new Set<string>(
       existingInvites.docs.map((inv) => {
         const by = (inv as { invitedBy?: unknown }).invitedBy;
-        return typeof by === "string" ? by : (by as { id?: string })?.id;
+        return typeof by === "string" ? by : String((by as { id?: string })?.id ?? "");
       })
     );
 
-    const toCreate = members.docs.filter((m) => !existingMemberIds.has(m.id));
+    const toCreate = members.docs.filter((m) => !existingMemberIds.has(String(m.id)));
     let count = 0;
 
     for (let i = 0; i < toCreate.length; i += 5) {
