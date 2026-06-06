@@ -42,6 +42,7 @@ export async function PATCH(
 ) {
   try {
     console.log("[event-patch] 1. Starting update...");
+    let lastStep = "init";
     const payload = await getPayload({ config });
 
     // Auth check
@@ -53,6 +54,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
     }
 
+    lastStep = "parse-body";
     const { eventId } = await params;
     const body = await request.json();
     console.log("[event-patch] 2. Body keys:", Object.keys(body));
@@ -70,6 +72,7 @@ export async function PATCH(
       "contactWebsite",
     ];
 
+    lastStep = "build-data";
     const data: Record<string, unknown> = {};
     for (const key of allowedFields) {
       if (body[key] !== undefined) {
@@ -86,9 +89,8 @@ export async function PATCH(
     }
 
     console.log("[event-patch] 3. Update data keys:", Object.keys(data));
-    console.log("[event-patch] 3b. Has landingPageContent?", "landingPageContent" in data);
-    console.log("[event-patch] 3c. Has thankYouMessage?", "thankYouMessage" in data);
 
+    lastStep = "payload.update";
     console.log("[event-patch] 4. Calling payload.update()...");
     const event = await payload.update({
       collection: "managed-events",
@@ -97,8 +99,9 @@ export async function PATCH(
       depth: 0,
       overrideAccess: true,
     });
-    console.log("[event-patch] 5. payload.update() succeeded, typeof event:", typeof event);
+    console.log("[event-patch] 5. payload.update() succeeded");
 
+    lastStep = "serialize-response";
     // Build a clean plain object from the result to avoid circular refs
     const clean: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(event)) {
@@ -122,15 +125,15 @@ export async function PATCH(
       }
     }
 
-    console.log("[event-patch] 6. Clean response keys:", Object.keys(clean));
+    console.log("[event-patch] 6. Done");
     return NextResponse.json(clean);
   } catch (error: unknown) {
-    console.error("[event-patch] ERROR:", error);
     const message = error instanceof Error ? error.message : "Failed to update event";
     const stack = error instanceof Error ? error.stack : undefined;
-    console.error("[event-patch] ERROR STACK:", stack);
+    console.error("[event-patch] ERROR:", message, stack);
+    // Return full details in response so it's visible in browser Network tab
     return NextResponse.json(
-      { error: message },
+      { error: message, stack, step: lastStep },
       { status: 500 }
     );
   }
