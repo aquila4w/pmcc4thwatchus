@@ -38,7 +38,7 @@ export function HFGCVideoFeature() {
 
   return (
     <section ref={sectionRef} className="relative py-16 sm:py-24 bg-black overflow-hidden">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8">
         {/* Section header */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -56,7 +56,7 @@ export function HFGCVideoFeature() {
           </h2>
         </motion.div>
 
-        {/* Video player */}
+        {/* Video player — wider cinematic layout */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
