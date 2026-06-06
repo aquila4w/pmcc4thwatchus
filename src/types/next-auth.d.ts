@@ -10,6 +10,7 @@ declare module "next-auth" {
       role: string;
       status: string;
       inviteCode: string;
+      forcePasswordChange: boolean;
     };
   }
 
@@ -21,6 +22,7 @@ declare module "next-auth" {
     status?: string;
     inviteCode?: string;
     payloadToken?: string;
+    forcePasswordChange?: boolean;
   }
 }
 
@@ -31,5 +33,6 @@ declare module "next-auth/jwt" {
     status: string;
     inviteCode: string;
     payloadToken?: string;
+    forcePasswordChange: boolean;
   }
 }

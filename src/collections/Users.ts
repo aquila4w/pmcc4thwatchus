@@ -237,6 +237,24 @@ export const Users: CollectionConfig = {
       },
     },
 
+    // Force password change on next login
+    {
+      name: "forcePasswordChange",
+      type: "checkbox",
+      defaultValue: false,
+      access: {
+        read: () => true,
+        update: ({ req: { user } }) => {
+          if (!user) return false;
+          return true;
+        },
+      },
+      admin: {
+        position: "sidebar",
+        description: "User must change their password on next login",
+      },
+    },
+
     // Invite Code (for approved members)
     {
       name: "inviteCode",

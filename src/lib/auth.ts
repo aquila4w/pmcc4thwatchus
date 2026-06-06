@@ -40,6 +40,7 @@ export const authOptions: NextAuthOptions = {
               role: result.user.role || "member",
               status: result.user.status || "pending",
               inviteCode: result.user.inviteCode || "",
+              forcePasswordChange: (result.user as Record<string, unknown>).forcePasswordChange as boolean || false,
               payloadToken: result.token,
             };
           }
@@ -167,6 +168,7 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role || "member";
         token.status = user.status || "pending";
         token.inviteCode = user.inviteCode || "";
+        token.forcePasswordChange = user.forcePasswordChange || false;
         if (user.payloadToken) {
           token.payloadToken = user.payloadToken;
         }
@@ -180,6 +182,7 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role as string;
         session.user.status = token.status as string;
         session.user.inviteCode = token.inviteCode as string;
+        session.user.forcePasswordChange = token.forcePasswordChange as boolean;
       }
       return session;
     },

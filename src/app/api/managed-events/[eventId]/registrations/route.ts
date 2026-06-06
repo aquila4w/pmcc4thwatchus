@@ -211,10 +211,21 @@ export async function GET(
           sourceLabel = "Online Platform";
         }
       } else {
-        sourceLabel = "Member Invite";
+        // Member invite — show inviter name if available
+        const inviter = doc.invitedBy as { name?: string } | null;
+        if (inviter?.name) {
+          sourceLabel = `Invite by ${inviter.name}`;
+        } else {
+          sourceLabel = "Member Invite";
+        }
       }
 
-      return { ...doc, sourceLabel };
+      // Resolve guest user ID (depth:1 populates as object)
+      const guestUserId = typeof doc.guest === "string"
+        ? doc.guest
+        : (doc.guest as { id?: string })?.id || null;
+
+      return { ...doc, sourceLabel, guestUserId };
     });
 
     return NextResponse.json({

@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
         role: result.user.role,
         inviteCode: result.user.inviteCode,
         church: churchName,
+        forcePasswordChange: (result.user as Record<string, unknown>).forcePasswordChange as boolean || false,
       },
     });
 

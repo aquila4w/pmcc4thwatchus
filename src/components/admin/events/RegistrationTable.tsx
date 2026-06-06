@@ -22,6 +22,7 @@ import {
   MapPin,
   Share2,
   Footprints,
+  UserPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +34,14 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface Registration {
   id: string;
@@ -48,6 +57,8 @@ interface Registration {
   };
   sourceType?: string;
   sourceLabel?: string;
+  invitedByName?: string | null;
+  guestUserId?: string | null;
   referralSource?: string;
   referralSourceOther?: string;
   status: string;
@@ -124,6 +135,13 @@ export function RegistrationTable({
   const [searchTerm, setSearchTerm] = useState("");
   const [activeStatuses, setActiveStatuses] = useState<string[]>([]);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Convert to Member dialog state
+  const [convertDialogOpen, setConvertDialogOpen] = useState(false);
+  const [convertTarget, setConvertTarget] = useState<Registration | null>(null);
+  const [churches, setChurches] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedChurch, setSelectedChurch] = useState("");
+  const [converting, setConverting] = useState(false);
 
   // Compute which preset is active (matches exact set)
   const activePreset = PRESETS.find((p) => arraysEqual(p.statuses, activeStatuses))?.key || null;
@@ -231,6 +249,48 @@ export function RegistrationTable({
       }
     } catch (error) {
       console.error("Failed to delete registration:", error);
+    }
+  };
+
+  const openConvertDialog = async (registration: Registration) => {
+    setConvertTarget(registration);
+    setSelectedChurch("");
+    setConvertDialogOpen(true);
+    try {
+      const res = await fetch("/api/churches");
+      if (res.ok) {
+        const data = await res.json();
+        setChurches(data.docs || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch churches:", error);
+    }
+  };
+
+  const handleConvertToMember = async () => {
+    if (!convertTarget || !selectedChurch) return;
+    setConverting(true);
+    try {
+      const res = await fetch(
+        `/api/managed-events/${eventId}/registrations/${convertTarget.id}/convert-to-member`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ churchId: selectedChurch }),
+        }
+      );
+      if (res.ok) {
+        setConvertDialogOpen(false);
+        onRefresh();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to convert to member");
+      }
+    } catch (error) {
+      console.error("Failed to convert to member:", error);
+      alert("Failed to convert to member");
+    } finally {
+      setConverting(false);
     }
   };
 
@@ -469,6 +529,12 @@ export function RegistrationTable({
                               <UserCheck className="w-4 h-4 mr-2" />
                               Mark as Baptized
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => openConvertDialog(registration)}
+                            >
+                              <UserPlus className="w-4 h-4 mr-2" />
+                              Convert to Member
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-red-600"
@@ -586,6 +652,55 @@ export function RegistrationTable({
           </div>
         )}
       </div>
+
+      {/* Convert to Member Dialog */}
+      <Dialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Convert to Member</DialogTitle>
+            <DialogDescription>
+              Convert {convertTarget?.guestInfo?.name || "this guest"} to a member.
+              They will receive login credentials (password: REDACTED_TEMP_PASSWORD) and must change
+              their password on first login.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Assign to Church</label>
+              <select
+                value={selectedChurch}
+                onChange={(e) => setSelectedChurch(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="">Select a church...</option>
+                {churches.map((church) => (
+                  <option key={church.id} value={church.id}>
+                    {church.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConvertDialogOpen(false)} disabled={converting}>
+              Cancel
+            </Button>
+            <Button onClick={handleConvertToMember} disabled={!selectedChurch || converting}>
+              {converting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Converting...
+                </>
+              ) : (
+                <>
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Convert to Member
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -37,6 +37,12 @@ export default function MemberLoginPage() {
         throw new Error(data.error || "Login failed");
       }
 
+      // Force password change if required
+      if (data.user?.forcePasswordChange) {
+        router.push("/member/change-password");
+        return;
+      }
+
       router.push("/member/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invalid email or password");

@@ -84,6 +84,11 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
           setLoading(false);
           return;
         }
+        // Force password change if required
+        if (userData.user?.forcePasswordChange) {
+          router.push("/member/change-password");
+          return;
+        }
         setUser(userData.user);
         setLoading(false);
       } else {
