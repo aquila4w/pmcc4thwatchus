@@ -3,29 +3,34 @@
 import dynamic from "next/dynamic";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { HeroSection } from "@/components/sections/HeroSection";
+import { HFGCHeroSection } from "@/components/sections/HFGCHeroSection";
 
-const AboutSection = dynamic(
-  () => import("@/components/sections/AboutSection").then((m) => ({ default: m.AboutSection })),
+const HFGCArtistsSection = dynamic(
+  () => import("@/components/sections/HFGCArtistsSection").then((m) => ({ default: m.HFGCArtistsSection })),
   { ssr: false }
 );
-const EventsSection = dynamic(
-  () => import("@/components/sections/EventsSection").then((m) => ({ default: m.EventsSection })),
+const HFGCDetailsSection = dynamic(
+  () => import("@/components/sections/HFGCDetailsSection").then((m) => ({ default: m.HFGCDetailsSection })),
   { ssr: false }
 );
-const CTASection = dynamic(
-  () => import("@/components/sections/CTASection").then((m) => ({ default: m.CTASection })),
+const HFGCVideoSection = dynamic(
+  () => import("@/components/sections/HFGCVideoSection").then((m) => ({ default: m.HFGCVideoSection })),
+  { ssr: false }
+);
+const HFGCCTASection = dynamic(
+  () => import("@/components/sections/HFGCCTASection").then((m) => ({ default: m.HFGCCTASection })),
   { ssr: false }
 );
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-white dark:bg-[#0a0f1a] transition-colors duration-300">
+    <main className="min-h-screen bg-black">
       <Header />
-      <HeroSection />
-      <AboutSection />
-      <EventsSection />
-      <CTASection />
+      <HFGCHeroSection />
+      <HFGCArtistsSection />
+      <HFGCDetailsSection />
+      <HFGCVideoSection />
+      <HFGCCTASection />
       <Footer />
     </main>
   );
