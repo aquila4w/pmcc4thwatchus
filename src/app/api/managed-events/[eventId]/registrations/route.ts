@@ -228,7 +228,7 @@ export async function GET(
         ? doc.guest
         : (doc.guest as { id?: string })?.id || null;
 
-      return { ...doc, sourceLabel, inviterName, guestUserId };
+      return { ...doc, sourceLabel, inviterName, invitedByName: inviterName, guestUserId };
     });
 
     return NextResponse.json({

@@ -138,6 +138,12 @@ export default function EventDetailPage() {
         method: "DELETE",
       });
 
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || "Failed to delete event");
+        return;
+      }
+
       if (res.ok) {
         router.push("/admin/events");
       }
@@ -242,10 +248,10 @@ export default function EventDetailPage() {
               <DropdownMenuItem
                 className="text-red-600"
                 onClick={handleDelete}
-                disabled={deleting}
+                disabled={deleting || event.status === "registration-open"}
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                {deleting ? "Deleting..." : "Delete Event"}
+                {event.status === "registration-open" ? "Close Registration to Delete" : deleting ? "Deleting..." : "Delete Event"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

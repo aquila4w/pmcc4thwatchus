@@ -1,17 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Ticket, ShoppingBag, Users, MapPin, Globe } from "lucide-react";
+import { Ticket, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const REGISTER_URL = "/hfgc-ny";
 const MERCH_URL = "https://forms.gle/JgGtMZt4MMCxBwBp8";
-
-const STATS = [
-  { icon: Users, value: "50+", label: "Local Churches" },
-  { icon: MapPin, value: "8", label: "Sub-Districts" },
-  { icon: Globe, value: "1", label: "Global Mission" },
-];
 
 export function HFGCCTASection() {
   return (
@@ -67,30 +61,6 @@ export function HFGCCTASection() {
               Order Merch
             </a>
           </Button>
-        </motion.div>
-
-        {/* Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="flex flex-col sm:flex-row gap-8 sm:gap-16 justify-center items-center"
-        >
-          {STATS.map((stat) => {
-            const Icon = stat.icon;
-            return (
-              <div key={stat.label} className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center">
-                  <Icon className="w-5 h-5 text-orange-400" />
-                </div>
-                <div className="text-left">
-                  <p className="text-2xl font-bold text-white">{stat.value}</p>
-                  <p className="text-xs text-white/40 uppercase tracking-wider">{stat.label}</p>
-                </div>
-              </div>
-            );
-          })}
         </motion.div>
 
         {/* Hashtags */}

@@ -220,6 +220,20 @@ export async function DELETE(
 
     const { eventId } = await params;
 
+    // Prevent deletion of events that are open for registration
+    const event = await payload.findByID({
+      collection: "managed-events",
+      id: eventId,
+      depth: 0,
+    });
+
+    if (event?.status === "registration-open") {
+      return NextResponse.json(
+        { error: "Cannot delete an event that is Open for Registration. Close registration first." },
+        { status: 409 }
+      );
+    }
+
     await payload.delete({
       collection: "managed-events",
       id: eventId,

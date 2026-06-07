@@ -12,6 +12,15 @@ async function getCurrentUser() {
 
 const SEED_PLATFORMS = [
   {
+    name: "Website",
+    slug: "website",
+    iconIdentifier: "website",
+    description: "Direct website link — track registrations from the event website",
+    urlTemplate: "https://pmcc4thwatch.us/{path}",
+    color: "#F97316",
+    status: "active",
+  },
+  {
     name: "Meta",
     slug: "meta",
     iconIdentifier: "meta",

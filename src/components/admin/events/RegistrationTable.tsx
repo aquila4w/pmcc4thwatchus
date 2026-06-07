@@ -485,9 +485,14 @@ export function RegistrationTable({
                           )}
                           <div>
                             <span>{registration.sourceLabel || registration.invitedByChurch?.name || "-"}</span>
-                            {registration.invitedByName && registration.sourceType === "member" && registration.invitedByChurch && (
+                            {registration.invitedByName && registration.sourceType === "member" && (
                               <div className="text-slate-400 text-xs mt-0.5">
                                 by {registration.invitedByName}
+                              </div>
+                            )}
+                            {registration.invitedByName && registration.sourceType === "church" && (
+                              <div className="text-slate-400 text-xs mt-0.5">
+                                invited by {registration.invitedByName}
                               </div>
                             )}
                           </div>
