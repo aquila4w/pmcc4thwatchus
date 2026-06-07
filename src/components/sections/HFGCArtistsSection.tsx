@@ -1,30 +1,47 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Mic2, Music, Globe } from "lucide-react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Globe, Music, Mic2, X } from "lucide-react";
+import {
+  ExpandingCards,
+  type CardItem,
+} from "@/components/ui/expanding-cards";
 
-const ARTISTS = [
+const ARTIST_CARDS: CardItem[] = [
   {
-    name: "Evg. Jonathan S. Ferriol",
-    title: "Global Evangelist",
-    icon: Globe,
-    gradient: "from-red-500 to-rose-600",
+    id: "jonathan-ferriol",
+    title: "Evg. Jonathan S. Ferriol",
+    description: "Global Evangelist",
+    imgSrc:
+      "https://images.pmcc4thwatch.us/HFGC/2026/01%20-%20Manila/milestone/27.jpg",
+    icon: <Globe className="w-6 h-6" />,
+    linkHref:
+      "https://images.pmcc4thwatch.us/HFGC/2026/01%20-%20Manila/milestone/29.mp4",
   },
   {
-    name: "Tasha Cobbs Leonard",
-    title: "Grammy Award Winning Worship Singer",
-    icon: Music,
-    gradient: "from-amber-500 to-orange-600",
+    id: "tasha-cobbs",
+    title: "Tasha Cobbs Leonard",
+    description: "Grammy Award Winning Worship Singer",
+    imgSrc: "/images/tasha-cobbs.jpg",
+    icon: <Music className="w-6 h-6" />,
+    linkHref: "/videos/tasha-cobbs.mp4",
   },
   {
-    name: "Yeng Constantino",
-    title: "Renowned Filipino Artist",
-    icon: Mic2,
-    gradient: "from-orange-500 to-red-600",
+    id: "yeng-constantino",
+    title: "Yeng Constantino",
+    description: "Renowned Filipino Artist",
+    imgSrc:
+      "https://images.pmcc4thwatch.us/HFGC/2026/01%20-%20Manila/milestone/19.jpg",
+    icon: <Mic2 className="w-6 h-6" />,
+    linkHref:
+      "https://images.pmcc4thwatch.us/HFGC/2026/01%20-%20Manila/milestone/20.mp4",
   },
 ];
 
 export function HFGCArtistsSection() {
+  const [activeVideo, setActiveVideo] = useState<string | null>(null);
+
   return (
     <section className="relative py-20 sm:py-28 bg-black overflow-hidden">
       {/* Subtle grid background */}
@@ -39,7 +56,9 @@ export function HFGCArtistsSection() {
           transition={{ duration: 0.6 }}
           className="text-center mb-12 sm:mb-16"
         >
-          <p className="text-orange-400 text-sm font-semibold uppercase tracking-widest mb-3">Featuring</p>
+          <p className="text-orange-400 text-sm font-semibold uppercase tracking-widest mb-3">
+            Featuring
+          </p>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white">
             An Unforgettable Night of{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-300">
@@ -48,36 +67,56 @@ export function HFGCArtistsSection() {
           </h2>
         </motion.div>
 
-        {/* Artist cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
-          {ARTISTS.map((artist, i) => {
-            const Icon = artist.icon;
-            return (
-              <motion.div
-                key={artist.name}
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-50px" }}
-                transition={{ duration: 0.6, delay: i * 0.15 }}
-                className="group relative"
-              >
-                <div className="relative bg-gradient-to-b from-white/5 to-white/[0.02] border border-white/10 rounded-2xl p-8 text-center backdrop-blur-sm hover:border-orange-500/30 transition-all duration-500">
-                  {/* Icon circle */}
-                  <div className={`mx-auto w-20 h-20 rounded-full bg-gradient-to-br ${artist.gradient} flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-500`}>
-                    <Icon className="w-8 h-8 text-white" />
-                  </div>
-                  {/* Name */}
-                  <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">{artist.name}</h3>
-                  {/* Title */}
-                  <p className="text-sm text-white/50">{artist.title}</p>
-                  {/* Glow effect on hover */}
-                  <div className={`absolute inset-0 rounded-2xl bg-gradient-to-b ${artist.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
+        {/* Expanding artist cards */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="flex justify-center"
+        >
+          <ExpandingCards
+            items={ARTIST_CARDS}
+            defaultActiveIndex={0}
+            onCardClick={(item) => {
+              if (item.linkHref && item.linkHref !== "#") {
+                setActiveVideo(item.linkHref);
+              }
+            }}
+          />
+        </motion.div>
       </div>
+
+      {/* Video modal */}
+      <AnimatePresence>
+        {activeVideo && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setActiveVideo(null)}
+          >
+            <div
+              className="relative w-full max-w-4xl aspect-video rounded-xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <video
+                src={activeVideo}
+                className="w-full h-full object-contain"
+                controls
+                autoPlay
+              />
+              <button
+                onClick={() => setActiveVideo(null)}
+                className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

@@ -164,6 +164,31 @@ function SearchlightBeams() {
   );
 }
 
+/* ---------------- ShimmerText ---------------- */
+function ShimmerText({ text, className = "" }: { text: string; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true });
+
+  return (
+    <div ref={ref} className={`inline-block ${className}`}>
+      <motion.span
+        initial={{ y: 40, opacity: 0 }}
+        animate={isInView ? { y: 0, opacity: 1 } : {}}
+        transition={{ duration: 0.8, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="inline-block animate-[text-shimmer_3s_ease-in-out_infinite] text-transparent bg-clip-text bg-[linear-gradient(110deg,#fb923c_0%,#fbbf24_25%,#fff_50%,#fbbf24_75%,#fb923c_100%)] bg-[length:200%_100%]"
+      >
+        {text}
+      </motion.span>
+      <style>{`
+        @keyframes text-shimmer {
+          0% { background-position: 200% center; }
+          100% { background-position: -200% center; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 /* ---------------- HFGCHeroSection ---------------- */
 export function HFGCHeroSection() {
   const [isMobile, setIsMobile] = useState(false);
@@ -205,8 +230,8 @@ export function HFGCHeroSection() {
             <h1 className="font-black leading-[0.85] tracking-[-0.07em] text-[17vw] sm:text-[14vw] md:text-[12vw] lg:text-[11vw] text-[#E1E0CC]">
               <WordsPullUp text="Home Free" />
             </h1>
-            <h2 className="font-black leading-[0.85] tracking-[-0.05em] text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-amber-300 to-orange-400 text-[13vw] sm:text-[10vw] md:text-[8vw] lg:text-[5.5vw] mt-2 mb-4 sm:mt-1 sm:mb-0">
-              <WordsPullUp text="New York" />
+            <h2 className="font-black leading-[0.85] tracking-[-0.05em] text-[13vw] sm:text-[10vw] md:text-[8vw] lg:text-[5.5vw] mt-2 mb-4 sm:mt-1 sm:mb-0">
+              <ShimmerText text="New York" />
             </h2>
           </div>
 
@@ -261,7 +286,7 @@ export function HFGCHeroSection() {
             >
               <Button
                 asChild
-                className="group inline-flex items-center gap-2 rounded-full bg-orange-500 hover:bg-orange-600 py-2 pl-5 pr-1 text-sm font-medium text-white transition-all hover:gap-3 sm:text-base"
+                className="group inline-flex items-center gap-2 rounded-full bg-orange-500 hover:bg-orange-600 py-2 pl-5 pr-1 text-sm font-medium text-white transition-all hover:gap-3 sm:text-base animate-[pulse-glow_2s_ease-in-out_infinite]"
               >
                 <a href={REGISTER_URL}>
                   Get Your FREE Ticket
@@ -283,6 +308,16 @@ export function HFGCHeroSection() {
         @media (max-width: 767px) {
           .hero-img-mobile { display: block; }
           .hero-img-desktop { display: none; }
+        }
+        @keyframes pulse-glow {
+          0%, 100% {
+            box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.5);
+            transform: scale(1);
+          }
+          50% {
+            box-shadow: 0 0 20px 6px rgba(249, 115, 22, 0.35);
+            transform: scale(1.05);
+          }
         }
       `}</style>
 
