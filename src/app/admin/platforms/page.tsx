@@ -201,12 +201,10 @@ export default function OnlinePlatformsPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          {platforms.length === 0 && (
-            <Button onClick={handleSeed} variant="outline" disabled={seeding} className="gap-2">
-              {seeding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-              Seed Defaults
-            </Button>
-          )}
+          <Button onClick={handleSeed} variant="outline" disabled={seeding} className="gap-2">
+            {seeding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            Seed Defaults
+          </Button>
           <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2">
             <Plus className="w-4 h-4" /> Add Platform
           </Button>
