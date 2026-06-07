@@ -613,6 +613,30 @@ export default function RegisterPage({
                         {errors.email && <p className="text-red-400 text-sm mt-1">{errors.email}</p>}
                       </div>
 
+                      {/* Local Church Dropdown */}
+                      {eventData?.event?.landingPage?.showChurchDropdown && eventData?.churches && eventData.churches.length > 0 && (
+                        <div className="space-y-2">
+                          <Label htmlFor="localChurch" className="text-white/80 text-sm font-medium flex items-center gap-2">
+                            <Church className="w-4 h-4 text-secondary" />
+                            Local Church <span className="text-red-400">*</span>
+                          </Label>
+                          <select
+                            id="localChurch"
+                            value={selectedChurchId}
+                            onChange={(e) => { setSelectedChurchId(e.target.value); setErrorMessage(""); }}
+                            className={`w-full h-12 rounded-lg bg-white/5 border text-white px-4 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none transition-colors ${errorMessage && !selectedChurchId ? "border-red-500" : "border-white/10"}`}
+                          >
+                            <option value="" className="bg-[#0a0f1a]">Select your local church...</option>
+                            {eventData.churches.map((church) => (
+                              <option key={church.id} value={church.id} className="bg-[#0a0f1a]">
+                                {trimChurchName(church.name)}
+                              </option>
+                            ))}
+                          </select>
+                          {errorMessage && !selectedChurchId && <p className="text-red-400 text-sm">Please select your local church</p>}
+                        </div>
+                      )}
+
                       {/* SMS Opt-In Consent */}
                       <div className="flex items-start gap-3 bg-white/5 rounded-lg p-4 border border-white/10">
                         <input
@@ -631,29 +655,6 @@ export default function RegisterPage({
                           </Link>
                         </label>
                       </div>
-
-                      {/* Local Church Dropdown */}
-                      {eventData?.event?.landingPage?.showChurchDropdown && eventData?.churches && eventData.churches.length > 0 && (
-                        <div className="space-y-2">
-                          <Label htmlFor="localChurch" className="text-white/80 text-sm font-medium flex items-center gap-2">
-                            <Church className="w-4 h-4 text-secondary" />
-                            Local Church
-                          </Label>
-                          <select
-                            id="localChurch"
-                            value={selectedChurchId}
-                            onChange={(e) => setSelectedChurchId(e.target.value)}
-                            className="w-full h-12 rounded-lg bg-white/5 border border-white/10 text-white px-4 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none transition-colors"
-                          >
-                            <option value="" className="bg-[#0a0f1a]">Select your local church...</option>
-                            {eventData.churches.map((church) => (
-                              <option key={church.id} value={church.id} className="bg-[#0a0f1a]">
-                                {trimChurchName(church.name)}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
 
                       {/* reCAPTCHA */}
                       {process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY && (
