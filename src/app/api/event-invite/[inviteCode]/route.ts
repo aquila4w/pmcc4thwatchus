@@ -120,6 +120,7 @@ export async function GET(
           content: fullEvent?.landingPageContent,
           showQR: fullEvent?.landingPageShowQR ?? true,
           showInviter: fullEvent?.landingPageShowInviter ?? true,
+          showChurchDropdown: fullEvent?.landingPageShowChurchDropdown ?? false,
           cta: fullEvent?.landingPageCTA,
           ctaLink: fullEvent?.landingPageCTALink,
         },
@@ -132,6 +133,15 @@ export async function GET(
         church: inviterChurch,
       },
       registrationCount: invite.registrationCount || 0,
+      ...(fullEvent?.landingPageShowChurchDropdown ? {
+        churches: (await payload.find({
+          collection: "churches",
+          limit: 200,
+          sort: "name",
+          depth: 0,
+          overrideAccess: true,
+        })).docs.map((c: { id: string; name: string }) => ({ id: c.id, name: c.name })),
+      } : {}),
     });
   } catch (error) {
     console.error("Event invite fetch error:", error);

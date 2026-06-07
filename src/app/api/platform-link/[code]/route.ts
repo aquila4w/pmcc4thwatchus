@@ -92,7 +92,13 @@ export async function GET(
         spotsRemaining: event.spotsRemaining || null,
         isFull: event.isFull || false,
         isPastDeadline: event.isPastDeadline || false,
-        landingPage: event.landingPage || { title: "You're Registered!", showQR: true, showInviter: true },
+        landingPage: {
+          title: event.landingPage?.title || "You're Registered!",
+          content: event.landingPage?.content,
+          showQR: event.landingPage?.showQR ?? true,
+          showInviter: event.landingPage?.showInviter ?? true,
+          showChurchDropdown: event.landingPageShowChurchDropdown ?? false,
+        },
       },
       platform: platform ? {
         id: platform.id,
@@ -100,6 +106,15 @@ export async function GET(
         slug: platform.slug,
       } : null,
       registrationCount,
+      ...(event.landingPageShowChurchDropdown ? {
+        churches: (await payload.find({
+          collection: "churches",
+          limit: 200,
+          sort: "name",
+          depth: 0,
+          overrideAccess: true,
+        })).docs.map((c: { id: string; name: string }) => ({ id: c.id, name: c.name })),
+      } : {}),
     });
   } catch (error) {
     console.error("Failed to fetch platform link:", error);

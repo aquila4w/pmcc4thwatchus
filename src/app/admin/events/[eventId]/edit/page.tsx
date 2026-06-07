@@ -43,6 +43,7 @@ interface EventData {
   landingPageTitle: string;
   landingPageShowQR: boolean;
   landingPageShowInviter: boolean;
+  landingPageShowChurchDropdown: boolean;
   landingPageCTA: string;
   landingPageCTALink: string;
   thankYouTitle: string;
@@ -74,6 +75,7 @@ interface EventResponse {
   landingPageTitle?: string;
   landingPageShowQR?: boolean;
   landingPageShowInviter?: boolean;
+  landingPageShowChurchDropdown?: boolean;
   landingPageCTA?: string;
   landingPageCTALink?: string;
   thankYouTitle?: string;
@@ -167,6 +169,7 @@ export default function EditEventPage() {
         landingPageTitle: data.landingPageTitle || "You're Registered!",
         landingPageShowQR: data.landingPageShowQR ?? true,
         landingPageShowInviter: data.landingPageShowInviter ?? true,
+        landingPageShowChurchDropdown: data.landingPageShowChurchDropdown ?? false,
         landingPageCTA: data.landingPageCTA || "",
         landingPageCTALink: data.landingPageCTALink || "",
         thankYouTitle: data.thankYouTitle || "Thank You for Registering!",
@@ -236,6 +239,7 @@ export default function EditEventPage() {
         landingPageTitle: formData.landingPageTitle || undefined,
         landingPageShowQR: formData.landingPageShowQR,
         landingPageShowInviter: formData.landingPageShowInviter,
+        landingPageShowChurchDropdown: formData.landingPageShowChurchDropdown,
         landingPageCTA: formData.landingPageCTA || undefined,
         landingPageCTALink: formData.landingPageCTALink || undefined,
         thankYouTitle: formData.thankYouTitle || undefined,
@@ -461,6 +465,10 @@ export default function EditEventPage() {
             <div className="flex items-center justify-between">
               <Label>Show Inviter Info on Landing Page</Label>
               <input type="checkbox" checked={formData.landingPageShowInviter} onChange={(e) => updateField("landingPageShowInviter", e.target.checked)} className="w-4 h-4" />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label>Show Local Church Dropdown on Registration Page</Label>
+              <input type="checkbox" checked={formData.landingPageShowChurchDropdown} onChange={(e) => updateField("landingPageShowChurchDropdown", e.target.checked)} className="w-4 h-4" />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">

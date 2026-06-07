@@ -124,6 +124,7 @@ export async function GET(request: NextRequest) {
           content: event.landingPageContent,
           showQR: event.landingPageShowQR ?? true,
           showInviter: event.landingPageShowInviter ?? true,
+          showChurchDropdown: event.landingPageShowChurchDropdown ?? false,
         },
       },
       invitedBy: {
@@ -134,6 +135,15 @@ export async function GET(request: NextRequest) {
         church: churchObj?.name,
       },
       registrationCount: eventInvite?.registrationCount || 0,
+      ...(event.landingPageShowChurchDropdown ? {
+        churches: (await payload.find({
+          collection: "churches",
+          limit: 200,
+          sort: "name",
+          depth: 0,
+          overrideAccess: true,
+        })).docs.map((c: { id: string; name: string }) => ({ id: c.id, name: c.name })),
+      } : {}),
     });
   } catch (error) {
     console.error("Event invite by-ref error:", error);

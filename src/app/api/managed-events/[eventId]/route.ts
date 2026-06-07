@@ -68,7 +68,7 @@ export async function PATCH(
       "endDate", "timezone", "status", "maxAttendees", "registrationEnabled",
       "registrationDeadline", "requireApproval", "checkInEnabled", "hasBaptism",
       "heroImage", "landingPageHeroImage", "landingPageTitle", "landingPageContent",
-      "landingPageShowQR", "landingPageShowInviter", "landingPageCTA",
+      "landingPageShowQR", "landingPageShowInviter", "landingPageShowChurchDropdown", "landingPageCTA",
       "landingPageCTALink", "thankYouTitle", "thankYouMessage", "showQRCode",
       "sendConfirmationEmail", "allowMultipleCheckIns", "checkInStartTime",
       "organizer", "eventType", "contactName", "contactPhone", "contactEmail",

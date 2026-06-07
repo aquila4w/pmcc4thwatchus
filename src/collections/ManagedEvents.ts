@@ -535,6 +535,14 @@ export const ManagedEvents: CollectionConfig = {
               },
             },
             {
+              name: "landingPageShowChurchDropdown",
+              type: "checkbox",
+              defaultValue: false,
+              admin: {
+                description: "Show a 'Local Church' dropdown on the registration page for guests to select their church",
+              },
+            },
+            {
               name: "landingPageCTA",
               type: "text",
               admin: {

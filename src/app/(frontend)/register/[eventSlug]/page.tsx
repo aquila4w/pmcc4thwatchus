@@ -55,6 +55,7 @@ interface EventData {
       title: string;
       showQR: boolean;
       showInviter: boolean;
+      showChurchDropdown?: boolean;
     };
   };
   invitedBy: {
@@ -65,6 +66,7 @@ interface EventData {
     church?: string;
   };
   registrationCount: number;
+  churches?: Array<{ id: string; name: string }>;
 }
 
 interface FormData {
@@ -86,6 +88,16 @@ interface RegistrationResult {
 }
 
 type Step = "loading" | "form" | "submitting" | "success" | "error" | "closed" | "waitlist";
+
+function trimChurchName(name: string): string {
+  const trimmed = name
+    .replace(/^PMCC\s+4th\s+Watch\s+of\s+/i, "")
+    .replace(/^PMCC\s+4th\s+Watch\s*[-–—]\s*/i, "")
+    .replace(/^PMCC\s+4th\s+Watch\s+/i, "")
+    .replace(/^PMCC\s*\(\s*4th\s+Watch\s*\)\s*/i, "")
+    .trim();
+  return trimmed || name;
+}
 
 export default function RegisterPage({
   params,
@@ -111,6 +123,7 @@ export default function RegisterPage({
     email: "",
   });
   const [smsConsent, setSmsConsent] = useState(false);
+  const [selectedChurchId, setSelectedChurchId] = useState<string>("");
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [registrationResult, setRegistrationResult] = useState<RegistrationResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>("");
@@ -286,6 +299,12 @@ export default function RegisterPage({
     e.preventDefault();
     if (!validateForm() || !code) return;
 
+    // Require church selection if the dropdown is shown
+    if (eventData?.event?.landingPage?.showChurchDropdown && !selectedChurchId) {
+      setErrorMessage("Please select your local church");
+      return;
+    }
+
     setStep("submitting");
 
     // Calculate behavioral metrics
@@ -310,6 +329,7 @@ export default function RegisterPage({
           phone: formData.phone.trim(),
           email: formData.email.trim() || undefined,
           recaptchaToken: captchaToken,
+          churchId: selectedChurchId || undefined,
           joinWaitlist,
           // Behavioral data
           timeOnPage,
@@ -609,6 +629,29 @@ export default function RegisterPage({
                           </Link>
                         </label>
                       </div>
+
+                      {/* Local Church Dropdown */}
+                      {eventData?.event?.landingPage?.showChurchDropdown && eventData?.churches && eventData.churches.length > 0 && (
+                        <div className="space-y-2">
+                          <Label htmlFor="localChurch" className="text-white/80 text-sm font-medium flex items-center gap-2">
+                            <Church className="w-4 h-4 text-secondary" />
+                            Local Church
+                          </Label>
+                          <select
+                            id="localChurch"
+                            value={selectedChurchId}
+                            onChange={(e) => setSelectedChurchId(e.target.value)}
+                            className="w-full h-12 rounded-lg bg-white/5 border border-white/10 text-white px-4 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none transition-colors"
+                          >
+                            <option value="" className="bg-[#0a0f1a]">Select your local church...</option>
+                            {eventData.churches.map((church) => (
+                              <option key={church.id} value={church.id} className="bg-[#0a0f1a]">
+                                {trimChurchName(church.name)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
 
                       {/* reCAPTCHA */}
                       {process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY && (

@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
     sendNotification,
     referralSource,
     referralSourceOther,
+    churchId,
     // Legacy support
     guestName,
     guestEmail,
@@ -93,6 +94,7 @@ export async function POST(request: NextRequest) {
     sendNotification?: boolean;
     referralSource?: string;
     referralSourceOther?: string;
+    churchId?: string;
     guestName?: string;
     guestEmail?: string;
     guestPhone?: string;
@@ -160,6 +162,26 @@ export async function POST(request: NextRequest) {
 
   try {
     const payload = await getPayload({ config });
+
+    // Validate guest-selected church (if provided)
+    let validatedChurchId: string | undefined;
+    let validatedChurchName: string | undefined;
+    if (churchId) {
+      try {
+        const church = await payload.findByID({
+          collection: "churches",
+          id: churchId,
+          depth: 0,
+          overrideAccess: true,
+        });
+        if (church) {
+          validatedChurchId = churchId;
+          validatedChurchName = (church as { name?: string })?.name;
+        }
+      } catch {
+        // Invalid church ID — ignore silently
+      }
+    }
 
     // ===== WALK-IN REGISTRATION =====
     // Walk-in registrations are performed by admin staff at the registration booth.
@@ -546,6 +568,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Require church selection if event has the toggle enabled
+    if (fullEvent.landingPageShowChurchDropdown && !validatedChurchId) {
+      return NextResponse.json(
+        { error: "Please select your local church" },
+        { status: 400 }
+      );
+    }
+
     // Check capacity — cache the count for 30 seconds to avoid expensive count queries
     let isWaitlisted = false;
     let waitlistPosition = 0;
@@ -676,7 +706,7 @@ export async function POST(request: NextRequest) {
         platformEventLink: platformLink?.id || undefined,
         sourceType,
         invitedBy: invitingMember?.id,
-        invitedByChurch: inviterChurchId || undefined,
+        invitedByChurch: validatedChurchId || inviterChurchId || undefined,
         guest: guestUserId,
         guestInfo: {
           name: fullName,
@@ -716,7 +746,7 @@ export async function POST(request: NextRequest) {
         invitedByName: invitingMember?.name as string | undefined,
         invitedByPhone: invitingMember?.phone as string | undefined,
         invitedByEmail: invitingMember?.email as string | undefined,
-        invitedByChurch: inviterChurchName,
+        invitedByChurch: validatedChurchName || inviterChurchName,
       }).catch((err) => console.error("Email send failed:", err));
     }
 
