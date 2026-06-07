@@ -33,6 +33,7 @@ interface OnlinePlatform {
 }
 
 const PLATFORM_ICONS: Record<string, { label: string; color: string }> = {
+  website: { label: "Website", color: "#F97316" },
   meta: { label: "Meta", color: "#1877F2" },
   tiktok: { label: "TikTok", color: "#000000" },
   youtube: { label: "YouTube", color: "#FF0000" },
@@ -141,7 +142,7 @@ export default function OnlinePlatformsPage() {
   };
 
   const handleSeed = async () => {
-    if (!confirm("Seed default platforms (Meta, TikTok, YouTube, Google, Eventbrite)? Existing platforms won't be duplicated.")) return;
+    if (!confirm("Seed default platforms (Website, Meta, TikTok, YouTube, Google, Eventbrite)? Existing platforms won't be duplicated.")) return;
     setSeeding(true);
     try {
       const res = await fetch("/api/online-platforms/seed", { method: "POST" });

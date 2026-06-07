@@ -88,8 +88,6 @@ export default function PlatformCodesPage() {
   const [urlForm, setUrlForm] = useState("");
   const [editingContact, setEditingContact] = useState<string | null>(null);
   const [contactForm, setContactForm] = useState({ name: "", email: "", phone: "" });
-  const [websiteQrDataUrl, setWebsiteQrDataUrl] = useState<string | null>(null);
-  const [websiteCopied, setWebsiteCopied] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -111,18 +109,6 @@ export default function PlatformCodesPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  // Generate website QR when event slug is available
-  useEffect(() => {
-    if (!event?.slug) { setWebsiteQrDataUrl(null); return; }
-    const websiteUrl = `${baseUrl}/register/${event.slug}`;
-    QRCode.toDataURL(websiteUrl, {
-      type: "image/png",
-      width: 512,
-      margin: 2,
-      color: { dark: "#000000FF", light: "#FFFFFFFF" },
-    }).then(setWebsiteQrDataUrl).catch(() => setWebsiteQrDataUrl(null));
-  }, [event?.slug]);
 
   const getLink = (platformId: string): PlatformLink | undefined =>
     links.find((l) => l.platform === platformId);
@@ -249,25 +235,6 @@ export default function PlatformCodesPage() {
   const totalScans = links.reduce((sum, l) => sum + (l.scanCount || 0), 0);
   const totalRegs = links.reduce((sum, l) => sum + (l.registrationCount || 0), 0);
 
-  const websiteUrl = event?.slug ? `${baseUrl}/register/${event.slug}` : "";
-
-  const copyWebsiteLink = () => {
-    if (!websiteUrl) return;
-    navigator.clipboard.writeText(websiteUrl);
-    setWebsiteCopied(true);
-    setTimeout(() => setWebsiteCopied(false), 2000);
-  };
-
-  const downloadWebsiteQR = () => {
-    if (!websiteQrDataUrl || !event?.slug) return;
-    const link = document.createElement("a");
-    link.download = `qr-website-${event.slug}.png`;
-    link.href = websiteQrDataUrl;
-    document.body.appendChild(link);
-    link.click();
-    setTimeout(() => document.body.removeChild(link), 1000);
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -312,55 +279,6 @@ export default function PlatformCodesPage() {
           </Button>
         </div>
       </div>
-
-      {/* Website Link + QR Card */}
-      {event?.slug && (
-        <Card className="overflow-hidden border-2 border-blue-200">
-          <div className="p-4 flex items-center gap-3 bg-blue-50">
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-sm font-bold bg-blue-600">
-              <Globe className="w-5 h-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-slate-900">Website (Registration Page)</p>
-              <div className="flex items-center gap-1">
-                <code className="text-xs font-mono text-slate-500 truncate">{websiteUrl}</code>
-                <button onClick={copyWebsiteLink} className="text-slate-400 hover:text-slate-600 shrink-0">
-                  {websiteCopied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
-                </button>
-              </div>
-            </div>
-          </div>
-          <div className="p-4 space-y-3">
-            {/* QR Code */}
-            <div className="flex justify-center">
-              {websiteQrDataUrl ? (
-                <img
-                  src={websiteQrDataUrl}
-                  alt="QR code for website registration"
-                  className="w-40 h-40"
-                />
-              ) : (
-                <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
-              )}
-            </div>
-            {/* Registration URL */}
-            <div className="text-center">
-              <p className="text-xs text-slate-400 mb-1">Registration URL</p>
-              <p className="text-sm font-mono text-slate-700 select-all break-all">{websiteUrl}</p>
-            </div>
-            {/* Actions */}
-            <div className="flex gap-2 justify-center">
-              <Button size="sm" variant="outline" onClick={downloadWebsiteQR} disabled={!websiteQrDataUrl}>
-                <Download className="w-3.5 h-3.5 mr-1" /> Download QR
-              </Button>
-              <Button size="sm" variant="outline" onClick={copyWebsiteLink}>
-                {websiteCopied ? <Check className="w-3.5 h-3.5 mr-1 text-green-500" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
-                {websiteCopied ? "Copied!" : "Copy Link"}
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
 
       {/* Platform Cards */}
       {platforms.length === 0 ? (
