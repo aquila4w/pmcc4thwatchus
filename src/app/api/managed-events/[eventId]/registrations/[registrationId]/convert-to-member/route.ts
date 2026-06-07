@@ -5,7 +5,7 @@ import { getCurrentUser, isAdmin } from "@/lib/auth-helpers";
 import { randomInt, randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 
-const TEMP_PASSWORD = "REDACTED_TEMP_PASSWORD";
+const TEMP_PASSWORD = process.env.GUEST_TEMP_PASSWORD || "REDACTED_TEMP_PASSWORD";
 
 const generateInviteCode = (): string => {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";

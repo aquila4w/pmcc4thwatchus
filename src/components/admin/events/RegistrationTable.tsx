@@ -672,7 +672,7 @@ export function RegistrationTable({
             <DialogTitle>Convert to Member</DialogTitle>
             <DialogDescription>
               Convert {convertTarget?.guestInfo?.name || "this guest"} to a member.
-              They will receive login credentials (password: REDACTED_TEMP_PASSWORD) and must change
+              They will receive login credentials and must change
               their password on first login.
             </DialogDescription>
           </DialogHeader>

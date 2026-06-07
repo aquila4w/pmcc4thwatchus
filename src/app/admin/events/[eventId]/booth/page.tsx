@@ -161,18 +161,9 @@ function ScanTab({ eventId }: { eventId: string }) {
     setProcessing(true);
     setResult(null);
     try {
-      const loginRes = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: "leo.marquez@pmcc4thwatch.us", password: "REDACTED_PASSWORD" }),
-      });
-      const setCookie = loginRes.headers.get("set-cookie") || "";
-      const tokenMatch = setCookie.match(/payload-token=([^;]+)/);
-      const token = tokenMatch?.[1];
-
       const res = await fetch("/api/check-in", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...(token ? { Cookie: `payload-token=${token}` } : {}) },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ registrationCode: code.trim(), eventId }),
       });
       const data = await res.json();
