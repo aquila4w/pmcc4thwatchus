@@ -113,7 +113,7 @@ export async function GET(
           sort: "name",
           depth: 0,
           overrideAccess: true,
-        })).docs.map((c: { id: string; name: string }) => ({ id: c.id, name: c.name })),
+        })).docs.map((c: Record<string, unknown>) => ({ id: String(c.id), name: String(c.name) })),
       } : {}),
     });
   } catch (error) {
