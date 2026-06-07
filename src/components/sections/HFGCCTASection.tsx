@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Ticket, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const REGISTER_URL = "/hfgc-ny";
+const REGISTER_URL = "/p/Z5AXFXH5";
 const MERCH_URL = "https://forms.gle/JgGtMZt4MMCxBwBp8";
 
 export function HFGCCTASection() {

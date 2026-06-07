@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Calendar, Clock, MapPin, Gift, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const REGISTER_URL = "/hfgc-ny";
+const REGISTER_URL = "/p/Z5AXFXH5";
 
 const DETAILS = [
   { icon: Calendar, label: "Date", value: "August 8, 2026" },

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { CountdownTimer } from "@/components/ui/countdown-timer";
 
 const HERO_IMG = "/images/hfgc-ny-hero.png?v=6";
-const REGISTER_URL = "/hfgc-ny";
+const REGISTER_URL = "/p/Z5AXFXH5";
 const CLOUDS_VIDEO = "/videos/ny-manhattan-night.mp4";
 
 /* ---------------- WordsPullUp ---------------- */
