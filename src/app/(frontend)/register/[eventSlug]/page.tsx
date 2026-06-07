@@ -168,6 +168,7 @@ export default function RegisterPage({
               church: churchData.church?.name || undefined,
             },
             registrationCount: churchData.registrationCount || 0,
+            churches: churchData.churches || undefined,
           };
         } else if (platformCode) {
           // Online platform QR code — event slug is already in the URL
@@ -186,6 +187,7 @@ export default function RegisterPage({
               email: platformData.link.contactEmail || undefined,
             },
             registrationCount: platformData.registrationCount || 0,
+            churches: platformData.churches || undefined,
           };
         } else if (refCode) {
           // Look up by member code + event slug
