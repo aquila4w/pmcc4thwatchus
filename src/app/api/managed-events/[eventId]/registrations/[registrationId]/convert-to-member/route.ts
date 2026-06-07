@@ -5,7 +5,7 @@ import { getCurrentUser, isAdmin } from "@/lib/auth-helpers";
 import { randomInt, randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 
-const TEMP_PASSWORD = process.env.GUEST_TEMP_PASSWORD || "REDACTED_TEMP_PASSWORD";
+const TEMP_PASSWORD = process.env.GUEST_TEMP_PASSWORD;
 
 const generateInviteCode = (): string => {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -83,6 +83,9 @@ export async function POST(
 
     // 5. Convert via raw MongoDB to avoid payload.update() stack overflow
     const inviteCode = generateInviteCode();
+    if (!TEMP_PASSWORD) {
+      return NextResponse.json({ error: "GUEST_TEMP_PASSWORD env var is required" }, { status: 500 });
+    }
     const hashedPassword = await bcrypt.hash(TEMP_PASSWORD, 10);
 
     const userCollection = payload.db.collections["users"];
