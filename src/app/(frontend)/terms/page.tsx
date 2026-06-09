@@ -41,7 +41,7 @@ export default function TermsOfServicePage() {
                 Terms of Service
               </h1>
               <p className="text-white/60 text-lg">
-                Last updated: February 2026
+                Last updated: June 2026
               </p>
             </div>
           </motion.div>
@@ -100,6 +100,30 @@ export default function TermsOfServicePage() {
                   you grant us the right to use, modify, and display that content in connection with our
                   ministry activities. You are responsible for ensuring that any content you submit does not
                   violate the rights of others.
+                </p>
+
+                <h2 className="font-serif text-2xl font-bold text-slate-900 dark:text-white mb-4">
+                  Third-Party Login
+                </h2>
+                <p className="text-slate-600 dark:text-slate-300 mb-8">
+                  Our website offers the option to sign in using third-party authentication providers such
+                  as Facebook and Google. When you use this feature, the authentication provider shares
+                  certain information with us (such as your name and email address) to create and manage
+                  your account. Your use of third-party login is also governed by that provider&apos;s terms
+                  of service and privacy policy. We do not post to your social media accounts or share your
+                  login credentials with any other parties.
+                </p>
+
+                <h2 className="font-serif text-2xl font-bold text-slate-900 dark:text-white mb-4">
+                  Data Deletion
+                </h2>
+                <p className="text-slate-600 dark:text-slate-300 mb-8">
+                  You may request deletion of your account and personal data at any time by contacting us
+                  at info@pmcc4thwatch.us. Upon receiving a verified request, we will delete your personal
+                  data from our systems within 30 days, except where retention is required by law. If you
+                  signed in through Facebook, you can also manage or remove app permissions directly from
+                  your Facebook App Settings. If you signed in through Google, you can manage or remove
+                  app access from your Google Account Permissions.
                 </p>
 
                 <h2 className="font-serif text-2xl font-bold text-slate-900 dark:text-white mb-4">

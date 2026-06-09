@@ -41,7 +41,7 @@ export default function PrivacyPolicyPage() {
                 Privacy Policy
               </h1>
               <p className="text-white/60 text-lg">
-                Last updated: May 2026
+                Last updated: June 2026
               </p>
             </div>
           </motion.div>
@@ -87,6 +87,13 @@ export default function PrivacyPolicyPage() {
                   </li>
                   <li>
                     <strong>Prayer Requests:</strong> Information you share in prayer request submissions.
+                  </li>
+                  <li>
+                    <strong>Third-Party Login Data:</strong> When you choose to sign in using Facebook,
+                    Google, or other third-party authentication providers, we receive your public profile
+                    information (such as your name and email address) from that provider. We use this
+                    information solely to create and manage your account. We do not post to your social
+                    media accounts or share your login data with any other parties.
                   </li>
                 </ul>
 
@@ -172,6 +179,32 @@ export default function PrivacyPolicyPage() {
                   Our website is not intended for children under 13 years of age. We do not knowingly
                   collect personal information from children under 13. If you believe we have collected
                   information from a child under 13, please contact us immediately.
+                </p>
+
+                <h2 className="font-serif text-2xl font-bold text-slate-900 dark:text-white mb-4">
+                  Data Deletion
+                </h2>
+                <p className="text-slate-600 dark:text-slate-300 mb-8">
+                  You may request deletion of your personal information and account at any time by contacting
+                  us at <a href="mailto:info@pmcc4thwatch.us" className="text-secondary hover:underline">info@pmcc4thwatch.us</a>.
+                  Upon receiving a verified request, we will delete your personal data from our systems within
+                  30 days, except where retention is required by law. If you signed in through Facebook, you
+                  can also manage or remove app permissions directly from your{" "}
+                  <a href="https://www.facebook.com/settings?tab=applications" target="_blank" rel="noopener noreferrer" className="text-secondary hover:underline">
+                    Facebook App Settings
+                  </a>.
+                  If you signed in through Google, you can manage or remove app access from your{" "}
+                  <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer" className="text-secondary hover:underline">
+                    Google Account Permissions
+                  </a>.
+                </p>
+
+                <h2 className="font-serif text-2xl font-bold text-slate-900 dark:text-white mb-4">
+                  Advertising
+                </h2>
+                <p className="text-slate-600 dark:text-slate-300 mb-8">
+                  We do not use your personal information to serve targeted advertisements. We do not share
+                  your data with advertisers or advertising networks.
                 </p>
 
                 <h2 className="font-serif text-2xl font-bold text-slate-900 dark:text-white mb-4">
