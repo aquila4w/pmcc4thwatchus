@@ -185,8 +185,11 @@ export default function PrivacyPolicyPage() {
                   Data Deletion
                 </h2>
                 <p className="text-slate-600 dark:text-slate-300 mb-8">
-                  You may request deletion of your personal information and account at any time by contacting
-                  us at <a href="mailto:info@pmcc4thwatch.us" className="text-secondary hover:underline">info@pmcc4thwatch.us</a>.
+                  You may request deletion of your personal information and account at any time. For detailed
+                  instructions, visit our{" "}
+                  <Link href="/data-deletion" className="text-secondary hover:underline">Data Deletion</Link>{" "}
+                  page, or contact us at{" "}
+                  <a href="mailto:info@pmcc4thwatch.us" className="text-secondary hover:underline">info@pmcc4thwatch.us</a>.
                   Upon receiving a verified request, we will delete your personal data from our systems within
                   30 days, except where retention is required by law. If you signed in through Facebook, you
                   can also manage or remove app permissions directly from your{" "}
