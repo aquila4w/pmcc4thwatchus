@@ -16,6 +16,8 @@ import {
   BarChart3,
   Globe,
   Megaphone,
+  QrCode,
+  Download,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -36,15 +38,17 @@ export default function DashboardPage() {
   const [churchCount, setChurchCount] = useState(0);
   const [guestCount, setGuestCount] = useState(0);
   const [campaignCount, setCampaignCount] = useState(0);
+  const [userInviteCode, setUserInviteCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [eventsRes, churchesRes, guestsRes] = await Promise.all([
+      const [eventsRes, churchesRes, guestsRes, meRes] = await Promise.all([
         fetch("/payload-api/managed-events?limit=5&sort=-startDate&depth=0"),
         fetch("/payload-api/churches?limit=1"),
         fetch("/api/guests/eligible"),
+        fetch("/api/auth/me", { cache: "no-store" }),
       ]);
 
       if (eventsRes.ok) {
@@ -61,6 +65,11 @@ export default function DashboardPage() {
       if (guestsRes.ok) {
         const data = await guestsRes.json();
         setGuestCount(data.guests?.length || 0);
+      }
+
+      if (meRes.ok) {
+        const data = await meRes.json();
+        setUserInviteCode(data.user?.inviteCode || null);
       }
     } catch (error) {
       console.error("Failed to fetch dashboard data:", error);
@@ -147,6 +156,46 @@ export default function DashboardPage() {
           </div>
         </Card>
       </div>
+
+      {/* My ID QR */}
+      {userInviteCode && (
+        <Card className="bg-white p-5">
+          <div className="flex items-center gap-4">
+            <div className="bg-white p-2 rounded-lg border flex-shrink-0">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`PMCC4W-${userInviteCode}`)}`}
+                alt="My ID QR"
+                width={80}
+                height={80}
+              />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold flex items-center gap-2">
+                <QrCode className="w-5 h-5 text-primary" />
+                My ID Card
+              </h3>
+              <p className="text-sm text-slate-500 mt-1">
+                Show this QR at any event for identification & attendance
+              </p>
+              <p className="text-xs text-slate-400 mt-1">ID: {userInviteCode}</p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const url = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`PMCC4W-${userInviteCode}`)}`;
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `my-id-${userInviteCode}.png`;
+                link.click();
+              }}
+            >
+              <Download className="w-4 h-4 mr-1" />
+              Download
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* Quick Actions */}
       <div>

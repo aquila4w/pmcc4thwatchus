@@ -27,8 +27,19 @@ export async function GET(request: NextRequest) {
         user = await payload.findByID({
           collection: "users",
           id: session.user.id,
+          overrideAccess: true,
         });
       }
+    }
+
+    // Re-fetch with overrideAccess to get all own fields (e.g. inviteCode)
+    if (user && token) {
+      user = await payload.findByID({
+        collection: "users",
+        id: user.id,
+        overrideAccess: true,
+        depth: 0,
+      });
     }
 
     if (!user) {

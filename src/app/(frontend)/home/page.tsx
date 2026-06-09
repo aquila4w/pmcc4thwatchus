@@ -2,22 +2,24 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   Calendar,
   Users,
   CheckCircle,
   Sparkles,
-  ArrowRight,
   Share2,
   Gift,
   Heart,
   Loader2,
   Church,
   MapPin,
-  Clock,
   User,
-  LogOut,
+  QrCode,
+  Download,
+  Copy,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -57,6 +59,8 @@ export default function MemberHomePage() {
   const [stats, setStats] = useState<StatsData | null>(null);
   const [invites, setInvites] = useState<InviteData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [showUserQR, setShowUserQR] = useState(false);
 
   useEffect(() => {
     async function fetchUser() {
@@ -90,7 +94,21 @@ export default function MemberHomePage() {
   const copyInviteLink = (inviteCode: string) => {
     const baseUrl = window.location.origin;
     navigator.clipboard.writeText(`${baseUrl}/i/${inviteCode}`);
+    setCopiedCode(inviteCode);
+    setTimeout(() => setCopiedCode(null), 2000);
   };
+
+  const downloadQR = (url: string, filename: string) => {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+  };
+
+  // Universal user QR — encodes the user's invite code for identification across events
+  const userQRUrl = user?.inviteCode
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`PMCC4W-${user.inviteCode}`)}`
+    : "";
 
   if (loading) {
     return (
@@ -141,6 +159,59 @@ export default function MemberHomePage() {
       <div className="container mx-auto px-4 -mt-8 relative z-10 pb-16">
         <div className="max-w-4xl mx-auto space-y-8">
 
+          {/* My ID Card — Universal QR */}
+          {user.inviteCode && (
+            <Card className="bg-white dark:bg-slate-900/50 overflow-hidden">
+              <div className="p-5 flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-bold flex items-center gap-2">
+                    <QrCode className="w-5 h-5 text-primary" />
+                    My ID Card
+                  </h2>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Show this QR at any event for identification & attendance
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant={showUserQR ? "secondary" : "outline"}
+                  onClick={() => setShowUserQR(!showUserQR)}
+                >
+                  {showUserQR ? "Hide" : "Show"} QR
+                </Button>
+              </div>
+              {showUserQR && (
+                <div className="border-t px-5 py-6 flex flex-col items-center gap-4">
+                  <div className="bg-white p-4 rounded-xl shadow-sm">
+                    <img
+                      src={userQRUrl}
+                      alt="My ID QR Code"
+                      width={200}
+                      height={200}
+                      className="mx-auto"
+                    />
+                  </div>
+                  <div className="text-center">
+                    <p className="font-semibold text-lg">{user.name}</p>
+                    <p className="text-sm text-slate-500">ID: {user.inviteCode}</p>
+                    {user.church && (
+                      <p className="text-sm text-slate-500">{user.church}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => downloadQR(userQRUrl, `my-id-${user.inviteCode}.png`)}
+                    >
+                      <Download className="w-4 h-4 mr-1" />
+                      Download
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </Card>
+          )}
+
           {/* My Stats */}
           {stats && stats.totalInvites > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -188,44 +259,78 @@ export default function MemberHomePage() {
             </div>
 
             {invites.length > 0 ? (
-              <div className="grid sm:grid-cols-2 gap-4">
-                {invites.map((invite) => (
-                  <Card key={invite.eventId} className="bg-white dark:bg-slate-900/50 p-5 hover:shadow-md transition-shadow">
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="font-semibold text-lg leading-tight flex-1">{invite.eventTitle}</h3>
-                      <Badge variant="outline" className="ml-2 flex-shrink-0">
-                        {invite.registrationCount} registered
-                      </Badge>
-                    </div>
-                    <div className="space-y-1 text-sm text-slate-500 mb-4">
-                      <p className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4" />
-                        {formatDate(invite.eventDate)}
-                      </p>
-                      {invite.eventLocation && (
-                        <p className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4" />
-                          {invite.eventLocation}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" className="flex-1" asChild>
-                        <Link href={`/i/${invite.inviteCode}`}>
-                          <Share2 className="w-4 h-4 mr-1" />
-                          Share Invite
-                        </Link>
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => copyInviteLink(invite.inviteCode)}
-                      >
-                        Copy Link
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
+              <div className="space-y-4">
+                {invites.map((invite) => {
+                  const inviteLink = `${window.location.origin}/i/${invite.inviteCode}`;
+                  const inviteQRUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(inviteLink)}`;
+                  return (
+                    <Card key={invite.eventId} className="bg-white dark:bg-slate-900/50 overflow-hidden hover:shadow-md transition-shadow">
+                      <div className="p-5">
+                        <div className="flex gap-4">
+                          {/* QR Code */}
+                          <div className="flex-shrink-0">
+                            <div className="bg-white p-2 rounded-lg border">
+                              <img
+                                src={inviteQRUrl}
+                                alt={`QR for ${invite.eventTitle}`}
+                                width={100}
+                                height={100}
+                              />
+                            </div>
+                          </div>
+                          {/* Event Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between mb-1">
+                              <h3 className="font-semibold text-lg leading-tight flex-1">{invite.eventTitle}</h3>
+                              <Badge variant="outline" className="ml-2 flex-shrink-0">
+                                {invite.registrationCount} registered
+                              </Badge>
+                            </div>
+                            <div className="space-y-0.5 text-sm text-slate-500 mb-3">
+                              <p className="flex items-center gap-2">
+                                <Calendar className="w-4 h-4" />
+                                {formatDate(invite.eventDate)}
+                              </p>
+                              {invite.eventLocation && (
+                                <p className="flex items-center gap-2">
+                                  <MapPin className="w-4 h-4" />
+                                  {invite.eventLocation}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex gap-2 flex-wrap">
+                              <Button size="sm" className="flex-1 sm:flex-none" asChild>
+                                <Link href={`/i/${invite.inviteCode}`}>
+                                  <Share2 className="w-4 h-4 mr-1" />
+                                  Open
+                                </Link>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => copyInviteLink(invite.inviteCode)}
+                              >
+                                {copiedCode === invite.inviteCode ? (
+                                  <><Check className="w-4 h-4 mr-1" />Copied</>
+                                ) : (
+                                  <><Copy className="w-4 h-4 mr-1" />Copy Link</>
+                                )}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => downloadQR(inviteQRUrl, `invite-${invite.inviteCode}.png`)}
+                              >
+                                <Download className="w-4 h-4 mr-1" />
+                                QR
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
               </div>
             ) : (
               <Card className="bg-white dark:bg-slate-900/50 p-8 text-center">
