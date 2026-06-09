@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Home,
   Calendar,
@@ -256,9 +257,13 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
         <div className="h-16 flex items-center justify-between px-4 border-b border-white/10">
           {(mobileMenuOpen || desktopSidebarOpen) && (
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center">
-                <span className="text-xs font-bold text-slate-900">P</span>
-              </div>
+              <Image
+                src="/images/logo-white.png"
+                alt="PMCC 4th Watch"
+                width={32}
+                height={32}
+                className="rounded-lg"
+              />
               <span className="font-semibold">Admin Dashboard</span>
             </div>
           )}
