@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     if (!user) {
       return NextResponse.json(
         { error: "Not authenticated" },
-        { status: 401 }
+        { status: 401, headers: { "Cache-Control": "no-store" } }
       );
     }
 
@@ -64,12 +64,12 @@ export async function GET(request: NextRequest) {
       },
       stats: inviteStats,
       eventInvites,
-    });
+    }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Auth check error:", error);
     return NextResponse.json(
       { error: "Authentication failed" },
-      { status: 401 }
+      { status: 401, headers: { "Cache-Control": "no-store" } }
     );
   }
 }
