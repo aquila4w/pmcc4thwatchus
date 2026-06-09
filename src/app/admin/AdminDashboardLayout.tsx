@@ -157,7 +157,7 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
       roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary", "eventAdmin"],
     },
     {
-      label: "Guests",
+      label: "Baptized Guests",
       icon: Users,
       href: "/admin/guests",
       roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "eventAdmin"],

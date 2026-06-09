@@ -147,7 +147,7 @@ export default function GuestsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Guest Management</h1>
+          <h1 className="text-2xl font-bold">Baptized Guests Management</h1>
           <p className="text-slate-500">Promote baptized guests to members</p>
         </div>
         <Badge variant="secondary" className="text-sm">
