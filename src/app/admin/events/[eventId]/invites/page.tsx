@@ -156,9 +156,7 @@ export default function EventInvitesPage({
 
   const handleCopyInviteLink = (invite: EventInvite) => {
     const baseUrl = window.location.origin;
-    const inviteLink = event?.slug
-      ? `${baseUrl}/register/${event.slug}?invite=${invite.inviteCode}`
-      : `${baseUrl}/register?invite=${invite.inviteCode}`;
+    const inviteLink = `${baseUrl}/i/${invite.inviteCode}`;
     navigator.clipboard.writeText(inviteLink);
     setCopiedCode(invite.id);
     setTimeout(() => setCopiedCode(null), 2000);
@@ -169,9 +167,7 @@ export default function EventInvitesPage({
 
   const buildInviteLink = (invite: EventInvite) => {
     const baseUrl = window.location.origin;
-    return event?.slug
-      ? `${baseUrl}/register/${event.slug}?invite=${invite.inviteCode}`
-      : `${baseUrl}/register?invite=${invite.inviteCode}`;
+    return `${baseUrl}/i/${invite.inviteCode}`;
   };
 
   const toggleQr = async (invite: EventInvite) => {

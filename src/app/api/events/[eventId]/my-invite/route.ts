@@ -64,9 +64,7 @@ export async function GET(
 
     const slug = (event as { slug?: string })?.slug || "";
     const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || "";
-    const inviteLink = slug
-      ? `${baseUrl}/register/${slug}?invite=${inviteCode}`
-      : `${baseUrl}/register?invite=${inviteCode}`;
+    const inviteLink = `${baseUrl}/i/${inviteCode}`;
 
     return NextResponse.json({
       invite: {

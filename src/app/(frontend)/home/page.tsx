@@ -89,7 +89,7 @@ export default function MemberHomePage() {
 
   const copyInviteLink = (inviteCode: string) => {
     const baseUrl = window.location.origin;
-    navigator.clipboard.writeText(`${baseUrl}/register/${inviteCode}`);
+    navigator.clipboard.writeText(`${baseUrl}/i/${inviteCode}`);
   };
 
   if (loading) {
@@ -211,7 +211,7 @@ export default function MemberHomePage() {
                     </div>
                     <div className="flex gap-2">
                       <Button size="sm" className="flex-1" asChild>
-                        <Link href={`/register/${invite.eventSlug}?invite=${invite.inviteCode}`}>
+                        <Link href={`/i/${invite.inviteCode}`}>
                           <Share2 className="w-4 h-4 mr-1" />
                           Share Invite
                         </Link>
