@@ -9,6 +9,8 @@ import { randomBytes } from "crypto";
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
+  // Ensure NextAuth uses the correct base URL for OAuth callbacks
+  ...(process.env.NEXTAUTH_URL ? { url: process.env.NEXTAUTH_URL } : {}),
   providers: [
     // Email/Password
     CredentialsProvider({

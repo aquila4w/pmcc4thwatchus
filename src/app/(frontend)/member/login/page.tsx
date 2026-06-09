@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Eye, EyeOff, Loader2, Mail, Lock, ArrowRight } from "lucide-react";
@@ -74,9 +75,13 @@ export default function MemberLoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-3">
-            <div className="w-14 h-14 rounded-full border-2 border-primary flex items-center justify-center bg-primary/10">
-              <span className="text-primary font-serif font-bold text-xl">P</span>
-            </div>
+            <Image
+              src="/images/logo-colored.png"
+              alt="PMCC 4th Watch"
+              width={56}
+              height={56}
+              className="rounded-full"
+            />
           </Link>
           <h1 className="text-2xl font-serif font-bold text-primary mt-4">
             Member Portal
