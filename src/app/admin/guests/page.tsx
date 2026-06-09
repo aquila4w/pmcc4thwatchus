@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Users,
   UserPlus,
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useReferenceData } from "@/hooks/useReferenceData";
 
 interface EligibleGuest {
   id: string;
@@ -36,47 +37,31 @@ interface EligibleGuest {
 
 export default function GuestsPage() {
   const [guests, setGuests] = useState<EligibleGuest[]>([]);
-  const [churches, setChurches] = useState<Array<{ id: string; name: string }>>([]);
-  const [subDistricts, setSubDistricts] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedChurch, setSelectedChurch] = useState<string>("");
   const [selectedSubDistrict, setSelectedSubDistrict] = useState<string>("");
   const [promotingGuest, setPromotingGuest] = useState<string | null>(null);
+  const { churches, subDistricts } = useReferenceData();
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchGuests = useCallback(async () => {
     setLoading(true);
     try {
-      // Get eligible baptized guests
       const guestsRes = await fetch("/api/guests/eligible");
       if (guestsRes.ok) {
         const guestsData = await guestsRes.json();
         setGuests(guestsData.guests || []);
       }
-
-      // Get churches for filter
-      const churchesRes = await fetch("/payload-api/churches?limit=999&depth=0");
-      if (churchesRes.ok) {
-        const churchesData = await churchesRes.json();
-        setChurches(churchesData.docs || []);
-      }
-
-      // Get subdistricts for filter
-      const subDistrictsRes = await fetch("/payload-api/sub-districts?limit=999&depth=0");
-      if (subDistrictsRes.ok) {
-        const subDistrictsData = await subDistrictsRes.json();
-        setSubDistricts(subDistrictsData.docs || []);
-      }
     } catch (error) {
-      console.error("Failed to fetch data:", error);
+      console.error("Failed to fetch guests:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchGuests();
+  }, [fetchGuests]);
 
   const handlePromoteGuest = async (guest: EligibleGuest) => {
     // Confirm church assignment
@@ -106,7 +91,7 @@ export default function GuestsPage() {
       if (response.ok) {
         const data = await response.json();
         alert(`${guest.name} has been promoted to member!`);
-        await fetchData();
+        await fetchGuests();
       } else {
         const error = await response.json();
         alert(error.error || "Failed to promote guest");

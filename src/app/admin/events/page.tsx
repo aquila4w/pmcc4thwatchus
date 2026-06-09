@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { formatEventDate, formatEventTime } from "@/lib/event-date";
 import {
@@ -9,22 +9,19 @@ import {
   Users,
   Plus,
   Search,
-  Filter,
   QrCode,
   ChevronRight,
   Loader2,
   Clock,
   CheckCircle,
-  XCircle,
-  AlertCircle,
   BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { EventDialog } from "@/components/admin/events/EventDialog";
 import { EventStatusBadge } from "@/components/admin/events/EventStatusBadge";
+import { useReferenceData } from "@/hooks/useReferenceData";
 
 interface Event {
   id: string;
@@ -38,16 +35,6 @@ interface Event {
   baptizedCount?: number;
 }
 
-interface Church {
-  id: string;
-  name: string;
-}
-
-interface SubDistrict {
-  id: string;
-  name: string;
-}
-
 const statusConfig = {
   "draft": "Draft",
   "registration-open": "Registration Open",
@@ -59,48 +46,30 @@ const statusConfig = {
 
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
-  const [churches, setChurches] = useState<Church[]>([]);
-  const [subDistricts, setSubDistricts] = useState<SubDistrict[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("");
-  const [selectedChurch, setSelectedChurch] = useState<string>("");
-  const [selectedSubDistrict, setSelectedSubDistrict] = useState<string>("");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const { churches, subDistricts } = useReferenceData();
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchEvents = useCallback(async () => {
     setLoading(true);
     try {
-      // Get events
       const eventsRes = await fetch("/payload-api/managed-events?limit=999&sort=-startDate&depth=0");
       if (eventsRes.ok) {
         const eventsData = await eventsRes.json();
         setEvents(eventsData.docs || []);
       }
-
-      // Get churches for filter
-      const churchesRes = await fetch("/payload-api/churches?limit=999&depth=0");
-      if (churchesRes.ok) {
-        const churchesData = await churchesRes.json();
-        setChurches(churchesData.docs || []);
-      }
-
-      // Get subdistricts for filter
-      const subDistrictsRes = await fetch("/payload-api/sub-districts?limit=999&depth=0");
-      if (subDistrictsRes.ok) {
-        const subDistrictsData = await subDistrictsRes.json();
-        setSubDistricts(subDistrictsData.docs || []);
-      }
     } catch (error) {
-      console.error("Failed to fetch data:", error);
+      console.error("Failed to fetch events:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
 
   const filteredEvents = events.filter((event) => {
     const matchesSearch =
@@ -248,7 +217,7 @@ export default function EventsPage() {
       <EventDialog
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
-        onSuccess={fetchData}
+        onSuccess={fetchEvents}
       />
     </div>
   );

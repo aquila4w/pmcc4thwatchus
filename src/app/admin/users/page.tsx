@@ -26,6 +26,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { useReferenceData } from "@/hooks/useReferenceData";
 
 const ROLES = [
   { value: "member", label: "Member" },
@@ -60,21 +61,15 @@ interface UserRecord {
   createdAt: string;
 }
 
-interface ChurchOption {
-  id: string;
-  name: string;
-  city?: string;
-}
-
 export default function UsersPage() {
   const [users, setUsers] = useState<UserRecord[]>([]);
-  const [churches, setChurches] = useState<ChurchOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [updatingUser, setUpdatingUser] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState("");
+  const { churches, subDistricts } = useReferenceData();
 
   // Role options available to the current user in the edit dialog
   const assignableRoles = (() => {
@@ -117,9 +112,6 @@ export default function UsersPage() {
     newPassword: string;
   }>({ open: false, user: null, newPassword: "" });
 
-  // Sub-district options
-  const [subDistricts, setSubDistricts] = useState<{ id: string; name: string }[]>([]);
-
   // Delete dialog
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
@@ -153,33 +145,6 @@ export default function UsersPage() {
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
-
-  useEffect(() => {
-    async function fetchChurches() {
-      try {
-        const res = await fetch("/api/churches");
-        if (res.ok) {
-          const data = await res.json();
-          setChurches(data.docs || []);
-        }
-      } catch {
-        // ignore
-      }
-    }
-    async function fetchSubDistricts() {
-      try {
-        const res = await fetch("/api/sub-districts");
-        if (res.ok) {
-          const data = await res.json();
-          setSubDistricts(data.docs || []);
-        }
-      } catch {
-        // ignore
-      }
-    }
-    fetchChurches();
-    fetchSubDistricts();
-  }, []);
 
   const handleUpdateUser = async () => {
     if (!editDialog.user) return;
