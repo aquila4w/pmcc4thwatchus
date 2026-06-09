@@ -130,13 +130,13 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
       label: "Events",
       icon: Calendar,
       href: "/admin/events",
-      roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary", "eventAdmin"],
+      roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "eventAdmin"],
     },
     {
       label: "Campaigns",
       icon: Mail,
       href: "/admin/campaigns",
-      roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary", "eventAdmin"],
+      roles: ["superAdmin", "districtCoordinator", "eventAdmin"],
     },
     {
       label: "Ad Placements",
@@ -154,7 +154,7 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
       label: "Users",
       icon: UserCog,
       href: "/admin/users",
-      roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary", "eventAdmin"],
+      roles: ["superAdmin", "eventAdmin"],
     },
     {
       label: "Baptized Guests",
@@ -172,7 +172,7 @@ function DashboardLayoutInternal({ children }: DashboardLayoutProps) {
       label: "CMS Admin",
       icon: Settings,
       href: "/cms",
-      roles: ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary"],
+      roles: ["superAdmin"],
     },
     {
       label: "My Church",

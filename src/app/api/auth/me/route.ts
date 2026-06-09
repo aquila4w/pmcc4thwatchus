@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
         role: user.role,
         inviteCode: user.inviteCode,
         church: churchName,
+        subDistrict: (user as Record<string, unknown>).subDistrict as string || null,
         forcePasswordChange: (user as Record<string, unknown>).forcePasswordChange as boolean || false,
       },
       stats: inviteStats,

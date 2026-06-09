@@ -21,12 +21,23 @@ export async function GET(request: NextRequest) {
 
     const userRole = (user as Record<string, unknown>).role as string;
     const userChurch = (user as Record<string, unknown>).church as string;
+    const userSubDistrict = (user as Record<string, unknown>).subDistrict as string;
 
-    const canViewAll = ["superAdmin", "districtCoordinator", "subDistrictCoordinator"].includes(userRole);
+    const canViewAll = ["superAdmin", "districtCoordinator"].includes(userRole);
+
+    // Build filter based on role
+    let where = {};
+    if (!canViewAll && userRole === "subDistrictCoordinator" && userSubDistrict) {
+      // SubDistrict coordinators see churches under their subDistrict
+      where = { "church.subDistrict": { equals: userSubDistrict } };
+    } else if (!canViewAll && userChurch) {
+      // Head ministers, secretaries see only their church
+      where = { church: { equals: userChurch } };
+    }
 
     const result = await payload.find({
       collection: "church-sites",
-      where: !canViewAll && userChurch ? { church: { equals: userChurch } } : {},
+      where,
       limit: 100,
       depth: 1,
     });

@@ -44,7 +44,14 @@ export default function MemberLoginPage() {
         return;
       }
 
-      router.push("/member/dashboard");
+      // Redirect based on role
+      const adminRoles = ["superAdmin", "districtCoordinator", "subDistrictCoordinator", "headMinister", "secretary", "eventAdmin"];
+      const role = data.user?.role as string | undefined;
+      if (role && adminRoles.includes(role)) {
+        router.push("/admin");
+      } else {
+        router.push("/home");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invalid email or password");
     } finally {
